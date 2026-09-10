@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "local-companion"
+version = "0.1.0"
+description = "Compañera de IA local y contextual para Windows 11 (local-first, privacy-first, read-only)"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+
+# PHASE 0/1 no tiene dependencias de runtime a proposito.
+# El cliente de Ollama esta escrito sobre urllib (stdlib) y la configuracion
+# sobre tomllib (stdlib desde 3.11). Ver CLAUDE.md seccion 34.
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[project.scripts]
+companion = "companion.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# "." permite `from tests.conftest import FakeProvider` desde cualquier test.
+pythonpath = ["src", "."]
+addopts = "-q"

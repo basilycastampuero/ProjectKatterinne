@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.venv/
+venv/
+
+# Datos locales del companion (memoria, logs, capturas temporales).
+# Nunca deben salir del equipo. Ver CLAUDE.md seccion 3.2.
+data/*
+!data/.gitkeep
+
+# Configuracion local del usuario (puede contener rutas personales)
+companion.local.toml
+
+# Editores
+.vscode/
+.idea/

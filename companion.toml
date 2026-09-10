@@ -1,0 +1,42 @@
+# Configuracion del Local Companion.
+# Copia este fichero a companion.local.toml para ajustes personales
+# (ese nombre esta en .gitignore).
+#
+# Precedencia: defaults -> este TOML -> variables COMPANION_* -> flags CLI.
+# Ejemplo de override por entorno:  COMPANION_LLM_MODEL=llama3.1:8b
+
+[llm]
+provider = "ollama"
+host = "http://127.0.0.1:11434"
+
+# 8.2B en Q4_K_M (~5.2 GB): entra entero en los 8 GB de la RTX 4070 Laptop,
+# que es el requisito de CLAUDE.md secciones 2 y 33. Sigue siendo provisional
+# hasta el benchmark de la seccion 37, pero ya cumple el rango 4B-8B de la 7.
+model = "qwen3:8b"
+
+temperature = 0.7
+
+# Contexto de trabajo. Subirlo agranda el KV cache en VRAM: 4096 deja margen
+# de sobra en 8 GB. El modelo admite hasta 40960.
+num_ctx = 4096
+
+# Cuanto tiempo mantiene Ollama el modelo en VRAM tras el ultimo mensaje.
+keep_alive = "5m"
+
+# Razonamiento explicito. Desactivado a proposito: medido en qwen3:8b, generar
+# "¡Hola!" costaba 319 tokens (~310 de razonamiento interno, en ingles) y ~5.5s
+# hasta la primera palabra. Para conversar no compensa. Los modelos que no
+# declaran la capacidad `thinking` ignoran este ajuste.
+think = false
+
+request_timeout_s = 120.0
+connect_timeout_s = 5.0
+
+[conversation]
+# Turnos user/assistant que viajan al modelo (CLAUDE.md seccion 25).
+max_history_messages = 20
+
+[logging]
+level = "INFO"
+to_file = true
+filename = "companion.log"
