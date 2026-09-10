@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import logging
 import sys
+import time
+from collections.abc import Callable
 
 from companion.conversation.manager import ConversationManager
 from companion.llm.errors import (
@@ -18,6 +20,9 @@ from companion.llm.errors import (
 )
 from companion.llm.ollama import OllamaProvider
 from companion.llm.provider import LLMProvider
+from companion.perception.active_window import ActiveWindowProvider
+from companion.perception.models import EventType, WindowEvent
+from companion.perception.watcher import WindowChangeDetector
 
 log = logging.getLogger("companion.app")
 
@@ -200,6 +205,72 @@ def run_once(conversation: ConversationManager, prompt: str, *, stream: bool = T
     _out(f"Tu: {prompt}")
     _stream_answer(conversation, prompt, stream=stream)
     conversation.provider.unload()
+    return 0
+
+
+WATCH_BANNER = """\
+╭──────────────────────────────────────────────╮
+│  Local Companion  ·  PHASE 2 (percepción)   │
+╰──────────────────────────────────────────────╯
+Observando qué ventana tiene el foco. Ctrl+C para parar.
+Sin capturas de pantalla, sin LLM, sin tocar nada."""
+
+
+#: Etiqueta de cada tipo de evento, todas del mismo ancho para que la
+#: columna de la aplicacion quede alineada.
+_EVENT_LABELS = {
+    EventType.APPLICATION_CHANGED: "cambio de app",
+    EventType.WINDOW_CHANGED: "misma app    ",
+}
+
+#: Ancho de "HH:MM:SS" + separador + etiqueta + separador.
+_DETAIL_INDENT = 8 + 2 + 13 + 2
+
+
+def _format_event(event: WindowEvent) -> str:
+    hora = event.timestamp.astimezone().strftime("%H:%M:%S")
+    etiqueta = _EVENT_LABELS[event.type]
+    ventana = event.window
+
+    detalle = ventana.process_name or "(proceso no accesible)"
+    if ventana.window_title:
+        detalle += f"  ·  {ventana.window_title}"
+
+    return (
+        f"{hora}  {etiqueta}  {ventana.application}\n"
+        f"{' ' * _DETAIL_INDENT}{detalle}"
+    )
+
+
+def run_watch(
+    provider: ActiveWindowProvider,
+    *,
+    interval_s: float = 1.0,
+    detector: WindowChangeDetector | None = None,
+    sleep: Callable[[float], None] = time.sleep,
+    max_iterations: int | None = None,
+) -> int:
+    """Sondea la ventana activa e imprime los cambios.
+
+    `sleep` y `max_iterations` se inyectan para poder testear el bucle sin
+    esperar segundos reales.
+    """
+    detector = detector or WindowChangeDetector()
+    _out(WATCH_BANNER)
+    _out()
+
+    iteraciones = 0
+    try:
+        while max_iterations is None or iteraciones < max_iterations:
+            if evento := detector.observe(provider.get_active_window()):
+                _out(_format_event(evento))
+            iteraciones += 1
+            if max_iterations is None or iteraciones < max_iterations:
+                sleep(interval_s)
+    except KeyboardInterrupt:
+        _out()
+
+    _out("Observación detenida.")
     return 0
 
 

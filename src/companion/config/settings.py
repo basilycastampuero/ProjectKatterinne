@@ -59,6 +59,16 @@ class ConversationSettings:
 
 
 @dataclass(frozen=True, slots=True)
+class PerceptionSettings:
+    """Observacion del sistema. PHASE 2: solo la ventana activa."""
+
+    #: Cada cuanto se pregunta por la ventana activa. Un segundo es
+    #: imperceptible en CPU (son tres llamadas a la API de Windows) y basta
+    #: para no perderse cambios de aplicacion.
+    poll_interval_s: float = 1.0
+
+
+@dataclass(frozen=True, slots=True)
 class LoggingSettings:
     level: str = "INFO"
     to_file: bool = True
@@ -69,6 +79,7 @@ class LoggingSettings:
 class Settings:
     llm: LLMSettings = field(default_factory=LLMSettings)
     conversation: ConversationSettings = field(default_factory=ConversationSettings)
+    perception: PerceptionSettings = field(default_factory=PerceptionSettings)
     logging: LoggingSettings = field(default_factory=LoggingSettings)
     data_dir: Path = PROJECT_ROOT / "data"
 
@@ -84,6 +95,7 @@ class Settings:
 _SECTIONS: dict[str, type] = {
     "llm": LLMSettings,
     "conversation": ConversationSettings,
+    "perception": PerceptionSettings,
     "logging": LoggingSettings,
 }
 
@@ -166,6 +178,7 @@ def load_settings(
     return Settings(
         llm=sections["llm"],
         conversation=sections["conversation"],
+        perception=sections["perception"],
         logging=sections["logging"],
         data_dir=data_dir,
     )

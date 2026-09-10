@@ -36,6 +36,12 @@ connect_timeout_s = 5.0
 # Turnos user/assistant que viajan al modelo (CLAUDE.md seccion 25).
 max_history_messages = 20
 
+[perception]
+# Cada cuanto se pregunta que ventana tiene el foco. Medido en el equipo
+# objetivo: 26 microsegundos por sondeo, o sea 0.0026% de un nucleo a un
+# sondeo por segundo. No hay capturas de pantalla en esta fase.
+poll_interval_s = 1.0
+
 [logging]
 level = "INFO"
 to_file = true

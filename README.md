@@ -7,7 +7,7 @@ curiosidad y a veces pregunta.
 Todo ocurre en tu máquina. Sin API de OpenAI, sin Anthropic, sin Google, sin
 servicios de visión ni de voz en la nube.
 
-> Estado actual: **PHASE 1 — chat local**.
+> Estado actual: **PHASE 2 — percepción de ventana activa**.
 > Ver [CLAUDE.md](CLAUDE.md) para la arquitectura completa y el plan de fases.
 
 ---
@@ -17,17 +17,22 @@ servicios de visión ni de voz en la nube.
 - Conversación por terminal con un modelo que corre en tu GPU.
 - Historial corto con retención de contexto entre turnos.
 - Streaming token a token y métricas de latencia.
+- **Detección de la ventana activa**: aplicación, proceso y título, sin
+  capturas de pantalla y sin usar el LLM.
+- **Eventos de cambio** de aplicación y de ventana.
 - Configuración por TOML, variables de entorno y flags.
 - Diagnóstico del runtime local (`--check`).
-- 78 tests que corren **sin Ollama y sin GPU**.
+- 126 tests, de los que solo 6 necesitan Windows.
 
 ## Qué todavía NO existe
 
-Percepción de ventana activa, capturas de pantalla, visión, memoria
-persistente, motor de curiosidad, voz y avatar. Son PHASE 2 en adelante.
+Detección de proyecto, capturas de pantalla, visión, memoria persistente,
+motor de curiosidad, voz y avatar. Son PHASE 3 en adelante.
 
 La compañera **lo sabe**: su prompt de sistema le dice explícitamente que no
-puede ver la pantalla, para que no se invente lo que estás haciendo.
+puede ver la pantalla, para que no se invente lo que estás haciendo. La
+percepción de ventanas todavía no está conectada a la conversación — eso es
+PHASE 3.
 
 ## Lo que nunca hará
 
@@ -82,6 +87,19 @@ Si dice que no hay runtime, arráncalo con `ollama serve`.
 
 # otro modelo, sin tocar la configuración
 .\.venv\Scripts\python.exe -m companion.main --model llama3.1:8b
+
+# observar qué ventana tiene el foco (no usa el LLM)
+.\.venv\Scripts\python.exe -m companion.main --watch
+```
+
+`--watch` imprime solo los **cambios**. Si te quedas media hora en el mismo
+archivo, no imprime nada: el silencio es el estado normal (§19).
+
+```
+21:22:14  cambio de app  Visual Studio Code
+                         Code.exe  ·  watcher.py - KatterinneProject
+21:22:31  cambio de app  Google Chrome
+                         chrome.exe  ·  Ollama - Google Chrome
 ```
 
 Dentro del REPL:
@@ -120,9 +138,15 @@ $env:COMPANION_LLM_TEMPERATURE = "0.4"
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-Ninguna prueba habla con Ollama ni necesita GPU: `LLMProvider` se sustituye
-por dobles (`tests/conftest.py`) y las funciones HTTP se interceptan. Es un
-requisito explícito de CLAUDE.md §31.
+Ninguna prueba habla con Ollama ni necesita GPU: `LLMProvider` y
+`ActiveWindowProvider` se sustituyen por dobles (`tests/conftest.py`), y las
+funciones HTTP y de Win32 se interceptan. Es un requisito explícito de
+CLAUDE.md §31.
+
+La excepción es `tests/perception/test_win32_real.py`, que sí llama a las DLL
+de Windows. Existe porque un `restype` mal declarado en `ctypes` pasa todos
+los tests con dobles y falla solo contra la API real. Se salta fuera de
+Windows.
 
 ---
 
@@ -139,17 +163,24 @@ src/companion/
 │   └── settings.py      dataclasses congelados + TOML + entorno
 ├── conversation/
 │   └── manager.py       historial corto y construcción del payload
-└── llm/
-    ├── provider.py      ← interfaz LLMProvider. De esto depende todo
-    ├── ollama.py        ← lo único que sabe de la API de Ollama
-    ├── http_client.py   urllib + traducción de errores de red
-    ├── prompts.py       prompt de sistema (personalidad, §38)
-    └── errors.py        jerarquía de errores agnóstica del proveedor
+├── llm/
+│   ├── provider.py      ← interfaz LLMProvider. De esto depende todo
+│   ├── ollama.py        ← lo único que sabe de la API de Ollama
+│   ├── http_client.py   urllib + traducción de errores de red
+│   ├── prompts.py       prompt de sistema (personalidad, §38)
+│   └── errors.py        jerarquía de errores agnóstica del proveedor
+└── perception/
+    ├── models.py        ActiveWindow y eventos estructurados
+    ├── active_window.py ← interfaz ActiveWindowProvider + impl. Windows
+    ├── _win32.py        ← lo único que sabe de la API de Windows
+    ├── process.py       nombre legible desde el ejecutable (lógica pura)
+    └── watcher.py       detección de cambios (lógica pura)
 ```
 
-La regla que sostiene el resto: **nada fuera de `llm/ollama.py` sabe que
-existe Ollama.** Cambiar a llama.cpp es escribir un módulo hermano y añadir
-una rama en `factory.py`.
+La regla que sostiene el resto, aplicada dos veces: **nada fuera de
+`llm/ollama.py` sabe que existe Ollama, y nada fuera de `perception/_win32.py`
+sabe que existe Win32.** Cambiar de runtime o de plataforma es escribir un
+módulo hermano y añadir una rama en `factory.py`.
 
 Decisiones documentadas en [`docs/architecture-decisions/`](docs/architecture-decisions/).
 
@@ -158,7 +189,14 @@ Decisiones documentadas en [`docs/architecture-decisions/`](docs/architecture-de
 - Cero dependencias de runtime: la instalación no descarga nada de PyPI.
 - El único tráfico de red es a `127.0.0.1:11434`.
 - Los logs guardan métricas y metadatos, nunca el texto de la conversación.
+- **Los títulos de ventana no se registran nunca** en logs ni en eventos
+  serializados: pueden contener nombres de documentos, URLs o datos
+  personales. Solo se guarda la aplicación y el proceso.
 - `data/` está en `.gitignore` completo.
+
+> **Pendiente:** el modo privacidad y la lista de aplicaciones bloqueadas
+> (§22) todavía no existen. Ahora que hay algo observable, es el siguiente
+> paso natural dentro de PHASE 2.
 
 ---
 

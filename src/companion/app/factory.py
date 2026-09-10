@@ -10,6 +10,7 @@ from __future__ import annotations
 from companion.config.settings import Settings
 from companion.llm.ollama import OllamaProvider
 from companion.llm.provider import LLMProvider
+from companion.perception.active_window import ActiveWindowProvider, Win32ActiveWindowProvider
 
 PROVIDERS = ("ollama",)
 
@@ -32,3 +33,12 @@ def build_provider(settings: Settings) -> LLMProvider:
         f"Proveedor de LLM desconocido: '{settings.llm.provider}'. "
         f"Disponibles: {', '.join(PROVIDERS)}"
     )
+
+
+def build_active_window_provider() -> ActiveWindowProvider:
+    """Instancia el detector de ventana activa de la plataforma.
+
+    Hoy solo hay implementacion para Windows, que es el objetivo del
+    proyecto. Si mas adelante hiciera falta otra, se elige aqui.
+    """
+    return Win32ActiveWindowProvider()

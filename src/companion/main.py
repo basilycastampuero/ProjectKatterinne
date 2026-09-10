@@ -8,8 +8,8 @@ from dataclasses import replace
 from pathlib import Path
 
 from companion import __version__
-from companion.app.cli import force_utf8_stdio, run_once, run_repl
-from companion.app.factory import build_provider
+from companion.app.cli import force_utf8_stdio, run_once, run_repl, run_watch
+from companion.app.factory import build_active_window_provider, build_provider
 from companion.config.settings import Settings, load_settings
 from companion.conversation.manager import ConversationManager
 from companion.logging_setup import setup_logging
@@ -44,6 +44,16 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="comprueba el runtime y los modelos instalados, y sale",
     )
+    parser.add_argument(
+        "--watch",
+        action="store_true",
+        help="observa que ventana tiene el foco e imprime los cambios (no usa el LLM)",
+    )
+    parser.add_argument(
+        "--watch-interval",
+        type=float,
+        help="segundos entre sondeos de la ventana activa (por defecto 1.0)",
+    )
     return parser
 
 
@@ -62,6 +72,11 @@ def apply_overrides(settings: Settings, args: argparse.Namespace) -> Settings:
         settings = replace(settings, llm=replace(settings.llm, **llm_overrides))
     if args.log_level:
         settings = replace(settings, logging=replace(settings.logging, level=args.log_level))
+    if args.watch_interval is not None:
+        settings = replace(
+            settings,
+            perception=replace(settings.perception, poll_interval_s=args.watch_interval),
+        )
     return settings
 
 
@@ -109,6 +124,15 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.check:
         return run_check(settings)
+
+    if args.watch:
+        # La percepcion no necesita el LLM: no se instancia ningun modelo.
+        try:
+            window_provider = build_active_window_provider()
+        except RuntimeError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            return 2
+        return run_watch(window_provider, interval_s=settings.perception.poll_interval_s)
 
     try:
         provider = build_provider(settings)

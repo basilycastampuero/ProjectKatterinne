@@ -4,10 +4,10 @@ from collections.abc import Iterator
 
 import pytest
 
-from companion.app.cli import preflight, run_repl
+from companion.app.cli import preflight, run_repl, run_watch
 from companion.conversation.manager import ConversationManager
 from companion.llm.errors import ModelNotFoundError, ProviderUnavailableError
-from tests.conftest import FakeProvider
+from tests.conftest import FakeActiveWindowProvider, FakeProvider, make_window
 
 
 class BrokenProvider(FakeProvider):
@@ -121,3 +121,80 @@ def test_un_fallo_del_runtime_no_tumba_el_repl(
 
     assert codigo == 0
     assert "runtime no disponible" in capsys.readouterr().out
+
+
+# ----------------------------------------------------------------------
+# Modo observacion (PHASE 2)
+# ----------------------------------------------------------------------
+
+
+def _sin_dormir(_: float) -> None:
+    """Sustituye a `time.sleep`: los tests no esperan segundos reales."""
+
+
+def test_watch_imprime_los_cambios_de_aplicacion(capsys) -> None:
+    provider = FakeActiveWindowProvider(
+        [
+            make_window("Code.exe"),
+            make_window("Code.exe"),
+            make_window("chrome.exe", hwnd=2000, title="Ollama - Google Chrome"),
+        ]
+    )
+
+    codigo = run_watch(provider, sleep=_sin_dormir, max_iterations=3)
+
+    salida = capsys.readouterr().out
+    assert codigo == 0
+    assert salida.count("cambio de app") == 2  # entrada + cambio, no la repeticion
+    assert "Visual Studio Code" in salida
+    assert "Google Chrome" in salida
+
+
+def test_watch_respeta_el_numero_de_sondeos(capsys) -> None:
+    provider = FakeActiveWindowProvider([make_window("Code.exe")])
+
+    run_watch(provider, sleep=_sin_dormir, max_iterations=5)
+
+    assert provider.call_count == 5
+
+
+def test_watch_no_duerme_despues_del_ultimo_sondeo() -> None:
+    # Detalle de comodidad: sin esto, `--watch-interval 60` tardaria un
+    # minuto extra en devolver el control al salir.
+    esperas: list[float] = []
+    provider = FakeActiveWindowProvider([make_window("Code.exe")])
+
+    run_watch(provider, interval_s=2.0, sleep=esperas.append, max_iterations=3)
+
+    assert esperas == [2.0, 2.0]
+
+
+def test_watch_sobrevive_a_que_no_haya_ventana(capsys) -> None:
+    provider = FakeActiveWindowProvider([None, None, make_window("Code.exe")])
+
+    codigo = run_watch(provider, sleep=_sin_dormir, max_iterations=3)
+
+    assert codigo == 0
+    assert "Visual Studio Code" in capsys.readouterr().out
+
+
+def test_watch_no_usa_el_llm(capsys) -> None:
+    # PHASE 2 es percepcion pura: si esto empezara a necesitar un modelo,
+    # habriamos roto CLAUDE.md seccion 3.4.
+    provider = FakeActiveWindowProvider([make_window("Code.exe")])
+
+    run_watch(provider, sleep=_sin_dormir, max_iterations=1)
+
+    assert "Sin capturas de pantalla, sin LLM" in capsys.readouterr().out
+
+
+def test_ctrl_c_detiene_la_observacion_limpiamente(capsys) -> None:
+    def _interrumpe(_: float) -> None:
+        raise KeyboardInterrupt
+
+    provider = FakeActiveWindowProvider([make_window("Code.exe")])
+
+    codigo = run_watch(provider, sleep=_interrumpe, max_iterations=100)
+
+    assert codigo == 0
+    assert "Observación detenida" in capsys.readouterr().out

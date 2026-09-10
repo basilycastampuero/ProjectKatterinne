@@ -18,6 +18,9 @@ from companion.llm.provider import (
     ModelInfo,
     TokenCallback,
 )
+from companion.perception.active_window import ActiveWindowProvider
+from companion.perception.models import ActiveWindow
+from companion.perception.process import application_name
 
 
 class FakeProvider(LLMProvider):
@@ -81,3 +84,39 @@ class FakeProvider(LLMProvider):
 @pytest.fixture
 def fake_provider() -> FakeProvider:
     return FakeProvider()
+
+
+def make_window(
+    process_name: str = "Code.exe",
+    *,
+    title: str = "companion.toml - KatterinneProject",
+    hwnd: int = 1000,
+    pid: int = 4242,
+    application: str | None = None,
+) -> ActiveWindow:
+    """Construye una `ActiveWindow` de prueba con valores razonables."""
+    return ActiveWindow(
+        hwnd=hwnd,
+        pid=pid,
+        process_name=process_name,
+        application=application or application_name(process_name),
+        window_title=title,
+        executable_path=f"C:\\Apps\\{process_name}" if process_name else "",
+    )
+
+
+class FakeActiveWindowProvider(ActiveWindowProvider):
+    """Reproduce una secuencia fija de observaciones.
+
+    `None` en la secuencia representa "no hay ventana activa" (pantalla de
+    bloqueo). Cuando la secuencia se agota, repite la ultima observacion.
+    """
+
+    def __init__(self, windows: Sequence[ActiveWindow | None] | None = None) -> None:
+        self._windows = list(windows) if windows else [make_window()]
+        self.call_count = 0
+
+    def get_active_window(self) -> ActiveWindow | None:
+        index = min(self.call_count, len(self._windows) - 1)
+        self.call_count += 1
+        return self._windows[index]
