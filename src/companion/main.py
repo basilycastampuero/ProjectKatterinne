@@ -54,6 +54,11 @@ def build_parser() -> argparse.ArgumentParser:
         type=float,
         help="segundos entre sondeos de la ventana activa (por defecto 1.0)",
     )
+    parser.add_argument(
+        "--privacy",
+        action="store_true",
+        help="activa el modo privacidad en esta ejecucion: no se observa ningun titulo",
+    )
     return parser
 
 
@@ -77,6 +82,11 @@ def apply_overrides(settings: Settings, args: argparse.Namespace) -> Settings:
             settings,
             perception=replace(settings.perception, poll_interval_s=args.watch_interval),
         )
+    # `--privacy` solo puede ENCENDER el filtro. No existe un flag para
+    # apagarlo: un ajuste de privacidad guardado en el fichero no deberia
+    # poder desactivarse sin querer desde la linea de comandos.
+    if args.privacy:
+        settings = replace(settings, privacy=replace(settings.privacy, privacy_mode=True))
     return settings
 
 
@@ -128,7 +138,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.watch:
         # La percepcion no necesita el LLM: no se instancia ningun modelo.
         try:
-            window_provider = build_active_window_provider()
+            window_provider = build_active_window_provider(settings)
         except RuntimeError as exc:
             print(f"Error: {exc}", file=sys.stderr)
             return 2

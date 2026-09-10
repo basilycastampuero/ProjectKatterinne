@@ -127,14 +127,25 @@ def test_un_error_del_sistema_nunca_tumba_la_aplicacion(
     assert provider.get_active_window() is None
 
 
-def test_el_titulo_no_llega_a_los_logs(provider, caplog) -> None:
-    # CLAUDE.md seccion 32: un titulo puede llevar nombres de documentos o
-    # URLs. Se registra el proceso, nunca el titulo.
+def test_el_detector_no_registra_nada_identificable(provider, caplog) -> None:
+    """Regresion: este detector corre ANTES del filtro de privacidad.
+
+    Aqui hubo un `log.debug("... proceso=%s")` que parecia inofensivo. Como
+    `Win32ActiveWindowProvider` esta envuelto por `PrivacyFilteredWindow-
+    Provider` y no al reves, ese log se ejecutaba antes de aplicar la
+    politica: con el nivel en DEBUG, el nombre de las aplicaciones
+    bloqueadas acababa en el fichero de log.
+
+    La regla es que nada identificable se escriba antes de filtrar. El PID
+    es solo un numero y no dice que aplicacion es.
+    """
     with caplog.at_level("DEBUG", logger="companion.perception"):
         provider.get_active_window()
 
-    assert "KatterinneProject" not in caplog.text
-    assert "Code.exe" in caplog.text
+    assert "KatterinneProject" not in caplog.text  # el titulo
+    assert "Code.exe" not in caplog.text  # el proceso
+    assert "Visual Studio Code" not in caplog.text  # la aplicacion
+    assert "21033" in caplog.text  # el PID si, para poder depurar
 
 
 # ----------------------------------------------------------------------

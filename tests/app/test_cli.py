@@ -7,6 +7,7 @@ import pytest
 from companion.app.cli import preflight, run_repl, run_watch
 from companion.conversation.manager import ConversationManager
 from companion.llm.errors import ModelNotFoundError, ProviderUnavailableError
+from companion.perception.privacy import PrivacyFilteredWindowProvider, PrivacyPolicy
 from tests.conftest import FakeActiveWindowProvider, FakeProvider, make_window
 
 
@@ -186,6 +187,40 @@ def test_watch_no_usa_el_llm(capsys) -> None:
     run_watch(provider, sleep=_sin_dormir, max_iterations=1)
 
     assert "Sin capturas de pantalla, sin LLM" in capsys.readouterr().out
+
+
+def test_watch_marca_los_titulos_ocultos_por_privacidad(capsys) -> None:
+    provider = PrivacyFilteredWindowProvider(
+        FakeActiveWindowProvider([make_window("1Password.exe", title="Bóveda personal")]),
+        PrivacyPolicy.from_names(blocked_processes=["1password.exe"]),
+    )
+
+    run_watch(provider, sleep=_sin_dormir, max_iterations=1)
+
+    salida = capsys.readouterr().out
+    assert "Bóveda personal" not in salida
+    assert "título oculto por privacidad" in salida
+    # La aplicación sí se ve: la pantalla es efímera y la mira quien
+    # configuró el bloqueo. Al log no llega.
+    assert "1Password" in salida
+
+
+def test_watch_anuncia_el_estado_de_privacidad(capsys) -> None:
+    provider = PrivacyFilteredWindowProvider(
+        FakeActiveWindowProvider(), PrivacyPolicy.from_names(privacy_mode=True)
+    )
+
+    run_watch(provider, sleep=_sin_dormir, max_iterations=1)
+
+    assert "Modo privacidad ACTIVO" in capsys.readouterr().out
+
+
+def test_watch_avisa_cuando_no_hay_ningun_filtro(capsys) -> None:
+    provider = PrivacyFilteredWindowProvider(FakeActiveWindowProvider(), PrivacyPolicy())
+
+    run_watch(provider, sleep=_sin_dormir, max_iterations=1)
+
+    assert "Sin filtros de privacidad" in capsys.readouterr().out
 
 
 def test_ctrl_c_detiene_la_observacion_limpiamente(capsys) -> None:

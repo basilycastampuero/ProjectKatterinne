@@ -11,6 +11,7 @@ from companion.config.settings import Settings
 from companion.llm.ollama import OllamaProvider
 from companion.llm.provider import LLMProvider
 from companion.perception.active_window import ActiveWindowProvider, Win32ActiveWindowProvider
+from companion.perception.privacy import PrivacyFilteredWindowProvider, PrivacyPolicy
 
 PROVIDERS = ("ollama",)
 
@@ -35,10 +36,22 @@ def build_provider(settings: Settings) -> LLMProvider:
     )
 
 
-def build_active_window_provider() -> ActiveWindowProvider:
-    """Instancia el detector de ventana activa de la plataforma.
+def build_privacy_policy(settings: Settings) -> PrivacyPolicy:
+    """Traduce la configuracion de privacidad a una politica aplicable."""
+    return PrivacyPolicy.from_names(
+        privacy_mode=settings.privacy.privacy_mode,
+        blocked_processes=settings.privacy.blocked_processes,
+    )
 
-    Hoy solo hay implementacion para Windows, que es el objetivo del
-    proyecto. Si mas adelante hiciera falta otra, se elige aqui.
+
+def build_active_window_provider(settings: Settings) -> ActiveWindowProvider:
+    """Instancia el detector de ventana activa, ya filtrado por privacidad.
+
+    El filtro se aplica **siempre**, incluso con la politica vacia, donde no
+    hace nada. Es a proposito: si envolver fuera condicional, cualquier rama
+    nueva podria devolver un detector sin proteger. Asi es estructuralmente
+    imposible obtener percepcion sin pasar por la politica.
     """
-    return Win32ActiveWindowProvider()
+    return PrivacyFilteredWindowProvider(
+        Win32ActiveWindowProvider(), build_privacy_policy(settings)
+    )

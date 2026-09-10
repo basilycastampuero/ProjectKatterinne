@@ -99,6 +99,43 @@ def test_log_path_cuelga_de_data_dir(tmp_path: Path) -> None:
     assert settings.log_path == tmp_path / "data" / "companion.log"
 
 
+def test_la_privacidad_llega_apagada_y_sin_lista(tmp_path: Path) -> None:
+    # CLAUDE.md sección 22 prohíbe asumir qué aplicaciones usa cada persona.
+    settings = load_settings(root=tmp_path, env={})
+
+    assert settings.privacy.privacy_mode is False
+    assert settings.privacy.blocked_processes == ()
+
+
+def test_la_lista_negra_del_toml_se_guarda_como_tupla(tmp_path: Path) -> None:
+    config = _write(
+        tmp_path,
+        "companion.toml",
+        '[privacy]\nprivacy_mode = true\nblocked_processes = ["1password.exe", "banco.exe"]\n',
+    )
+
+    settings = load_settings(config, env={})
+
+    assert settings.privacy.privacy_mode is True
+    # Tupla, no lista: los settings son inmutables de arriba abajo.
+    assert settings.privacy.blocked_processes == ("1password.exe", "banco.exe")
+
+
+def test_la_lista_negra_se_puede_pasar_por_entorno(tmp_path: Path) -> None:
+    settings = load_settings(
+        root=tmp_path,
+        env={"COMPANION_PRIVACY_BLOCKED_PROCESSES": "1password.exe, banco.exe ,signal.exe"},
+    )
+
+    assert settings.privacy.blocked_processes == ("1password.exe", "banco.exe", "signal.exe")
+
+
+def test_el_modo_privacidad_se_puede_activar_por_entorno(tmp_path: Path) -> None:
+    settings = load_settings(root=tmp_path, env={"COMPANION_PRIVACY_PRIVACY_MODE": "true"})
+
+    assert settings.privacy.privacy_mode is True
+
+
 def test_los_settings_son_inmutables() -> None:
     settings = Settings()
 

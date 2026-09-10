@@ -20,9 +20,10 @@ servicios de visión ni de voz en la nube.
 - **Detección de la ventana activa**: aplicación, proceso y título, sin
   capturas de pantalla y sin usar el LLM.
 - **Eventos de cambio** de aplicación y de ventana.
+- **Modo privacidad y lista negra** de aplicaciones.
 - Configuración por TOML, variables de entorno y flags.
 - Diagnóstico del runtime local (`--check`).
-- 126 tests, de los que solo 6 necesitan Windows.
+- 165 tests, de los que solo 7 necesitan Windows.
 
 ## Qué todavía NO existe
 
@@ -173,6 +174,7 @@ src/companion/
     ├── models.py        ActiveWindow y eventos estructurados
     ├── active_window.py ← interfaz ActiveWindowProvider + impl. Windows
     ├── _win32.py        ← lo único que sabe de la API de Windows
+    ├── privacy.py       filtro que envuelve al detector (§22)
     ├── process.py       nombre legible desde el ejecutable (lógica pura)
     └── watcher.py       detección de cambios (lógica pura)
 ```
@@ -194,9 +196,34 @@ Decisiones documentadas en [`docs/architecture-decisions/`](docs/architecture-de
   personales. Solo se guarda la aplicación y el proceso.
 - `data/` está en `.gitignore` completo.
 
-> **Pendiente:** el modo privacidad y la lista de aplicaciones bloqueadas
-> (§22) todavía no existen. Ahora que hay algo observable, es el siguiente
-> paso natural dentro de PHASE 2.
+## Modo privacidad y lista negra
+
+```toml
+[privacy]
+privacy_mode = false
+blocked_processes = ["1password.exe", "banco.exe"]
+```
+
+**Lista negra**: de esos procesos nunca se lee el título. Al log no llega ni
+el nombre de la aplicación — saber a qué hora abres tu gestor de contraseñas
+también dice algo de ti. Los nombres se comparan sin distinguir mayúsculas y
+da igual si escribes la extensión.
+
+**Modo privacidad**: oculta el título de *todas* las ventanas. También para
+una sola ejecución:
+
+```powershell
+.\.venv\Scripts\python.exe -m companion.main --watch --privacy
+```
+
+No hay flag para *apagarlo*: un ajuste de privacidad guardado no debería
+poder desactivarse sin querer desde la línea de comandos.
+
+La lista llega **vacía**. CLAUDE.md §22 prohíbe asumir qué aplicaciones usa
+cada persona: rellénala tú.
+
+El diseño y una fuga real que se encontró implementándolo están en
+[ADR-005](docs/architecture-decisions/ADR-005-privacy-as-a-filter-layer.md).
 
 ---
 

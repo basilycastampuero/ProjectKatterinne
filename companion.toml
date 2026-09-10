@@ -42,6 +42,21 @@ max_history_messages = 20
 # sondeo por segundo. No hay capturas de pantalla en esta fase.
 poll_interval_s = 1.0
 
+[privacy]
+# Interruptor general. Con true no se observa el titulo de NINGUNA ventana.
+# Tambien se puede activar solo para una ejecucion con:  --privacy
+privacy_mode = false
+
+# Procesos cuyo titulo nunca se observa ni se registra. Se comparan sin
+# distinguir mayusculas y da igual si escribes la extension ".exe".
+#
+# Llega vacia a proposito: CLAUDE.md seccion 22 prohibe asumir que
+# aplicaciones usa cada persona. Rellenala tu. Ejemplos del tipo de cosa
+# que suele ir aqui (gestor de contraseñas, banca, mensajeria privada):
+#
+#   blocked_processes = ["1password.exe", "keepass.exe", "signal.exe"]
+blocked_processes = []
+
 [logging]
 level = "INFO"
 to_file = true

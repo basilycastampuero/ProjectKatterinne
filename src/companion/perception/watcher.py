@@ -71,6 +71,16 @@ class WindowChangeDetector:
         previous: ActiveWindow | None,
     ) -> WindowEvent:
         # Sin titulo de ventana en el log, por lo mismo de siempre: puede
-        # llevar datos personales (CLAUDE.md seccion 32).
-        log.info("%s aplicacion=%s proceso=%s", event_type, window.application, window.process_name)
+        # llevar datos personales (CLAUDE.md seccion 32). Y de una ventana
+        # censurada no se registra ni la aplicacion: saber a que hora abres
+        # tu banco tambien es informacion sobre ti.
+        if window.redacted:
+            log.info("%s aplicacion=(bloqueada)", event_type)
+        else:
+            log.info(
+                "%s aplicacion=%s proceso=%s",
+                event_type,
+                window.application,
+                window.process_name,
+            )
         return WindowEvent(type=event_type, window=window, previous=previous)

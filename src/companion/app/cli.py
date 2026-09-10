@@ -22,6 +22,7 @@ from companion.llm.ollama import OllamaProvider
 from companion.llm.provider import LLMProvider
 from companion.perception.active_window import ActiveWindowProvider
 from companion.perception.models import EventType, WindowEvent
+from companion.perception.privacy import PrivacyFilteredWindowProvider
 from companion.perception.watcher import WindowChangeDetector
 
 log = logging.getLogger("companion.app")
@@ -233,13 +234,30 @@ def _format_event(event: WindowEvent) -> str:
     ventana = event.window
 
     detalle = ventana.process_name or "(proceso no accesible)"
-    if ventana.window_title:
+    if ventana.redacted:
+        # Se muestra en pantalla, que es efímero y lo está mirando quien
+        # configuró el bloqueo. Al log no llega nada de esto.
+        detalle += "  ·  🔒 título oculto por privacidad"
+    elif ventana.window_title:
         detalle += f"  ·  {ventana.window_title}"
 
     return (
         f"{hora}  {etiqueta}  {ventana.application}\n"
         f"{' ' * _DETAIL_INDENT}{detalle}"
     )
+
+
+def _print_privacy_status(provider: ActiveWindowProvider) -> None:
+    """Muestra si hay filtro activo. CLAUDE.md sección 28 lo pide en la UI."""
+    if not isinstance(provider, PrivacyFilteredWindowProvider):
+        return
+    policy = provider.policy
+    if policy.privacy_mode:
+        _out("🔒 Modo privacidad ACTIVO: no se observa ningún título de ventana.")
+    elif policy.blocked:
+        _out(f"🔒 Lista negra activa: {len(policy.blocked)} aplicaciones protegidas.")
+    else:
+        _out("Sin filtros de privacidad. Configúralos en [privacy] de companion.toml.")
 
 
 def run_watch(
@@ -257,6 +275,7 @@ def run_watch(
     """
     detector = detector or WindowChangeDetector()
     _out(WATCH_BANNER)
+    _print_privacy_status(provider)
     _out()
 
     iteraciones = 0

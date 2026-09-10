@@ -76,9 +76,17 @@ class Win32ActiveWindowProvider(ActiveWindowProvider):
 
         process_name = PureWindowsPath(path).name if path else ""
 
-        # Se registra la aplicacion, nunca el titulo: puede contener nombres
-        # de documentos, URLs o datos personales (CLAUDE.md seccion 32).
-        log.debug("ventana activa proceso=%s pid=%s", process_name or "?", pid)
+        # Aqui NO se registra ni el titulo ni el nombre del proceso.
+        #
+        # Este detector corre ANTES del filtro de privacidad, que lo envuelve
+        # desde fuera. Cualquier dato identificable que se escriba en este
+        # punto se escapa de la politica: en su momento hubo aqui un
+        # `proceso=%s` y filtraba el nombre de las aplicaciones bloqueadas al
+        # log cuando el nivel era DEBUG.
+        #
+        # El PID es solo un numero de proceso, no dice que aplicacion es.
+        # El registro identificable se hace despues de filtrar, en privacy.py.
+        log.debug("ventana activa observada hwnd=%s pid=%s", hwnd, pid)
 
         return ActiveWindow(
             hwnd=hwnd,

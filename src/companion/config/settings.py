@@ -69,6 +69,26 @@ class PerceptionSettings:
 
 
 @dataclass(frozen=True, slots=True)
+class PrivacySettings:
+    """Que puede observar el companion. Ver CLAUDE.md seccion 22."""
+
+    #: Interruptor general. En PHASE 2 oculta el titulo de todas las
+    #: ventanas; cuando exista la captura de pantalla, tambien la desactivara.
+    privacy_mode: bool = False
+
+    #: Procesos cuyo titulo nunca se observa. Se comparan sin distinguir
+    #: mayusculas y con o sin ".exe".
+    #:
+    #: Llega vacia a proposito: CLAUDE.md seccion 22 prohibe asumir que
+    #: aplicaciones concretas usa cada persona.
+    blocked_processes: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        # TOML entrega listas; el resto del sistema asume una tupla inmutable.
+        object.__setattr__(self, "blocked_processes", tuple(self.blocked_processes))
+
+
+@dataclass(frozen=True, slots=True)
 class LoggingSettings:
     level: str = "INFO"
     to_file: bool = True
@@ -80,6 +100,7 @@ class Settings:
     llm: LLMSettings = field(default_factory=LLMSettings)
     conversation: ConversationSettings = field(default_factory=ConversationSettings)
     perception: PerceptionSettings = field(default_factory=PerceptionSettings)
+    privacy: PrivacySettings = field(default_factory=PrivacySettings)
     logging: LoggingSettings = field(default_factory=LoggingSettings)
     data_dir: Path = PROJECT_ROOT / "data"
 
@@ -96,6 +117,7 @@ _SECTIONS: dict[str, type] = {
     "llm": LLMSettings,
     "conversation": ConversationSettings,
     "perception": PerceptionSettings,
+    "privacy": PrivacySettings,
     "logging": LoggingSettings,
 }
 
@@ -116,6 +138,10 @@ def _coerce(value: str, target_type: Any) -> Any:
         return int(value)
     if target_type is float:
         return float(value)
+    if target_type is tuple:
+        # Listas separadas por comas:
+        #   COMPANION_PRIVACY_BLOCKED_PROCESSES="1password.exe,banco.exe"
+        return tuple(part.strip() for part in value.split(",") if part.strip())
     return value
 
 
@@ -179,6 +205,7 @@ def load_settings(
         llm=sections["llm"],
         conversation=sections["conversation"],
         perception=sections["perception"],
+        privacy=sections["privacy"],
         logging=sections["logging"],
         data_dir=data_dir,
     )

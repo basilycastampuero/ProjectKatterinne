@@ -39,6 +39,14 @@ class ActiveWindow:
     #: Puede estar vacio: hay ventanas legitimas sin titulo.
     window_title: str
     executable_path: str = ""
+
+    #: True si el modo privacidad o la lista negra ocultaron el titulo.
+    #:
+    #: Se marca en vez de descartar la ventana entera porque el sistema
+    #: necesita saber que el usuario esta en una aplicacion protegida para
+    #: NO interrumpirle (CLAUDE.md seccion 21), sin saber que hace alli.
+    redacted: bool = False
+
     timestamp: datetime = field(default_factory=_now)
 
 
@@ -70,10 +78,21 @@ class WindowEvent:
         para logs y persistencia. El titulo vive en `self.window` para quien
         lo necesite en memoria.
         """
+        if self.window.redacted:
+            # De una aplicacion protegida solo se registra que hubo un cambio
+            # y cuando. Ni la aplicacion, ni el proceso, ni el titulo: el
+            # momento en que alguien abre su gestor de contraseñas tambien es
+            # informacion personal.
+            return {
+                "type": str(self.type),
+                "redacted": True,
+                "timestamp": self.timestamp.isoformat(),
+            }
         return {
             "type": str(self.type),
             "application": self.window.application,
             "process": self.window.process_name,
             "pid": self.window.pid,
+            "redacted": False,
             "timestamp": self.timestamp.isoformat(),
         }
