@@ -40,6 +40,25 @@ class Provenance(StrEnum):
     #: Dicho explicitamente por la usuaria. Manda sobre cualquier inferencia.
     USER_CONFIRMED = "user_confirmed"
 
+    @property
+    def authority(self) -> int:
+        """Cuanto pesa esta procedencia frente a otra. Mas alto, mas manda.
+
+        Sirve para decidir si un dato nuevo debe sustituir a uno guardado.
+        Una inferencia no puede pisar lo que la usuaria confirmo, y tampoco
+        lo que se leyo directamente del sistema.
+        """
+        return _AUTHORITY[self]
+
+
+#: Autoridad de cada procedencia. Una inferencia es lo mas debil; leer algo
+#: del sistema es mas fuerte; que lo diga la usuaria lo es todavia mas.
+_AUTHORITY: dict[Provenance, int] = {
+    Provenance.INFERRED: 0,
+    Provenance.OBSERVED: 1,
+    Provenance.USER_CONFIRMED: 2,
+}
+
 
 class ActivityType(StrEnum):
     """Que clase de uso del ordenador es este.
