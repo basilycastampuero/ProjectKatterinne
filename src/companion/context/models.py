@@ -75,6 +75,9 @@ class ActivityType(StrEnum):
     TERMINAL = "terminal"
     WRITING = "writing"
     FILES = "files"
+    #: Mensajeria y voz. Se anadio al ver Discord en uso real y comprobar
+    #: que no encajaba en ninguna categoria.
+    COMMUNICATION = "communication"
     UNKNOWN = "unknown"
 
 

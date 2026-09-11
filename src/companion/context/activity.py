@@ -46,6 +46,13 @@ ACTIVITY_BY_PROCESS: dict[str, ActivityType] = {
     "notion": ActivityType.WRITING,
     # Archivos
     "explorer": ActivityType.FILES,
+    # Comunicacion
+    "discord": ActivityType.COMMUNICATION,
+    "slack": ActivityType.COMMUNICATION,
+    "teams": ActivityType.COMMUNICATION,
+    "ms-teams": ActivityType.COMMUNICATION,
+    "telegram": ActivityType.COMMUNICATION,
+    "whatsapp": ActivityType.COMMUNICATION,
 }
 
 #: Fragmentos de ruta que delatan un juego.

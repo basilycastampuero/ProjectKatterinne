@@ -20,6 +20,10 @@ from tests.conftest import make_window
         ("pwsh.exe", ActivityType.TERMINAL),
         ("explorer.exe", ActivityType.FILES),
         ("notepad.exe", ActivityType.WRITING),
+        # Añadida al ver Discord en uso real y comprobar que no encajaba en
+        # ninguna categoría existente.
+        ("Discord.exe", ActivityType.COMMUNICATION),
+        ("slack.exe", ActivityType.COMMUNICATION),
     ],
 )
 def test_los_procesos_conocidos_se_clasifican(proceso: str, esperado: ActivityType) -> None:

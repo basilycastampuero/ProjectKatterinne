@@ -10,6 +10,7 @@ from companion.memory.errors import (
     RecordNotFoundError,
     SchemaVersionError,
 )
+from companion.memory.manager import MemoryManager, MemoryPolicy
 from companion.memory.models import (
     Activity,
     Conversation,
@@ -25,6 +26,8 @@ __all__ = [
     "Activity",
     "Conversation",
     "Fact",
+    "MemoryManager",
+    "MemoryPolicy",
     "MemoryRepository",
     "MemoryScope",
     "MemoryStoreError",

@@ -401,6 +401,21 @@ class MemoryRepository:
         )
         return [_row_to_activity(row) for row in rows]
 
+    def dominant_application(self, session_id: int) -> str | None:
+        """La aplicacion con mas eventos de la sesion. CLAUDE.md seccion 26.
+
+        Se resuelve con `GROUP BY` en vez de contando filas en Python: una
+        sesion de ocho horas puede tener miles de actividades y no hay
+        ninguna razon para traerlas todas a memoria para contarlas.
+        """
+        row = self._fetch_one(
+            "SELECT application FROM activities "
+            "WHERE session_id = ? AND application IS NOT NULL "
+            "GROUP BY application ORDER BY COUNT(*) DESC, application ASC LIMIT 1",
+            (session_id,),
+        )
+        return row["application"] if row else None
+
     def count_activities(self, *, session_id: int | None = None) -> int:
         if session_id is None:
             row = self._fetch_one("SELECT COUNT(*) AS n FROM activities", ())
@@ -566,6 +581,19 @@ class MemoryRepository:
         with self._connection:
             cursor = self._connection.execute("DELETE FROM facts WHERE id = ?", (fact_id,))
         return cursor.rowcount > 0
+
+    def delete_facts_for_session(self, session_id: int, *, scope: MemoryScope) -> int:
+        """Borra los hechos de un alcance concreto atados a una sesion.
+
+        Lo usa el cierre de sesion para retirar lo que solo tenia sentido
+        mientras esa sesion duraba (CLAUDE.md seccion 17).
+        """
+        with self._connection:
+            cursor = self._connection.execute(
+                "DELETE FROM facts WHERE session_id = ? AND scope = ?",
+                (session_id, str(scope)),
+            )
+        return cursor.rowcount
 
     def purge_expired_facts(self, *, now: datetime | None = None) -> int:
         """Borra los hechos caducados. Devuelve cuantos se fueron."""
