@@ -24,26 +24,11 @@ from dataclasses import dataclass, replace
 
 from companion.perception.active_window import ActiveWindowProvider
 from companion.perception.models import ActiveWindow
+from companion.perception.process import normalize_process
 
 log = logging.getLogger("companion.perception")
 
-
-def normalize_process(name: str) -> str:
-    """Normaliza un nombre de proceso para poder compararlo.
-
-    Windows no distingue mayusculas en nombres de fichero, y a nadie le
-    apetece recordar si escribio la extension. Estas tres formas son la misma
-    cosa para la lista negra:
-
-    >>> normalize_process("1Password.exe")
-    '1password'
-    >>> normalize_process("1password")
-    '1password'
-    >>> normalize_process("  1PASSWORD.EXE  ")
-    '1password'
-    """
-    cleaned = name.strip().lower()
-    return cleaned[:-4] if cleaned.endswith(".exe") else cleaned
+__all__ = ["PrivacyFilteredWindowProvider", "PrivacyPolicy", "normalize_process"]
 
 
 @dataclass(frozen=True, slots=True)

@@ -7,7 +7,7 @@ curiosidad y a veces pregunta.
 Todo ocurre en tu máquina. Sin API de OpenAI, sin Anthropic, sin Google, sin
 servicios de visión ni de voz en la nube.
 
-> Estado actual: **PHASE 2 — percepción de ventana activa**.
+> Estado actual: **PHASE 3 — motor de contexto**.
 > Ver [CLAUDE.md](CLAUDE.md) para la arquitectura completa y el plan de fases.
 
 ---
@@ -21,14 +21,20 @@ servicios de visión ni de voz en la nube.
   capturas de pantalla y sin usar el LLM.
 - **Eventos de cambio** de aplicación y de ventana.
 - **Modo privacidad y lista negra** de aplicaciones.
+- **Detección de proyecto, documento y tipo de actividad**, todo por medios
+  deterministas y con la procedencia de cada dato.
 - Configuración por TOML, variables de entorno y flags.
 - Diagnóstico del runtime local (`--check`).
-- 165 tests, de los que solo 7 necesitan Windows.
+- 243 tests, de los que solo 7 necesitan Windows.
 
 ## Qué todavía NO existe
 
-Detección de proyecto, capturas de pantalla, visión, memoria persistente,
-motor de curiosidad, voz y avatar. Son PHASE 3 en adelante.
+Capturas de pantalla, visión, memoria persistente, motor de curiosidad, voz
+y avatar. Son PHASE 4 en adelante.
+
+El contexto tampoco está conectado a la conversación todavía: la compañera
+sabe dónde estás, pero aún no puede hablar de ello. Eso llega con la
+memoria.
 
 La compañera **lo sabe**: su prompt de sistema le dice explícitamente que no
 puede ver la pantalla, para que no se invente lo que estás haciendo. La
@@ -97,11 +103,18 @@ Si dice que no hay runtime, arráncalo con `ollama serve`.
 archivo, no imprime nada: el silencio es el estado normal (§19).
 
 ```
-21:22:14  cambio de app  Visual Studio Code
-                         Code.exe  ·  watcher.py - KatterinneProject
-21:22:31  cambio de app  Google Chrome
-                         chrome.exe  ·  Ollama - Google Chrome
+00:33:07  cambio de app  Visual Studio Code
+                         ├ proyecto   KatterinneProject     inferido · 0.77
+                         ├ actividad  coding                inferido · 0.85
+                         └ confianza  0.65
 ```
+
+Cada dato dice **de dónde salió**. La aplicación es `observado` (lo dice
+Windows); el proyecto es `inferido` (lo sugiere el título de la ventana);
+solo lo que tú confirmes explícitamente llega a `CONFIRMADO`. Esa
+distinción es el núcleo de [ADR-006](docs/architecture-decisions/ADR-006-provenance-over-plain-values.md)
+y existe para que la memoria de PHASE 4 nunca guarde una suposición como si
+fuera un hecho.
 
 Dentro del REPL:
 
@@ -170,13 +183,18 @@ src/companion/
 │   ├── http_client.py   urllib + traducción de errores de red
 │   ├── prompts.py       prompt de sistema (personalidad, §38)
 │   └── errors.py        jerarquía de errores agnóstica del proveedor
-└── perception/
-    ├── models.py        ActiveWindow y eventos estructurados
-    ├── active_window.py ← interfaz ActiveWindowProvider + impl. Windows
-    ├── _win32.py        ← lo único que sabe de la API de Windows
-    ├── privacy.py       filtro que envuelve al detector (§22)
-    ├── process.py       nombre legible desde el ejecutable (lógica pura)
-    └── watcher.py       detección de cambios (lógica pura)
+├── perception/
+│   ├── models.py        ActiveWindow y eventos estructurados
+│   ├── active_window.py ← interfaz ActiveWindowProvider + impl. Windows
+│   ├── _win32.py        ← lo único que sabe de la API de Windows
+│   ├── privacy.py       filtro que envuelve al detector (§22)
+│   ├── process.py       nombre legible desde el ejecutable (lógica pura)
+│   ├── project_detector.py  proyecto y documento desde el título (§11)
+│   └── watcher.py       detección de cambios (lógica pura)
+└── context/
+    ├── models.py        ← Signal, Provenance, CurrentContext
+    ├── activity.py      tipo de actividad desde proceso y ruta
+    └── engine.py        combina las señales en un contexto
 ```
 
 La regla que sostiene el resto, aplicada dos veces: **nada fuera de

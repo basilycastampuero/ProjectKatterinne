@@ -93,15 +93,20 @@ def make_window(
     hwnd: int = 1000,
     pid: int = 4242,
     application: str | None = None,
+    executable_path: str | None = None,
+    redacted: bool = False,
 ) -> ActiveWindow:
     """Construye una `ActiveWindow` de prueba con valores razonables."""
+    if executable_path is None:
+        executable_path = f"C:\\Apps\\{process_name}" if process_name else ""
     return ActiveWindow(
         hwnd=hwnd,
         pid=pid,
         process_name=process_name,
         application=application or application_name(process_name),
         window_title=title,
-        executable_path=f"C:\\Apps\\{process_name}" if process_name else "",
+        executable_path=executable_path,
+        redacted=redacted,
     )
 
 

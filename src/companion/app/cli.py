@@ -10,7 +10,10 @@ import logging
 import sys
 import time
 from collections.abc import Callable
+from typing import Any
 
+from companion.context.engine import ContextEngine
+from companion.context.models import CurrentContext, Provenance, Signal
 from companion.conversation.manager import ConversationManager
 from companion.llm.errors import (
     GenerationError,
@@ -23,7 +26,6 @@ from companion.llm.provider import LLMProvider
 from companion.perception.active_window import ActiveWindowProvider
 from companion.perception.models import EventType, WindowEvent
 from companion.perception.privacy import PrivacyFilteredWindowProvider
-from companion.perception.watcher import WindowChangeDetector
 
 log = logging.getLogger("companion.app")
 
@@ -211,10 +213,17 @@ def run_once(conversation: ConversationManager, prompt: str, *, stream: bool = T
 
 WATCH_BANNER = """\
 ╭──────────────────────────────────────────────╮
-│  Local Companion  ·  PHASE 2 (percepción)   │
+│  Local Companion  ·  PHASE 3 (contexto)     │
 ╰──────────────────────────────────────────────╯
 Observando qué ventana tiene el foco. Ctrl+C para parar.
 Sin capturas de pantalla, sin LLM, sin tocar nada."""
+
+#: Como se muestra el origen de cada dato (CLAUDE.md sección 11).
+_PROVENANCE_LABELS = {
+    Provenance.OBSERVED: "observado",
+    Provenance.INFERRED: "inferido",
+    Provenance.USER_CONFIRMED: "CONFIRMADO",
+}
 
 
 #: Etiqueta de cada tipo de evento, todas del mismo ancho para que la
@@ -228,23 +237,43 @@ _EVENT_LABELS = {
 _DETAIL_INDENT = 8 + 2 + 13 + 2
 
 
-def _format_event(event: WindowEvent) -> str:
+def _format_signal(etiqueta: str, signal: Signal[Any] | None, *, ultimo: bool = False) -> str | None:
+    """Una línea de dato del contexto, con su origen y su confianza."""
+    if signal is None:
+        return None
+    rama = "└" if ultimo else "├"
+    origen = _PROVENANCE_LABELS[signal.provenance]
+    valor = str(signal.value)
+    return (
+        f"{' ' * _DETAIL_INDENT}{rama} {etiqueta:<10} {valor:<32.32} "
+        f"{origen} · {signal.confidence:.2f}"
+    )
+
+
+def _format_event(event: WindowEvent, context: CurrentContext) -> str:
     hora = event.timestamp.astimezone().strftime("%H:%M:%S")
     etiqueta = _EVENT_LABELS[event.type]
     ventana = event.window
 
-    detalle = ventana.process_name or "(proceso no accesible)"
+    lineas = [f"{hora}  {etiqueta}  {ventana.application}"]
+
     if ventana.redacted:
         # Se muestra en pantalla, que es efímero y lo está mirando quien
         # configuró el bloqueo. Al log no llega nada de esto.
-        detalle += "  ·  🔒 título oculto por privacidad"
-    elif ventana.window_title:
-        detalle += f"  ·  {ventana.window_title}"
+        lineas.append(f"{' ' * _DETAIL_INDENT}🔒 título oculto por privacidad")
 
-    return (
-        f"{hora}  {etiqueta}  {ventana.application}\n"
-        f"{' ' * _DETAIL_INDENT}{detalle}"
+    for campo, signal in (
+        ("proyecto", context.project),
+        ("documento", context.document),
+        ("actividad", context.activity),
+    ):
+        if (linea := _format_signal(campo, signal)) is not None:
+            lineas.append(linea)
+
+    lineas.append(
+        f"{' ' * _DETAIL_INDENT}└ {'confianza':<10} {context.confidence:.2f}"
     )
+    return "\n".join(lineas)
 
 
 def _print_privacy_status(provider: ActiveWindowProvider) -> None:
@@ -264,16 +293,16 @@ def run_watch(
     provider: ActiveWindowProvider,
     *,
     interval_s: float = 1.0,
-    detector: WindowChangeDetector | None = None,
+    engine: ContextEngine | None = None,
     sleep: Callable[[float], None] = time.sleep,
     max_iterations: int | None = None,
 ) -> int:
-    """Sondea la ventana activa e imprime los cambios.
+    """Sondea la ventana activa e imprime el contexto cuando cambia.
 
     `sleep` y `max_iterations` se inyectan para poder testear el bucle sin
     esperar segundos reales.
     """
-    detector = detector or WindowChangeDetector()
+    engine = engine or ContextEngine()
     _out(WATCH_BANNER)
     _print_privacy_status(provider)
     _out()
@@ -281,8 +310,9 @@ def run_watch(
     iteraciones = 0
     try:
         while max_iterations is None or iteraciones < max_iterations:
-            if evento := detector.observe(provider.get_active_window()):
-                _out(_format_event(evento))
+            contexto, evento = engine.observe(provider.get_active_window())
+            if evento is not None:
+                _out(_format_event(evento, contexto))
             iteraciones += 1
             if max_iterations is None or iteraciones < max_iterations:
                 sleep(interval_s)

@@ -5,6 +5,7 @@ from collections.abc import Iterator
 import pytest
 
 from companion.app.cli import preflight, run_repl, run_watch
+from companion.context.engine import ContextEngine
 from companion.conversation.manager import ConversationManager
 from companion.llm.errors import ModelNotFoundError, ProviderUnavailableError
 from companion.perception.privacy import PrivacyFilteredWindowProvider, PrivacyPolicy
@@ -187,6 +188,44 @@ def test_watch_no_usa_el_llm(capsys) -> None:
     run_watch(provider, sleep=_sin_dormir, max_iterations=1)
 
     assert "Sin capturas de pantalla, sin LLM" in capsys.readouterr().out
+
+
+def test_watch_muestra_el_contexto_con_su_procedencia(capsys) -> None:
+    provider = FakeActiveWindowProvider(
+        [make_window("Code.exe", title="a.py - KatterinneProject - Visual Studio Code")]
+    )
+
+    run_watch(provider, sleep=_sin_dormir, max_iterations=1)
+
+    salida = capsys.readouterr().out
+    assert "KatterinneProject" in salida
+    assert "a.py" in salida
+    assert "coding" in salida
+    # Lo importante de la sección 11: se ve de dónde sale cada dato.
+    assert "inferido" in salida
+    assert "confianza" in salida
+
+
+def test_watch_marca_visiblemente_lo_confirmado(capsys) -> None:
+    engine = ContextEngine()
+    engine.confirm_project("StudyFlow")
+    provider = FakeActiveWindowProvider([make_window("chrome.exe", title="docs - Google Chrome")])
+
+    run_watch(provider, engine=engine, sleep=_sin_dormir, max_iterations=1)
+
+    assert "CONFIRMADO" in capsys.readouterr().out
+
+
+def test_watch_no_inventa_datos_de_una_app_desconocida(capsys) -> None:
+    provider = FakeActiveWindowProvider(
+        [make_window("VALORANT-Win64-Shipping.exe", title="VALORANT")]
+    )
+
+    run_watch(provider, sleep=_sin_dormir, max_iterations=1)
+
+    salida = capsys.readouterr().out
+    assert "proyecto" not in salida  # no hay, y no se rellena
+    assert "confianza" in salida
 
 
 def test_watch_marca_los_titulos_ocultos_por_privacidad(capsys) -> None:

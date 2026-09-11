@@ -35,6 +35,24 @@ KNOWN_APPLICATIONS: dict[str, str] = {
 UNKNOWN_APPLICATION = "Desconocida"
 
 
+def normalize_process(name: str) -> str:
+    """Normaliza un nombre de proceso para poder compararlo.
+
+    Windows no distingue mayusculas en nombres de fichero, y a nadie le
+    apetece recordar si escribio la extension. Estas tres formas son la misma
+    cosa para cualquier tabla o lista del sistema:
+
+    >>> normalize_process("1Password.exe")
+    '1password'
+    >>> normalize_process("1password")
+    '1password'
+    >>> normalize_process("  1PASSWORD.EXE  ")
+    '1password'
+    """
+    cleaned = name.strip().lower()
+    return cleaned[:-4] if cleaned.endswith(".exe") else cleaned
+
+
 def application_name(process_name: str) -> str:
     """Nombre legible de la aplicacion dueña de un ejecutable.
 
