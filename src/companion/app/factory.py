@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from companion.config.settings import Settings
 from companion.curiosity.engine import CuriosityEngine, CuriosityPolicy
+from companion.curiosity.questions import QuestionGenerator
 from companion.llm.ollama import OllamaProvider
 from companion.llm.provider import LLMProvider
 from companion.memory.manager import MemoryManager, MemoryPolicy
@@ -72,6 +73,21 @@ def build_curiosity(
         absence_seconds=settings.curiosity.absence_seconds,
     )
     return CuriosityEngine(policy=policy, memory=memory)
+
+
+def build_question_generator(
+    settings: Settings, provider: LLMProvider
+) -> QuestionGenerator:
+    """Instancia el redactor de preguntas.
+
+    Necesita el modelo, asi que solo se construye cuando de verdad se va a
+    preguntar: CLAUDE.md seccion 33 quiere la aplicacion ligera en reposo.
+    """
+    return QuestionGenerator(
+        provider,
+        max_words=settings.curiosity.max_question_words,
+        allow_fallback=settings.curiosity.allow_template_fallback,
+    )
 
 
 def build_privacy_policy(settings: Settings) -> PrivacyPolicy:

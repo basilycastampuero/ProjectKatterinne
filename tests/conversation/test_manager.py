@@ -3,7 +3,8 @@ from __future__ import annotations
 import pytest
 
 from companion.context.models import CurrentContext, Provenance, Signal
-from companion.conversation.manager import ConversationManager, describe_context
+from companion.context.rendering import describe_context
+from companion.conversation.manager import ConversationManager
 from companion.llm.errors import GenerationError
 from companion.llm.provider import Message
 from companion.memory.manager import MemoryManager

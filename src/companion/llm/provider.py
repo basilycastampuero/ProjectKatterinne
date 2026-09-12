@@ -94,11 +94,19 @@ class LLMProvider(ABC):
         messages: Sequence[Message],
         *,
         on_token: TokenCallback | None = None,
+        json_mode: bool = False,
     ) -> GenerationResult:
         """Genera una respuesta a partir del historial completo de mensajes.
 
         Si `on_token` se proporciona, el proveedor emite fragmentos segun
         llegan; el texto completo sigue estando en el resultado.
+
+        `json_mode` pide al runtime que restrinja la salida a JSON valido.
+        CLAUDE.md seccion 24 prefiere salidas estructuradas siempre que el
+        modelo hable con el sistema en vez de con la usuaria. Un proveedor
+        que no lo soporte puede ignorarlo: **quien llama debe validar el
+        resultado igualmente**, porque JSON valido no significa JSON
+        correcto.
 
         Raises:
             ProviderUnavailableError, ModelNotFoundError, GenerationError.

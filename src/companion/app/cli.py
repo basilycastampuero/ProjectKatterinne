@@ -16,7 +16,9 @@ from companion.context.engine import ContextEngine
 from companion.context.models import CurrentContext, Provenance, Signal
 from companion.curiosity.engine import CuriosityEngine
 from companion.curiosity.models import CuriosityDecision
-from companion.conversation.manager import ConversationManager, describe_context
+from companion.curiosity.questions import QuestionGenerator
+from companion.context.rendering import describe_context
+from companion.conversation.manager import ConversationManager
 from companion.llm.errors import (
     GenerationError,
     LLMError,
@@ -317,10 +319,10 @@ def run_once(
 
 WATCH_BANNER = """\
 ╭──────────────────────────────────────────────╮
-│  Local Companion  ·  PHASE 3 (contexto)     │
+│  Local Companion  ·  PHASE 7 (curiosidad)   │
 ╰──────────────────────────────────────────────╯
 Observando qué ventana tiene el foco. Ctrl+C para parar.
-Sin capturas de pantalla, sin LLM, sin tocar nada."""
+Sin capturas de pantalla y sin tocar nada."""
 
 #: Como se muestra el origen de cada dato (CLAUDE.md sección 11).
 _PROVENANCE_LABELS = {
@@ -419,6 +421,33 @@ def _format_curiosity(decision: CuriosityDecision) -> str:
     )
 
 
+def _preguntar(
+    decision: CuriosityDecision,
+    context: CurrentContext,
+    curiosity: CuriosityEngine,
+    questions: QuestionGenerator,
+    memory: MemoryManager | None,
+) -> None:
+    """Redacta la pregunta y la dice. Solo entonces empieza el enfriamiento."""
+    recuerdos = []
+    if memory is not None and context.project is not None:
+        recuerdos = memory.recall(project=context.project.value, limit=5)
+
+    pregunta = questions.generate(decision, context, recuerdos)
+    if pregunta is None:
+        # Ni el modelo ni la plantilla dieron nada decente. Callarse es una
+        # salida válida (§19), y el enfriamiento no debe empezar.
+        _out(f"{' ' * _DETAIL_INDENT}              (sin pregunta que merezca la pena)")
+        return
+
+    _out()
+    _out(f"  IA: {pregunta.text}")
+    origen = "modelo" if pregunta.from_model else "plantilla"
+    _out(f"      ({origen}, se apoya en: {pregunta.based_on})")
+    _out()
+    curiosity.record_question(decision)
+
+
 def run_watch(
     provider: ActiveWindowProvider,
     *,
@@ -426,6 +455,7 @@ def run_watch(
     engine: ContextEngine | None = None,
     memory: MemoryManager | None = None,
     curiosity: CuriosityEngine | None = None,
+    questions: QuestionGenerator | None = None,
     sleep: Callable[[float], None] = time.sleep,
     max_iterations: int | None = None,
 ) -> int:
@@ -455,9 +485,10 @@ def run_watch(
             # quedaría recién actualizado y mataría la señal de "vuelve
             # tras una ausencia".
             if curiosity is not None and evento is not None:
-                # Aunque diga que hablaría, en PHASE 6 nadie habla: falta
-                # redactar la pregunta, que es PHASE 7.
-                _out(_format_curiosity(curiosity.evaluate(contexto)))
+                decision = curiosity.evaluate(contexto)
+                _out(_format_curiosity(decision))
+                if decision.should_speak and questions is not None:
+                    _preguntar(decision, contexto, curiosity, questions, memory)
             if memory is not None:
                 # Puede devolver None: la mayoría de lo que pasa no merece
                 # una fila (CLAUDE.md sección 17).

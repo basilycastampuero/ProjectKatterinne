@@ -183,14 +183,20 @@ def test_watch_sobrevive_a_que_no_haya_ventana(capsys) -> None:
     assert "Visual Studio Code" in capsys.readouterr().out
 
 
-def test_watch_no_usa_el_llm(capsys) -> None:
-    # PHASE 2 es percepcion pura: si esto empezara a necesitar un modelo,
-    # habriamos roto CLAUDE.md seccion 3.4.
+def test_watch_sin_preguntas_no_toca_el_modelo(fake_provider: FakeProvider) -> None:
+    """Observar no debe costar VRAM (CLAUDE.md sección 33).
+
+    Antes esto comprobaba una frase del banner, así que se rompió al
+    reescribirlo y no comprobaba nada real. Ahora mira lo que importa: que
+    ningún modelo reciba una sola llamada.
+    """
     provider = FakeActiveWindowProvider([make_window("Code.exe")])
 
-    run_watch(provider, sleep=_sin_dormir, max_iterations=1)
+    run_watch(
+        provider, curiosity=CuriosityEngine(), sleep=_sin_dormir, max_iterations=2
+    )
 
-    assert "Sin capturas de pantalla, sin LLM" in capsys.readouterr().out
+    assert fake_provider.calls == []
 
 
 def test_watch_muestra_el_contexto_con_su_procedencia(capsys) -> None:
@@ -393,7 +399,11 @@ def test_sin_curiosidad_watch_no_dice_nada_de_ella(capsys) -> None:
 
     run_watch(provider, curiosity=None, sleep=_sin_dormir, max_iterations=1)
 
-    assert "curiosidad" not in capsys.readouterr().out
+    # El banner sí menciona la fase; lo que no debe aparecer es una línea
+    # de decisión.
+    salida = capsys.readouterr().out
+    assert "NO_ACTION" not in salida
+    assert "HABLARÍA" not in salida
 
 
 # ----------------------------------------------------------------------

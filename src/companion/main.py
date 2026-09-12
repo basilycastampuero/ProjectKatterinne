@@ -14,6 +14,7 @@ from companion.app.factory import (
     build_curiosity,
     build_memory,
     build_provider,
+    build_question_generator,
 )
 from companion.config.settings import Settings, load_settings
 from companion.conversation.manager import ConversationManager
@@ -73,6 +74,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--no-memory",
         action="store_true",
         help="no guarda nada en disco en esta ejecucion",
+    )
+    parser.add_argument(
+        "--ask",
+        action="store_true",
+        help="con --watch, redacta y muestra la pregunta cuando decida hablar "
+        "(carga el modelo en VRAM)",
     )
     return parser
 
@@ -162,11 +169,21 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Error: {exc}", file=sys.stderr)
             return 2
         memoria = build_memory(settings)
+        # El modelo solo se carga si de verdad se va a preguntar: observar
+        # no debe costar VRAM (CLAUDE.md seccion 33).
+        generador = None
+        if args.ask:
+            try:
+                generador = build_question_generator(settings, build_provider(settings))
+            except ValueError as exc:
+                print(f"Error: {exc}", file=sys.stderr)
+                return 2
         return run_watch(
             window_provider,
             interval_s=settings.perception.poll_interval_s,
             memory=memoria,
             curiosity=build_curiosity(settings, memory=memoria),
+            questions=generador,
         )
 
     try:

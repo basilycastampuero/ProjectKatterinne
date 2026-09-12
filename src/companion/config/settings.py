@@ -119,6 +119,15 @@ class CuriositySettings:
     #: Tiempo sin ver un proyecto tras el cual se considera que vuelve a el.
     absence_seconds: float = 21600.0
 
+    #: Palabras como mucho por pregunta. Una pregunta larga casi siempre son
+    #: dos preguntas disfrazadas.
+    max_question_words: int = 25
+
+    #: Si se permite recurrir a una plantilla cuando el modelo falla o su
+    #: pregunta no pasa el filtro. Apagarlo sirve para medir cuantas veces
+    #: falla el modelo de verdad.
+    allow_template_fallback: bool = True
+
 
 @dataclass(frozen=True, slots=True)
 class PrivacySettings:

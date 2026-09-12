@@ -93,6 +93,14 @@ max_questions_per_session = 4
 # Seis horas sin ver un proyecto: al volver, cuenta como novedad.
 absence_seconds = 21600.0
 
+# Palabras como mucho por pregunta. Una pregunta larga casi siempre son dos
+# preguntas disfrazadas.
+max_question_words = 25
+
+# Si la pregunta del modelo no pasa el filtro, se recurre a una plantilla
+# determinista. Poner false para medir cuantas veces falla el modelo.
+allow_template_fallback = true
+
 [privacy]
 # Interruptor general. Con true no se observa el titulo de NINGUNA ventana.
 # Tambien se puede activar solo para una ejecucion con:  --privacy

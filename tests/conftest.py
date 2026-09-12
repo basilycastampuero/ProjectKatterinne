@@ -38,6 +38,8 @@ class FakeProvider(LLMProvider):
         self._raises = raises
         #: Payloads recibidos, para poder afirmar que se envio lo correcto.
         self.calls: list[list[Message]] = []
+        #: Si cada llamada pidio salida JSON.
+        self.json_calls: list[bool] = []
         self.unload_count = 0
 
     def is_available(self) -> bool:
@@ -58,8 +60,10 @@ class FakeProvider(LLMProvider):
         messages: Sequence[Message],
         *,
         on_token: TokenCallback | None = None,
+        json_mode: bool = False,
     ) -> GenerationResult:
         self.calls.append(list(messages))
+        self.json_calls.append(json_mode)
         if self._raises is not None:
             raise self._raises
         if not messages:

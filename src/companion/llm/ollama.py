@@ -140,6 +140,7 @@ class OllamaProvider(LLMProvider):
         messages: Sequence[Message],
         *,
         on_token: TokenCallback | None = None,
+        json_mode: bool = False,
     ) -> GenerationResult:
         if not messages:
             raise GenerationError("Se necesita al menos un mensaje para generar.")
@@ -151,6 +152,10 @@ class OllamaProvider(LLMProvider):
             "keep_alive": self.keep_alive,
             "options": {"temperature": self.temperature, "num_ctx": self.num_ctx},
         }
+        if json_mode:
+            # Ollama restringe la generacion a JSON sintacticamente valido.
+            # Verificado contra el runtime instalado antes de usarlo.
+            payload["format"] = "json"
         # Solo se manda a modelos que declaran la capacidad: ver supports_thinking().
         if self.think is not None and self.supports_thinking():
             payload["think"] = self.think

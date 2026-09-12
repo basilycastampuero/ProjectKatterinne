@@ -7,7 +7,7 @@ curiosidad y a veces pregunta.
 Todo ocurre en tu máquina. Sin API de OpenAI, sin Anthropic, sin Google, sin
 servicios de visión ni de voz en la nube.
 
-> Estado actual: **PHASE 6 — motor de curiosidad**.
+> Estado actual: **PHASE 7 — preguntas contextuales**.
 > Ver [CLAUDE.md](CLAUDE.md) para la arquitectura completa y el plan de fases.
 
 ---
@@ -28,16 +28,18 @@ servicios de visión ni de voz en la nube.
 - **La conversación usa contexto y memoria**, y sabe distinguir lo que
   observa de lo que supone.
 - **Decide cuándo merecería la pena hablar** — y casi siempre decide que no.
+- **Redacta la pregunta** cuando decide hablar, con salida estructurada y
+  validada: nunca afirma ver algo que no ve.
 - Configuración por TOML, variables de entorno y flags.
 - Diagnóstico del runtime local (`--check`).
-- 426 tests, de los que solo 7 necesitan Windows.
+- 464 tests, de los que solo 7 necesitan Windows.
 
 ## Qué todavía NO existe
 
 Capturas de pantalla, visión, voz y avatar. Son PHASE 5, 8 y 10.
 
-La compañera **todavía no habla sola**: el motor de curiosidad decide *si*
-preguntaría y de qué tipo, pero redactar la pregunta es PHASE 7.
+Tampoco extrae hechos de lo que le cuentas: las conversaciones se guardan,
+pero convertir lo dicho en un recuerdo estructurado sigue pendiente.
 
 La compañera **lo sabe**: su prompt de sistema le dice explícitamente que no
 puede ver la pantalla, para que no se invente lo que estás haciendo. La
@@ -194,10 +196,39 @@ algo más — por ejemplo, que lleves un rato ahí.
 Medido en simulación: dos horas en un mismo proyecto producen **una**
 pregunta. Si el proyecto ya es conocido, **ninguna**.
 
-El motor decide *si* preguntaría y de qué tipo. No redacta nada y no llama al
-modelo: eso es PHASE 7, y significa que decidir callarse es gratis.
+El motor decide *si* preguntaría y de qué tipo, **sin llamar al modelo**.
+Decidir callarse no cuesta ni un token.
 
 Ver [ADR-008](docs/architecture-decisions/ADR-008-silence-by-construction.md).
+
+## Preguntas
+
+Cuando decide hablar, y solo entonces, el modelo redacta la frase:
+
+```powershell
+.\.venv\Scripts\python.exe -m companion.main --watch --ask
+```
+
+```
+★ curiosidad  HABLARÍA · clarification sobre ProjectKatterinne
+              score 7/6 · proyecto nuevo, lleva un rato en lo mismo
+
+  IA: ¿Qué estás intentando conseguir en questions.py?
+      (modelo, se apoya en: document)
+```
+
+Esa última línea es el control de calidad. El modelo tiene que **declarar en
+qué dato se apoya**, y ese campo debe ser uno de los que se le dieron de
+verdad. Si dice apoyarse en algo que no percibe, la pregunta se descarta.
+
+También se rechaza si es demasiado larga, si son dos preguntas, si suena a
+coach de productividad o si afirma ver la pantalla. Cuando algo falla, entra
+una plantilla determinista, que no puede inventarse nada porque no genera
+nada.
+
+`--watch` a secas no carga el modelo: observar no debe costar VRAM.
+
+Ver [ADR-009](docs/architecture-decisions/ADR-009-validate-what-the-model-says.md).
 
 Flags útiles: `--no-stream`, `--temperature`, `--host`, `--config`,
 `--log-level DEBUG`.
@@ -276,7 +307,8 @@ src/companion/
 └── curiosity/
     ├── models.py        CuriosityDecision y los motivos del silencio
     ├── scorer.py        puntuación determinista (lógica pura)
-    └── engine.py        las barreras de §21, en orden
+    ├── engine.py        las barreras de §21, en orden
+    └── questions.py     ← redacta y VALIDA la pregunta
 ```
 
 La regla que sostiene el resto, aplicada dos veces: **nada fuera de

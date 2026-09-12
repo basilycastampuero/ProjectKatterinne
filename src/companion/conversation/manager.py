@@ -16,73 +16,16 @@ from __future__ import annotations
 
 import logging
 
-from companion.context.models import CurrentContext, Provenance
+from companion.context.models import CurrentContext
+from companion.context.rendering import describe_context
 from companion.llm.errors import LLMError
-from companion.llm.prompts import CONTEXT_HEADER, MEMORY_HEADER, SYSTEM_PROMPT
+from companion.llm.prompts import SYSTEM_PROMPT
 from companion.llm.provider import GenerationResult, LLMProvider, Message, TokenCallback
 from companion.memory.manager import MemoryManager
 from companion.memory.models import Fact
+from companion.memory.rendering import describe_facts
 
 log = logging.getLogger("companion.conversation")
-
-#: Como se le nombra al modelo el origen de cada dato. El modelo tiene que
-#: poder distinguir lo que sabe de lo que supone (CLAUDE.md seccion 11).
-_PROVENANCE_WORDS = {
-    Provenance.OBSERVED: "observado",
-    Provenance.INFERRED: "inferido, puede estar mal",
-    Provenance.USER_CONFIRMED: "ella lo confirmó",
-}
-
-
-def describe_context(context: CurrentContext | None) -> str | None:
-    """Traduce el contexto a texto, **con la procedencia de cada dato**.
-
-    Esta es la razon de ser de ADR-006. Decirle al modelo
-
-        Proyecto: ProjectKatterinne
-
-    le invita a afirmarlo. Decirle
-
-        Proyecto: ProjectKatterinne (inferido, puede estar mal)
-
-    le permite preguntar en vez de dar por hecho. Sin la procedencia, la
-    promesa de CLAUDE.md seccion 7 de no inventarse lo que hace la usuaria
-    no se puede cumplir.
-
-    Es una funcion suelta y no un metodo porque la CLI tambien la usa para
-    enseñar por pantalla exactamente lo mismo que se le cuenta al modelo.
-    """
-    if context is None or not context.signals:
-        return None
-
-    lineas = [CONTEXT_HEADER]
-    if context.redacted:
-        # No se nombra la aplicacion: esta en la lista negra justamente para
-        # que no se observe lo que hace ahi (ADR-005).
-        lineas.append("- Está en una aplicación privada. No observas cuál ni qué hace.")
-        return "\n".join(lineas)
-
-    for etiqueta, signal in (
-        ("Aplicación", context.application),
-        ("Proyecto", context.project),
-        ("Documento", context.document),
-        ("Actividad", context.activity),
-    ):
-        if signal is not None:
-            origen = _PROVENANCE_WORDS[signal.provenance]
-            lineas.append(f"- {etiqueta}: {signal.value} ({origen})")
-    return "\n".join(lineas)
-
-
-def describe_memories(facts: list[Fact]) -> str | None:
-    """Traduce los recuerdos a texto, tambien con su procedencia."""
-    if not facts:
-        return None
-    lineas = [MEMORY_HEADER]
-    for fact in facts:
-        origen = _PROVENANCE_WORDS[fact.provenance]
-        lineas.append(f"- {fact.content} ({origen})")
-    return "\n".join(lineas)
 
 
 class ConversationManager:
@@ -154,7 +97,7 @@ class ConversationManager:
 
         bloques = [
             describe_context(context),
-            describe_memories(self._recall(context)),
+            describe_facts(self._recall(context)),
         ]
         if presentes := [b for b in bloques if b]:
             # Va en un mensaje de sistema aparte para que el prompt fijo no

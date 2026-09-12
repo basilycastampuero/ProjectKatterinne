@@ -6,6 +6,11 @@ pregunta es PHASE 7. Aqui no se llama al modelo ni una sola vez.
 
 from companion.curiosity.engine import CuriosityEngine, CuriosityPolicy
 from companion.curiosity.models import CuriosityDecision, QuestionType, SilenceReason
+from companion.curiosity.questions import (
+    GeneratedQuestion,
+    QuestionGenerator,
+    validate_question,
+)
 from companion.curiosity.scorer import CuriosityWeights, ScoreResult, ScoringInput, score
 
 __all__ = [
@@ -13,9 +18,12 @@ __all__ = [
     "CuriosityEngine",
     "CuriosityPolicy",
     "CuriosityWeights",
+    "GeneratedQuestion",
+    "QuestionGenerator",
     "QuestionType",
     "ScoreResult",
     "ScoringInput",
     "SilenceReason",
     "score",
+    "validate_question",
 ]
