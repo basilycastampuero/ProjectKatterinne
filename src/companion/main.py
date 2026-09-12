@@ -9,7 +9,11 @@ from pathlib import Path
 
 from companion import __version__
 from companion.app.cli import force_utf8_stdio, run_once, run_repl, run_watch
-from companion.app.factory import build_active_window_provider, build_provider
+from companion.app.factory import (
+    build_active_window_provider,
+    build_memory,
+    build_provider,
+)
 from companion.config.settings import Settings, load_settings
 from companion.conversation.manager import ConversationManager
 from companion.logging_setup import setup_logging
@@ -59,6 +63,16 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="activa el modo privacidad en esta ejecucion: no se observa ningun titulo",
     )
+    parser.add_argument(
+        "--no-perception",
+        action="store_true",
+        help="conversa sin mirar que ventana esta activa",
+    )
+    parser.add_argument(
+        "--no-memory",
+        action="store_true",
+        help="no guarda nada en disco en esta ejecucion",
+    )
     return parser
 
 
@@ -87,6 +101,10 @@ def apply_overrides(settings: Settings, args: argparse.Namespace) -> Settings:
     # poder desactivarse sin querer desde la linea de comandos.
     if args.privacy:
         settings = replace(settings, privacy=replace(settings.privacy, privacy_mode=True))
+    # Igual que `--privacy`, solo apaga. No hay flag para encender la
+    # memoria desde la linea de comandos si la configuracion la desactivo.
+    if args.no_memory:
+        settings = replace(settings, memory=replace(settings.memory, enabled=False))
     return settings
 
 
@@ -142,7 +160,11 @@ def main(argv: list[str] | None = None) -> int:
         except RuntimeError as exc:
             print(f"Error: {exc}", file=sys.stderr)
             return 2
-        return run_watch(window_provider, interval_s=settings.perception.poll_interval_s)
+        return run_watch(
+            window_provider,
+            interval_s=settings.perception.poll_interval_s,
+            memory=build_memory(settings),
+        )
 
     try:
         provider = build_provider(settings)
@@ -150,16 +172,30 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Error: {exc}", file=sys.stderr)
         return 2
 
+    # La percepcion es opcional en la conversacion: fuera de Windows, o si
+    # falla, se puede seguir hablando sin contexto.
+    window_provider = None
+    if not args.no_perception:
+        try:
+            window_provider = build_active_window_provider(settings)
+        except RuntimeError as exc:
+            print(f"Aviso: sin percepcion de ventana activa ({exc})", file=sys.stderr)
+
+    memory = build_memory(settings)
     conversation = ConversationManager(
         provider,
         system_prompt=settings.conversation.system_prompt,
         max_history_messages=settings.conversation.max_history_messages,
+        memory=memory,
+        recall_limit=settings.memory.recall_limit,
     )
     stream = not args.no_stream
 
     if args.prompt:
-        return run_once(conversation, args.prompt, stream=stream)
-    return run_repl(conversation, stream=stream)
+        return run_once(
+            conversation, args.prompt, stream=stream, window_provider=window_provider
+        )
+    return run_repl(conversation, stream=stream, window_provider=window_provider)
 
 
 if __name__ == "__main__":

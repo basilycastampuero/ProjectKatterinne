@@ -69,6 +69,32 @@ class PerceptionSettings:
 
 
 @dataclass(frozen=True, slots=True)
+class MemorySettings:
+    """Memoria local persistente. Ver CLAUDE.md secciones 16 y 17."""
+
+    #: Se puede apagar del todo. Con `false` la aplicacion funciona igual
+    #: pero no escribe nada en disco: ni actividades, ni conversaciones.
+    enabled: bool = True
+
+    #: Fichero SQLite, relativo a `data_dir`.
+    database: str = "memory.db"
+
+    #: Segundos minimos entre dos cambios de ventana registrados. Cambiar de
+    #: archivo pasa cada pocos segundos: guardarlos todos seria ruido.
+    min_window_change_interval_s: float = 60.0
+
+    #: Cuanto vive un recuerdo efimero antes de caducar solo.
+    ephemeral_ttl_s: float = 1800.0
+
+    #: Confianza minima para molestarse en guardar una inferencia. Lo que
+    #: diga la usuaria entra siempre, sin umbral.
+    min_confidence_to_store: float = 0.3
+
+    #: Cuantos recuerdos se le pasan al modelo por turno (CLAUDE.md 25).
+    recall_limit: int = 5
+
+
+@dataclass(frozen=True, slots=True)
 class PrivacySettings:
     """Que puede observar el companion. Ver CLAUDE.md seccion 22."""
 
@@ -101,12 +127,17 @@ class Settings:
     conversation: ConversationSettings = field(default_factory=ConversationSettings)
     perception: PerceptionSettings = field(default_factory=PerceptionSettings)
     privacy: PrivacySettings = field(default_factory=PrivacySettings)
+    memory: MemorySettings = field(default_factory=MemorySettings)
     logging: LoggingSettings = field(default_factory=LoggingSettings)
     data_dir: Path = PROJECT_ROOT / "data"
 
     @property
     def log_path(self) -> Path:
         return self.data_dir / self.logging.filename
+
+    @property
+    def database_path(self) -> Path:
+        return self.data_dir / self.memory.database
 
 
 # ----------------------------------------------------------------------
@@ -118,6 +149,7 @@ _SECTIONS: dict[str, type] = {
     "conversation": ConversationSettings,
     "perception": PerceptionSettings,
     "privacy": PrivacySettings,
+    "memory": MemorySettings,
     "logging": LoggingSettings,
 }
 
@@ -206,6 +238,7 @@ def load_settings(
         conversation=sections["conversation"],
         perception=sections["perception"],
         privacy=sections["privacy"],
+        memory=sections["memory"],
         logging=sections["logging"],
         data_dir=data_dir,
     )

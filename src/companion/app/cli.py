@@ -14,7 +14,7 @@ from typing import Any
 
 from companion.context.engine import ContextEngine
 from companion.context.models import CurrentContext, Provenance, Signal
-from companion.conversation.manager import ConversationManager
+from companion.conversation.manager import ConversationManager, describe_context
 from companion.llm.errors import (
     GenerationError,
     LLMError,
@@ -23,6 +23,7 @@ from companion.llm.errors import (
 )
 from companion.llm.ollama import OllamaProvider
 from companion.llm.provider import LLMProvider
+from companion.memory.manager import MemoryManager
 from companion.perception.active_window import ActiveWindowProvider
 from companion.perception.models import EventType, WindowEvent
 from companion.perception.privacy import PrivacyFilteredWindowProvider
@@ -38,6 +39,8 @@ HELP = """\
 Comandos disponibles:
   /ayuda       muestra esta ayuda
   /info        modelo, cuantizacion y ventana de contexto
+  /contexto    que percibe ahora mismo y con que procedencia
+  /recuerdos   que tiene guardado en la memoria local
   /historial   turnos que se estan enviando al modelo
   /reset       vacia la conversacion
   /salir       cierra el companion (tambien Ctrl+C o Ctrl+Z+Enter)
@@ -114,7 +117,35 @@ def _print_history(conversation: ConversationManager) -> None:
     _out(f"  ({len(turnos)} turnos en ventana)")
 
 
-def _handle_command(command: str, conversation: ConversationManager) -> bool:
+def _print_context(context: CurrentContext | None) -> None:
+    """Muestra lo que percibe, tal y como se lo contará al modelo."""
+    if context is None:
+        _out("  (no está observando la ventana activa en esta sesión)")
+        return
+    # La misma función que arma el bloque para el modelo: lo que ves aquí
+    # es literalmente lo que se le cuenta.
+    _out(describe_context(context) or "  (no percibe nada ahora mismo)")
+    _out(f"  confianza: {context.confidence:.2f}")
+
+
+def _print_memories(conversation: ConversationManager) -> None:
+    memoria = conversation.memory
+    if memoria is None:
+        _out("  (memoria desactivada)")
+        return
+    hechos = memoria.recall(limit=20)
+    if not hechos:
+        _out("  (todavía no recuerda nada)")
+        return
+    for hecho in hechos:
+        _out(f"  · {hecho.content}  [{hecho.provenance}, {hecho.scope}]")
+
+
+def _handle_command(
+    command: str,
+    conversation: ConversationManager,
+    context: CurrentContext | None = None,
+) -> bool:
     """Procesa un comando `/...`. Devuelve False si hay que salir."""
     match command.lower():
         case "/salir" | "/exit" | "/quit":
@@ -126,6 +157,10 @@ def _handle_command(command: str, conversation: ConversationManager) -> bool:
             _out("Conversacion reiniciada.")
         case "/info":
             _print_info(conversation)
+        case "/contexto":
+            _print_context(context)
+        case "/recuerdos":
+            _print_memories(conversation)
         case "/historial":
             _print_history(conversation)
         case _:
@@ -133,7 +168,13 @@ def _handle_command(command: str, conversation: ConversationManager) -> bool:
     return True
 
 
-def _stream_answer(conversation: ConversationManager, text: str, *, stream: bool) -> None:
+def _stream_answer(
+    conversation: ConversationManager,
+    text: str,
+    *,
+    stream: bool,
+    context: CurrentContext | None = None,
+) -> None:
     """Envia un turno e imprime la respuesta, con o sin streaming."""
     print("IA: ", end="", flush=True)
     emitted = False
@@ -144,7 +185,7 @@ def _stream_answer(conversation: ConversationManager, text: str, *, stream: bool
         print(piece, end="", flush=True)
 
     try:
-        result = conversation.send(text, on_token=on_token if stream else None)
+        result = conversation.send(text, context=context, on_token=on_token if stream else None)
     except (ProviderUnavailableError, ModelNotFoundError) as exc:
         _out(f"\n  [runtime no disponible] {exc}")
         return
@@ -174,39 +215,100 @@ def _stream_answer(conversation: ConversationManager, text: str, *, stream: bool
     _out()
 
 
-def run_repl(conversation: ConversationManager, *, stream: bool = True) -> int:
-    """Bucle principal de conversacion. Devuelve el codigo de salida."""
+def run_repl(
+    conversation: ConversationManager,
+    *,
+    stream: bool = True,
+    window_provider: ActiveWindowProvider | None = None,
+    engine: ContextEngine | None = None,
+) -> int:
+    """Bucle principal de conversacion. Devuelve el codigo de salida.
+
+    Cuando se le pasa un `window_provider`, mira qué ventana está activa
+    **justo antes de cada mensaje**, no en un hilo de fondo. Es mucho más
+    simple y además es honesto: la compañera se asoma cuando le hablas.
+    """
+    engine = engine or ContextEngine()
+    memoria = conversation.memory
+
     _out(BANNER)
     if not preflight(conversation.provider):
         return 1
+    if memoria is not None:
+        memoria.start_session()
+        _print_memory_status(memoria)
+        _out()
 
-    while True:
-        try:
-            entrada = input("Tu: ").strip()
-        except (EOFError, KeyboardInterrupt):
-            _out()
-            break
+    def percibir() -> CurrentContext | None:
+        if window_provider is None:
+            return None
+        contexto, evento = engine.observe(window_provider.get_active_window())
+        if memoria is not None:
+            memoria.observe(contexto, evento)
+        return contexto
 
-        if not entrada:
-            continue
-        if entrada.startswith("/"):
-            if not _handle_command(entrada, conversation):
+    try:
+        while True:
+            try:
+                entrada = input("Tu: ").strip()
+            except (EOFError, KeyboardInterrupt):
+                _out()
                 break
-            continue
 
-        _stream_answer(conversation, entrada, stream=stream)
+            if not entrada:
+                continue
+
+            contexto = percibir()
+            if entrada.startswith("/"):
+                if not _handle_command(entrada, conversation, contexto):
+                    break
+                continue
+
+            _stream_answer(conversation, entrada, stream=stream, context=contexto)
+    finally:
+        # Cerrar pase lo que pase: una sesión que nunca termina ensucia el
+        # historial para siempre.
+        conversation.close()
+        if memoria is not None:
+            memoria.end_session()
 
     _out("Hasta luego.")
     conversation.provider.unload()
     return 0
 
 
-def run_once(conversation: ConversationManager, prompt: str, *, stream: bool = True) -> int:
+def run_once(
+    conversation: ConversationManager,
+    prompt: str,
+    *,
+    stream: bool = True,
+    window_provider: ActiveWindowProvider | None = None,
+    engine: ContextEngine | None = None,
+) -> int:
     """Envia un unico mensaje y sale. Util para smoke tests y benchmarks."""
     if not preflight(conversation.provider):
         return 1
+
+    memoria = conversation.memory
+    if memoria is not None:
+        # También un mensaje suelto es un periodo de uso: sin sesión, la
+        # conversación quedaría colgando de la nada (CLAUDE.md sección 26).
+        memoria.start_session()
+
+    contexto = None
+    if window_provider is not None:
+        engine = engine or ContextEngine()
+        contexto, evento = engine.observe(window_provider.get_active_window())
+        if memoria is not None:
+            memoria.observe(contexto, evento)
+
     _out(f"Tu: {prompt}")
-    _stream_answer(conversation, prompt, stream=stream)
+    try:
+        _stream_answer(conversation, prompt, stream=stream, context=contexto)
+    finally:
+        conversation.close()
+        if memoria is not None:
+            memoria.end_session()
     conversation.provider.unload()
     return 0
 
@@ -289,15 +391,25 @@ def _print_privacy_status(provider: ActiveWindowProvider) -> None:
         _out("Sin filtros de privacidad. Configúralos en [privacy] de companion.toml.")
 
 
+def _print_memory_status(memory: MemoryManager | None) -> None:
+    if memory is None:
+        _out("Memoria desactivada: nada se guardará en disco.")
+        return
+    sesion = memory.session
+    if sesion is not None:
+        _out(f"Memoria activa · sesión {sesion.id}")
+
+
 def run_watch(
     provider: ActiveWindowProvider,
     *,
     interval_s: float = 1.0,
     engine: ContextEngine | None = None,
+    memory: MemoryManager | None = None,
     sleep: Callable[[float], None] = time.sleep,
     max_iterations: int | None = None,
 ) -> int:
-    """Sondea la ventana activa e imprime el contexto cuando cambia.
+    """Sondea la ventana activa, muestra el contexto y lo recuerda.
 
     `sleep` y `max_iterations` se inyectan para poder testear el bucle sin
     esperar segundos reales.
@@ -305,6 +417,9 @@ def run_watch(
     engine = engine or ContextEngine()
     _out(WATCH_BANNER)
     _print_privacy_status(provider)
+    if memory is not None:
+        memory.start_session()
+    _print_memory_status(memory)
     _out()
 
     iteraciones = 0
@@ -313,11 +428,22 @@ def run_watch(
             contexto, evento = engine.observe(provider.get_active_window())
             if evento is not None:
                 _out(_format_event(evento, contexto))
+            if memory is not None:
+                # Puede devolver None: la mayoría de lo que pasa no merece
+                # una fila (CLAUDE.md sección 17).
+                memory.observe(contexto, evento)
             iteraciones += 1
             if max_iterations is None or iteraciones < max_iterations:
                 sleep(interval_s)
     except KeyboardInterrupt:
         _out()
+    finally:
+        # Cerrar la sesión pase lo que pase: si no, queda abierta para
+        # siempre y el historial se llena de periodos que nunca terminan.
+        if memory is not None:
+            cerrada = memory.end_session()
+            if cerrada is not None and cerrada.dominant_application:
+                _out(f"Sesión cerrada · sobre todo en {cerrada.dominant_application}")
 
     _out("Observación detenida.")
     return 0

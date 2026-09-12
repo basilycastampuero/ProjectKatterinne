@@ -136,6 +136,42 @@ def test_el_modo_privacidad_se_puede_activar_por_entorno(tmp_path: Path) -> None
     assert settings.privacy.privacy_mode is True
 
 
+def test_la_memoria_viene_activada_con_su_fichero(tmp_path: Path) -> None:
+    settings = load_settings(root=tmp_path, env={})
+
+    assert settings.memory.enabled is True
+    assert settings.database_path == tmp_path / "data" / "memory.db"
+
+
+def test_la_memoria_se_puede_apagar_del_todo(tmp_path: Path) -> None:
+    config = _write(tmp_path, "companion.toml", "[memory]\nenabled = false\n")
+
+    assert load_settings(config, env={}).memory.enabled is False
+
+
+def test_el_fichero_de_memoria_cuelga_de_data_dir(tmp_path: Path) -> None:
+    config = _write(
+        tmp_path, "companion.toml", 'data_dir = "almacen"\n[memory]\ndatabase = "m.db"\n'
+    )
+
+    settings = load_settings(config, root=tmp_path, env={})
+
+    assert settings.database_path == tmp_path / "almacen" / "m.db"
+
+
+def test_la_politica_de_memoria_se_configura(tmp_path: Path) -> None:
+    config = _write(
+        tmp_path,
+        "companion.toml",
+        "[memory]\nmin_window_change_interval_s = 5.0\nrecall_limit = 3\n",
+    )
+
+    settings = load_settings(config, env={})
+
+    assert settings.memory.min_window_change_interval_s == pytest.approx(5.0)
+    assert settings.memory.recall_limit == 3
+
+
 def test_los_settings_son_inmutables() -> None:
     settings = Settings()
 

@@ -7,7 +7,7 @@ curiosidad y a veces pregunta.
 Todo ocurre en tu máquina. Sin API de OpenAI, sin Anthropic, sin Google, sin
 servicios de visión ni de voz en la nube.
 
-> Estado actual: **PHASE 3 — motor de contexto**.
+> Estado actual: **PHASE 4 — memoria local persistente**.
 > Ver [CLAUDE.md](CLAUDE.md) para la arquitectura completa y el plan de fases.
 
 ---
@@ -23,18 +23,21 @@ servicios de visión ni de voz en la nube.
 - **Modo privacidad y lista negra** de aplicaciones.
 - **Detección de proyecto, documento y tipo de actividad**, todo por medios
   deterministas y con la procedencia de cada dato.
+- **Memoria local en SQLite**: sesiones, actividades, proyectos, hechos y
+  conversaciones, con continuidad entre ejecuciones.
+- **La conversación usa contexto y memoria**, y sabe distinguir lo que
+  observa de lo que supone.
 - Configuración por TOML, variables de entorno y flags.
 - Diagnóstico del runtime local (`--check`).
-- 243 tests, de los que solo 7 necesitan Windows.
+- 382 tests, de los que solo 7 necesitan Windows.
 
 ## Qué todavía NO existe
 
-Capturas de pantalla, visión, memoria persistente, motor de curiosidad, voz
-y avatar. Son PHASE 4 en adelante.
+Capturas de pantalla, visión, motor de curiosidad, voz y avatar. Son
+PHASE 5 en adelante.
 
-El contexto tampoco está conectado a la conversación todavía: la compañera
-sabe dónde estás, pero aún no puede hablar de ello. Eso llega con la
-memoria.
+La compañera **nunca habla sola**: solo responde cuando le escribes.
+Decidir cuándo merece la pena decir algo es PHASE 6.
 
 La compañera **lo sabe**: su prompt de sistema le dice explícitamente que no
 puede ver la pantalla, para que no se invente lo que estás haciendo. La
@@ -122,9 +125,48 @@ Dentro del REPL:
 |---|---|
 | `/ayuda` | lista los comandos |
 | `/info` | modelo, cuantización, ventana de contexto |
+| `/contexto` | qué percibe ahora y con qué procedencia |
+| `/recuerdos` | qué tiene guardado en la memoria local |
 | `/historial` | turnos que se están enviando al modelo |
 | `/reset` | vacía la conversación |
 | `/salir` | cierra y libera la VRAM |
+
+Mientras conversas, mira qué ventana tienes delante **justo antes de cada
+mensaje** — no hay ningún hilo vigilándote de fondo.
+
+```
+Tu: hola, ¿qué sabes de lo que estoy haciendo?
+IA: Estás en Visual Studio Code. Inferimos que estás trabajando en un
+    proyecto llamado ProjectKatterinne, aunque no estoy segura de si es el
+    nombre exacto. ¿Estás desarrollando algo relacionado con Ollama y SQLite?
+```
+
+Fíjate en dos cosas: se cubre en lo que solo infiere, y la última pregunta
+sale de un hecho guardado en **otra sesión**.
+
+## Memoria
+
+```toml
+[memory]
+enabled = true
+database = "memory.db"
+recall_limit = 5
+```
+
+Guarda sesiones, actividades, proyectos, hechos y conversaciones en
+`data/memory.db`, que está en `.gitignore`. Cada hecho recuerda su
+procedencia, su confianza y su origen, así que nunca se confunde lo que tú
+dijiste con lo que el sistema dedujo.
+
+No guarda todo (§17): los cambios de aplicación siempre, los cambios de
+archivo como mucho uno por minuto, y las inferencias flojas no entran. Lo
+que tú confirmes entra siempre.
+
+Para una ejecución sin escribir nada en disco:
+
+```powershell
+.\.venv\Scripts\python.exe -m companion.main --no-memory
+```
 
 Flags útiles: `--no-stream`, `--temperature`, `--host`, `--config`,
 `--log-level DEBUG`.
@@ -191,10 +233,15 @@ src/companion/
 │   ├── process.py       nombre legible desde el ejecutable (lógica pura)
 │   ├── project_detector.py  proyecto y documento desde el título (§11)
 │   └── watcher.py       detección de cambios (lógica pura)
-└── context/
-    ├── models.py        ← Signal, Provenance, CurrentContext
-    ├── activity.py      tipo de actividad desde proceso y ruta
-    └── engine.py        combina las señales en un contexto
+├── context/
+│   ├── models.py        ← Signal, Provenance, CurrentContext
+│   ├── activity.py      tipo de actividad desde proceso y ruta
+│   └── engine.py        combina las señales en un contexto
+└── memory/
+    ├── schema.py        seis tablas SQLite + versión del esquema
+    ├── models.py        entidades inmutables
+    ├── repository.py    ← lo único que escribe SQL
+    └── manager.py       qué merece guardarse y cuánto dura (§17)
 ```
 
 La regla que sostiene el resto, aplicada dos veces: **nada fuera de

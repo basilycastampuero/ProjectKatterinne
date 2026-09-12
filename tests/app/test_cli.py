@@ -8,6 +8,8 @@ from companion.app.cli import preflight, run_repl, run_watch
 from companion.context.engine import ContextEngine
 from companion.conversation.manager import ConversationManager
 from companion.llm.errors import ModelNotFoundError, ProviderUnavailableError
+from companion.memory.manager import MemoryManager
+from companion.memory.repository import MemoryRepository
 from companion.perception.privacy import PrivacyFilteredWindowProvider, PrivacyPolicy
 from tests.conftest import FakeActiveWindowProvider, FakeProvider, make_window
 
@@ -260,6 +262,126 @@ def test_watch_avisa_cuando_no_hay_ningun_filtro(capsys) -> None:
     run_watch(provider, sleep=_sin_dormir, max_iterations=1)
 
     assert "Sin filtros de privacidad" in capsys.readouterr().out
+
+
+# ----------------------------------------------------------------------
+# Observación con memoria
+# ----------------------------------------------------------------------
+
+
+@pytest.fixture
+def memoria() -> MemoryManager:
+    return MemoryManager(MemoryRepository.open(":memory:"))
+
+
+def test_watch_abre_y_cierra_la_sesion(memoria: MemoryManager, capsys) -> None:
+    provider = FakeActiveWindowProvider([make_window("Code.exe")])
+
+    run_watch(provider, memory=memoria, sleep=_sin_dormir, max_iterations=2)
+
+    sesiones = memoria.repository.list_sessions()
+    assert len(sesiones) == 1
+    assert not sesiones[0].is_open  # cerrada, no huérfana
+
+
+def test_watch_guarda_lo_observado(memoria: MemoryManager) -> None:
+    provider = FakeActiveWindowProvider(
+        [make_window("Code.exe"), make_window("chrome.exe", hwnd=2000)]
+    )
+
+    run_watch(provider, memory=memoria, sleep=_sin_dormir, max_iterations=2)
+
+    assert memoria.repository.count_activities() == 2
+
+
+def test_watch_cierra_la_sesion_aunque_falle(memoria: MemoryManager) -> None:
+    # Una sesión que nunca termina ensucia el historial para siempre.
+    def _explota(_: float) -> None:
+        raise RuntimeError("algo se rompió")
+
+    provider = FakeActiveWindowProvider([make_window("Code.exe")])
+
+    with pytest.raises(RuntimeError):
+        run_watch(provider, memory=memoria, sleep=_explota, max_iterations=5)
+
+    assert not memoria.repository.list_sessions()[0].is_open
+
+
+def test_watch_sin_memoria_lo_dice(capsys) -> None:
+    provider = FakeActiveWindowProvider([make_window("Code.exe")])
+
+    run_watch(provider, memory=None, sleep=_sin_dormir, max_iterations=1)
+
+    assert "Memoria desactivada" in capsys.readouterr().out
+
+
+# ----------------------------------------------------------------------
+# Conversación con percepción
+# ----------------------------------------------------------------------
+
+
+def test_el_repl_mira_la_ventana_antes_de_responder(
+    fake_provider: FakeProvider, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Sin hilos de fondo: se asoma cuando le hablas.
+    ventanas = FakeActiveWindowProvider([make_window("Code.exe")])
+    conversation = ConversationManager(fake_provider)
+    _inputs(monkeypatch, ["hola", "/salir"])
+
+    run_repl(conversation, stream=False, window_provider=ventanas)
+
+    payload = fake_provider.calls[0]
+    sistemas = [m for m in payload if m.role == "system"]
+    assert len(sistemas) == 2
+    assert "Visual Studio Code" in sistemas[1].content
+
+
+def test_el_repl_sin_percepcion_no_inyecta_contexto(
+    fake_provider: FakeProvider, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    conversation = ConversationManager(fake_provider)
+    _inputs(monkeypatch, ["hola", "/salir"])
+
+    run_repl(conversation, stream=False, window_provider=None)
+
+    assert sum(1 for m in fake_provider.calls[0] if m.role == "system") == 1
+
+
+def test_el_comando_contexto_muestra_lo_que_percibe(
+    fake_provider: FakeProvider, monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    ventanas = FakeActiveWindowProvider([make_window("Code.exe")])
+    _inputs(monkeypatch, ["/contexto", "/salir"])
+
+    run_repl(ConversationManager(fake_provider), window_provider=ventanas)
+
+    salida = capsys.readouterr().out
+    assert "Visual Studio Code (observado)" in salida
+    assert "confianza" in salida
+
+
+def test_el_comando_recuerdos_lista_la_memoria(
+    fake_provider: FakeProvider, memoria: MemoryManager, monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    memoria.start_session()
+    memoria.confirm("Prefiere modelos locales.")
+    _inputs(monkeypatch, ["/recuerdos", "/salir"])
+
+    run_repl(ConversationManager(fake_provider, memory=memoria))
+
+    assert "Prefiere modelos locales." in capsys.readouterr().out
+
+
+def test_el_repl_cierra_sesion_y_conversacion_al_salir(
+    fake_provider: FakeProvider, memoria: MemoryManager, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    conversation = ConversationManager(fake_provider, memory=memoria)
+    _inputs(monkeypatch, ["hola", "/salir"])
+
+    run_repl(conversation, stream=False)
+
+    assert not memoria.repository.list_sessions()[0].is_open
+    assert not memoria.repository.get_conversation(1).is_open
 
 
 def test_ctrl_c_detiene_la_observacion_limpiamente(capsys) -> None:

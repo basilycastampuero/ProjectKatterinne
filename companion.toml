@@ -42,6 +42,29 @@ max_history_messages = 20
 # sondeo por segundo. No hay capturas de pantalla en esta fase.
 poll_interval_s = 1.0
 
+[memory]
+# Con false la aplicacion funciona igual pero no escribe nada en disco.
+# Tambien se puede apagar solo para una ejecucion con:  --no-memory
+enabled = true
+
+# Fichero SQLite, relativo a data_dir. Esta dentro de data/, que va entero
+# en .gitignore.
+database = "memory.db"
+
+# Segundos minimos entre dos cambios de ventana registrados. Cambiar de
+# archivo pasa cada pocos segundos: guardarlos todos seria ruido.
+min_window_change_interval_s = 60.0
+
+# Cuanto vive un recuerdo efimero antes de caducar solo (30 minutos).
+ephemeral_ttl_s = 1800.0
+
+# Confianza minima para guardar una inferencia. Lo que digas tu entra
+# siempre, sin umbral.
+min_confidence_to_store = 0.3
+
+# Cuantos recuerdos se le pasan al modelo en cada turno (CLAUDE.md 25).
+recall_limit = 5
+
 [privacy]
 # Interruptor general. Con true no se observa el titulo de NINGUNA ventana.
 # Tambien se puede activar solo para una ejecucion con:  --privacy

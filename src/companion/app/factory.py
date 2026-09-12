@@ -10,6 +10,8 @@ from __future__ import annotations
 from companion.config.settings import Settings
 from companion.llm.ollama import OllamaProvider
 from companion.llm.provider import LLMProvider
+from companion.memory.manager import MemoryManager, MemoryPolicy
+from companion.memory.repository import MemoryRepository
 from companion.perception.active_window import ActiveWindowProvider, Win32ActiveWindowProvider
 from companion.perception.privacy import PrivacyFilteredWindowProvider, PrivacyPolicy
 
@@ -34,6 +36,25 @@ def build_provider(settings: Settings) -> LLMProvider:
         f"Proveedor de LLM desconocido: '{settings.llm.provider}'. "
         f"Disponibles: {', '.join(PROVIDERS)}"
     )
+
+
+def build_memory(settings: Settings) -> MemoryManager | None:
+    """Abre la memoria local, o `None` si esta desactivada.
+
+    Devolver `None` en vez de un doble vacio es deliberado: quien use la
+    memoria tiene que ver en su propio codigo que puede no haberla. Un
+    objeto nulo silencioso haria creer que se esta guardando algo cuando no.
+    """
+    if not settings.memory.enabled:
+        return None
+
+    repository = MemoryRepository.open(settings.database_path)
+    policy = MemoryPolicy(
+        min_window_change_interval_s=settings.memory.min_window_change_interval_s,
+        ephemeral_ttl_s=settings.memory.ephemeral_ttl_s,
+        min_confidence_to_store=settings.memory.min_confidence_to_store,
+    )
+    return MemoryManager(repository, policy=policy)
 
 
 def build_privacy_policy(settings: Settings) -> PrivacyPolicy:

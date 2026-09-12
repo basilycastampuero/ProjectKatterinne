@@ -6,6 +6,7 @@ import pytest
 
 from companion.app.factory import (
     build_active_window_provider,
+    build_memory,
     build_privacy_policy,
     build_provider,
 )
@@ -109,6 +110,63 @@ def test_el_detector_siempre_sale_envuelto_por_el_filtro() -> None:
 
     assert isinstance(provider, PrivacyFilteredWindowProvider)
     assert provider.policy.is_active is False
+
+
+# ----------------------------------------------------------------------
+# Memoria
+# ----------------------------------------------------------------------
+
+
+def test_con_la_memoria_apagada_no_se_abre_ninguna_base(tmp_path: Path) -> None:
+    from dataclasses import replace
+
+    settings = Settings(data_dir=tmp_path)
+    settings = replace(settings, memory=replace(settings.memory, enabled=False))
+
+    assert build_memory(settings) is None
+    assert not (tmp_path / "memory.db").exists()
+
+
+def test_con_la_memoria_encendida_se_crea_el_fichero(tmp_path: Path) -> None:
+    settings = Settings(data_dir=tmp_path)
+
+    memoria = build_memory(settings)
+
+    assert memoria is not None
+    assert (tmp_path / "memory.db").exists()
+    memoria.repository.close()
+
+
+def test_la_politica_llega_desde_la_configuracion(tmp_path: Path) -> None:
+    from dataclasses import replace
+
+    settings = Settings(data_dir=tmp_path)
+    settings = replace(
+        settings, memory=replace(settings.memory, min_window_change_interval_s=7.0)
+    )
+
+    memoria = build_memory(settings)
+
+    assert memoria is not None
+    assert memoria.policy.min_window_change_interval_s == pytest.approx(7.0)
+    memoria.repository.close()
+
+
+def test_el_flag_no_memory_la_apaga() -> None:
+    args = build_parser().parse_args(["--no-memory"])
+
+    assert apply_overrides(Settings(), args).memory.enabled is False
+
+
+def test_sin_el_flag_la_configuracion_manda() -> None:
+    from dataclasses import replace
+
+    guardado = Settings()
+    guardado = replace(guardado, memory=replace(guardado.memory, enabled=False))
+    args = build_parser().parse_args([])
+
+    # Igual que con la privacidad: no hay flag para ENCENDERLA.
+    assert apply_overrides(guardado, args).memory.enabled is False
 
 
 def test_version_no_revienta() -> None:
