@@ -95,6 +95,32 @@ class MemorySettings:
 
 
 @dataclass(frozen=True, slots=True)
+class CuriositySettings:
+    """Cuando se le permite hablar. Ver CLAUDE.md secciones 19 y 21."""
+
+    enabled: bool = True
+
+    #: Puntuacion minima para que merezca la pena preguntar.
+    threshold: int = 6
+
+    #: Tiempo minimo entre preguntas. Veinte minutos: la seccion 19 quiere
+    #: una sesion de dos horas con una pregunta, no con cuarenta y siete.
+    min_seconds_between_questions: float = 1200.0
+
+    #: Cuanto lleva en el mismo contexto antes de poder preguntar.
+    min_seconds_in_context: float = 120.0
+
+    #: Por debajo de esta confianza no se sabe lo suficiente.
+    min_context_confidence: float = 0.5
+
+    #: Preguntas como mucho por sesion.
+    max_questions_per_session: int = 4
+
+    #: Tiempo sin ver un proyecto tras el cual se considera que vuelve a el.
+    absence_seconds: float = 21600.0
+
+
+@dataclass(frozen=True, slots=True)
 class PrivacySettings:
     """Que puede observar el companion. Ver CLAUDE.md seccion 22."""
 
@@ -128,6 +154,7 @@ class Settings:
     perception: PerceptionSettings = field(default_factory=PerceptionSettings)
     privacy: PrivacySettings = field(default_factory=PrivacySettings)
     memory: MemorySettings = field(default_factory=MemorySettings)
+    curiosity: CuriositySettings = field(default_factory=CuriositySettings)
     logging: LoggingSettings = field(default_factory=LoggingSettings)
     data_dir: Path = PROJECT_ROOT / "data"
 
@@ -150,6 +177,7 @@ _SECTIONS: dict[str, type] = {
     "perception": PerceptionSettings,
     "privacy": PrivacySettings,
     "memory": MemorySettings,
+    "curiosity": CuriositySettings,
     "logging": LoggingSettings,
 }
 
@@ -239,6 +267,7 @@ def load_settings(
         perception=sections["perception"],
         privacy=sections["privacy"],
         memory=sections["memory"],
+        curiosity=sections["curiosity"],
         logging=sections["logging"],
         data_dir=data_dir,
     )

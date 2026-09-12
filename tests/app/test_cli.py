@@ -7,6 +7,7 @@ import pytest
 from companion.app.cli import preflight, run_repl, run_watch
 from companion.context.engine import ContextEngine
 from companion.conversation.manager import ConversationManager
+from companion.curiosity.engine import CuriosityEngine, CuriosityPolicy
 from companion.llm.errors import ModelNotFoundError, ProviderUnavailableError
 from companion.memory.manager import MemoryManager
 from companion.memory.repository import MemoryRepository
@@ -313,6 +314,86 @@ def test_watch_sin_memoria_lo_dice(capsys) -> None:
     run_watch(provider, memory=None, sleep=_sin_dormir, max_iterations=1)
 
     assert "Memoria desactivada" in capsys.readouterr().out
+
+
+# ----------------------------------------------------------------------
+# Curiosidad
+# ----------------------------------------------------------------------
+
+
+def test_la_curiosidad_se_evalua_antes_de_guardar(memoria: MemoryManager) -> None:
+    """Regresión: el orden destruía la señal más fuerte.
+
+    La curiosidad pregunta "¿esto es nuevo para mí?" consultando la
+    memoria. Al principio se guardaba primero, así que para cuando
+    evaluaba, el proyecto ya existía y nada era nunca nuevo: la señal de
+    4 puntos se anulaba a sí misma y nunca se llegaba al umbral.
+
+    Lo mismo pasaba con `last_seen_at`, que quedaba recién actualizado y
+    mataba también la señal de "vuelve tras una ausencia".
+    """
+    memoria.start_session()
+    curiosidad = CuriosityEngine(
+        policy=CuriosityPolicy(min_seconds_in_context=0.0), memory=memoria
+    )
+    provider = FakeActiveWindowProvider(
+        [make_window("Code.exe", title="a.py - ProyectoNuevo - Visual Studio Code")]
+    )
+
+    run_watch(
+        provider,
+        memory=memoria,
+        curiosity=curiosidad,
+        sleep=_sin_dormir,
+        max_iterations=1,
+    )
+
+    # Si el orden fuera el contrario, el proyecto ya existiría al evaluar.
+    decision = curiosidad.evaluate(
+        ContextEngine().observe(make_window("Code.exe", title="a.py - OtroNuevo - Visual Studio Code"))[0]
+    )
+    assert "proyecto nuevo" in decision.signals
+
+
+def test_watch_muestra_por_que_se_calla(capsys) -> None:
+    # Sin el motivo, el único síntoma de un fallo sería que deja de hablar,
+    # y eso es indistinguible de que funcione bien.
+    provider = FakeActiveWindowProvider([make_window("Code.exe")])
+
+    run_watch(
+        provider, curiosity=CuriosityEngine(), sleep=_sin_dormir, max_iterations=1
+    )
+
+    salida = capsys.readouterr().out
+    assert "curiosidad" in salida
+    assert "NO_ACTION" in salida
+
+
+def test_watch_explica_cuando_hablaria(memoria: MemoryManager, capsys) -> None:
+    memoria.start_session()
+    curiosidad = CuriosityEngine(
+        policy=CuriosityPolicy(min_seconds_in_context=0.0), memory=memoria
+    )
+    provider = FakeActiveWindowProvider(
+        [make_window("Code.exe", title="a.py - ProyectoNuevo - Visual Studio Code")]
+    )
+
+    run_watch(
+        provider, memory=memoria, curiosity=curiosidad, sleep=_sin_dormir, max_iterations=1
+    )
+
+    salida = capsys.readouterr().out
+    assert "HABLARÍA" in salida
+    assert "clarification" in salida
+    assert "proyecto nuevo" in salida
+
+
+def test_sin_curiosidad_watch_no_dice_nada_de_ella(capsys) -> None:
+    provider = FakeActiveWindowProvider([make_window("Code.exe")])
+
+    run_watch(provider, curiosity=None, sleep=_sin_dormir, max_iterations=1)
+
+    assert "curiosidad" not in capsys.readouterr().out
 
 
 # ----------------------------------------------------------------------

@@ -11,6 +11,7 @@ from companion import __version__
 from companion.app.cli import force_utf8_stdio, run_once, run_repl, run_watch
 from companion.app.factory import (
     build_active_window_provider,
+    build_curiosity,
     build_memory,
     build_provider,
 )
@@ -160,10 +161,12 @@ def main(argv: list[str] | None = None) -> int:
         except RuntimeError as exc:
             print(f"Error: {exc}", file=sys.stderr)
             return 2
+        memoria = build_memory(settings)
         return run_watch(
             window_provider,
             interval_s=settings.perception.poll_interval_s,
-            memory=build_memory(settings),
+            memory=memoria,
+            curiosity=build_curiosity(settings, memory=memoria),
         )
 
     try:

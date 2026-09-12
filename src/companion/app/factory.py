@@ -8,6 +8,7 @@ aplicacion.
 from __future__ import annotations
 
 from companion.config.settings import Settings
+from companion.curiosity.engine import CuriosityEngine, CuriosityPolicy
 from companion.llm.ollama import OllamaProvider
 from companion.llm.provider import LLMProvider
 from companion.memory.manager import MemoryManager, MemoryPolicy
@@ -55,6 +56,22 @@ def build_memory(settings: Settings) -> MemoryManager | None:
         min_confidence_to_store=settings.memory.min_confidence_to_store,
     )
     return MemoryManager(repository, policy=policy)
+
+
+def build_curiosity(
+    settings: Settings, *, memory: MemoryManager | None = None
+) -> CuriosityEngine:
+    """Instancia el motor de curiosidad con la politica configurada."""
+    policy = CuriosityPolicy(
+        enabled=settings.curiosity.enabled,
+        threshold=settings.curiosity.threshold,
+        min_seconds_between_questions=settings.curiosity.min_seconds_between_questions,
+        min_seconds_in_context=settings.curiosity.min_seconds_in_context,
+        min_context_confidence=settings.curiosity.min_context_confidence,
+        max_questions_per_session=settings.curiosity.max_questions_per_session,
+        absence_seconds=settings.curiosity.absence_seconds,
+    )
+    return CuriosityEngine(policy=policy, memory=memory)
 
 
 def build_privacy_policy(settings: Settings) -> PrivacyPolicy:

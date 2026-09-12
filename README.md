@@ -7,7 +7,7 @@ curiosidad y a veces pregunta.
 Todo ocurre en tu máquina. Sin API de OpenAI, sin Anthropic, sin Google, sin
 servicios de visión ni de voz en la nube.
 
-> Estado actual: **PHASE 4 — memoria local persistente**.
+> Estado actual: **PHASE 6 — motor de curiosidad**.
 > Ver [CLAUDE.md](CLAUDE.md) para la arquitectura completa y el plan de fases.
 
 ---
@@ -27,17 +27,17 @@ servicios de visión ni de voz en la nube.
   conversaciones, con continuidad entre ejecuciones.
 - **La conversación usa contexto y memoria**, y sabe distinguir lo que
   observa de lo que supone.
+- **Decide cuándo merecería la pena hablar** — y casi siempre decide que no.
 - Configuración por TOML, variables de entorno y flags.
 - Diagnóstico del runtime local (`--check`).
-- 382 tests, de los que solo 7 necesitan Windows.
+- 426 tests, de los que solo 7 necesitan Windows.
 
 ## Qué todavía NO existe
 
-Capturas de pantalla, visión, motor de curiosidad, voz y avatar. Son
-PHASE 5 en adelante.
+Capturas de pantalla, visión, voz y avatar. Son PHASE 5, 8 y 10.
 
-La compañera **nunca habla sola**: solo responde cuando le escribes.
-Decidir cuándo merece la pena decir algo es PHASE 6.
+La compañera **todavía no habla sola**: el motor de curiosidad decide *si*
+preguntaría y de qué tipo, pero redactar la pregunta es PHASE 7.
 
 La compañera **lo sabe**: su prompt de sistema le dice explícitamente que no
 puede ver la pantalla, para que no se invente lo que estás haciendo. La
@@ -106,11 +106,16 @@ Si dice que no hay runtime, arráncalo con `ollama serve`.
 archivo, no imprime nada: el silencio es el estado normal (§19).
 
 ```
-00:33:07  cambio de app  Visual Studio Code
+11:07:47  cambio de app  Visual Studio Code
                          ├ proyecto   ProjectKatterinne     inferido · 0.77
                          ├ actividad  coding                inferido · 0.85
                          └ confianza  0.65
+                         · curiosidad  NO_ACTION · too_soon_in_context
 ```
+
+Esa última línea dice **por qué se calla**. Importa: sin el motivo, el único
+síntoma de que algo falle sería que deja de hablar, y eso es indistinguible
+de que funcione bien.
 
 Cada dato dice **de dónde salió**. La aplicación es `observado` (lo dice
 Windows); el proyecto es `inferido` (lo sugiere el título de la ventana);
@@ -167,6 +172,32 @@ Para una ejecución sin escribir nada en disco:
 ```powershell
 .\.venv\Scripts\python.exe -m companion.main --no-memory
 ```
+
+## Curiosidad
+
+```toml
+[curiosity]
+threshold = 6
+min_seconds_between_questions = 1200.0
+min_seconds_in_context = 120.0
+max_questions_per_session = 4
+```
+
+Estos números existen **para que se calle**, no para que hable. §19 considera
+que una sesión de dos horas con *una* pregunta es buena, y con cuarenta y
+siete es mala.
+
+Los pesos están calibrados para que **ninguna señal suelta llegue al
+umbral**: un proyecto nuevo vale 4, y hacen falta 6. Tiene que coincidir con
+algo más — por ejemplo, que lleves un rato ahí.
+
+Medido en simulación: dos horas en un mismo proyecto producen **una**
+pregunta. Si el proyecto ya es conocido, **ninguna**.
+
+El motor decide *si* preguntaría y de qué tipo. No redacta nada y no llama al
+modelo: eso es PHASE 7, y significa que decidir callarse es gratis.
+
+Ver [ADR-008](docs/architecture-decisions/ADR-008-silence-by-construction.md).
 
 Flags útiles: `--no-stream`, `--temperature`, `--host`, `--config`,
 `--log-level DEBUG`.
@@ -237,11 +268,15 @@ src/companion/
 │   ├── models.py        ← Signal, Provenance, CurrentContext
 │   ├── activity.py      tipo de actividad desde proceso y ruta
 │   └── engine.py        combina las señales en un contexto
-└── memory/
-    ├── schema.py        seis tablas SQLite + versión del esquema
-    ├── models.py        entidades inmutables
-    ├── repository.py    ← lo único que escribe SQL
-    └── manager.py       qué merece guardarse y cuánto dura (§17)
+├── memory/
+│   ├── schema.py        seis tablas SQLite + versión del esquema
+│   ├── models.py        entidades inmutables
+│   ├── repository.py    ← lo único que escribe SQL
+│   └── manager.py       qué merece guardarse y cuánto dura (§17)
+└── curiosity/
+    ├── models.py        CuriosityDecision y los motivos del silencio
+    ├── scorer.py        puntuación determinista (lógica pura)
+    └── engine.py        las barreras de §21, en orden
 ```
 
 La regla que sostiene el resto, aplicada dos veces: **nada fuera de

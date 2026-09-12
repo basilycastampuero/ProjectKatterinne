@@ -14,6 +14,8 @@ from typing import Any
 
 from companion.context.engine import ContextEngine
 from companion.context.models import CurrentContext, Provenance, Signal
+from companion.curiosity.engine import CuriosityEngine
+from companion.curiosity.models import CuriosityDecision
 from companion.conversation.manager import ConversationManager, describe_context
 from companion.llm.errors import (
     GenerationError,
@@ -400,12 +402,30 @@ def _print_memory_status(memory: MemoryManager | None) -> None:
         _out(f"Memoria activa · sesión {sesion.id}")
 
 
+def _format_curiosity(decision: CuriosityDecision) -> str:
+    """Una línea explicando por qué habla o por qué se calla."""
+    sangria = " " * _DETAIL_INDENT
+    if not decision.should_speak:
+        detalle = f"NO_ACTION · {decision.reason}"
+        if decision.score:
+            detalle += f" (score {decision.score}/{decision.threshold})"
+        return f"{sangria}· curiosidad  {detalle}"
+
+    señales = ", ".join(decision.signals) or "sin señales"
+    return (
+        f"{sangria}★ curiosidad  HABLARÍA · {decision.question_type} "
+        f"sobre {decision.topic}\n"
+        f"{sangria}              score {decision.score}/{decision.threshold} · {señales}"
+    )
+
+
 def run_watch(
     provider: ActiveWindowProvider,
     *,
     interval_s: float = 1.0,
     engine: ContextEngine | None = None,
     memory: MemoryManager | None = None,
+    curiosity: CuriosityEngine | None = None,
     sleep: Callable[[float], None] = time.sleep,
     max_iterations: int | None = None,
 ) -> int:
@@ -428,6 +448,16 @@ def run_watch(
             contexto, evento = engine.observe(provider.get_active_window())
             if evento is not None:
                 _out(_format_event(evento, contexto))
+            # La curiosidad va ANTES de guardar, y el orden no es un
+            # detalle: pregunta "¿esto es nuevo para mí?" consultando la
+            # memoria. Si se guardara primero, el proyecto ya existiría y
+            # nada sería nunca nuevo. Lo mismo con `last_seen_at`, que
+            # quedaría recién actualizado y mataría la señal de "vuelve
+            # tras una ausencia".
+            if curiosity is not None and evento is not None:
+                # Aunque diga que hablaría, en PHASE 6 nadie habla: falta
+                # redactar la pregunta, que es PHASE 7.
+                _out(_format_curiosity(curiosity.evaluate(contexto)))
             if memory is not None:
                 # Puede devolver None: la mayoría de lo que pasa no merece
                 # una fila (CLAUDE.md sección 17).

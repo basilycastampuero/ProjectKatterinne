@@ -243,7 +243,14 @@ class MemoryManager:
             expires_at=expira,
         )
 
-    def confirm(self, content: str, *, source: str = "user", project: str | None = None) -> Fact:
+    def confirm(
+        self,
+        content: str,
+        *,
+        source: str = "user",
+        project: str | None = None,
+        at: datetime | None = None,
+    ) -> Fact:
         """Guarda algo que la usuaria dijo explicitamente.
 
         Existe como metodo aparte de `remember` para que en el codigo que lo
@@ -256,6 +263,7 @@ class MemoryManager:
             source=source,
             scope=MemoryScope.PROJECT if project else MemoryScope.LONG_TERM,
             project=project,
+            at=at,
         )
         # `remember` solo devuelve None por confianza baja, y aqui es 1.0.
         assert fact is not None  # noqa: S101

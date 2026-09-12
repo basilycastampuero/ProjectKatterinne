@@ -65,6 +65,34 @@ min_confidence_to_store = 0.3
 # Cuantos recuerdos se le pasan al modelo en cada turno (CLAUDE.md 25).
 recall_limit = 5
 
+[curiosity]
+# Cuando se le permite iniciar una conversacion. Estos numeros existen para
+# que se calle, no para que hable: CLAUDE.md seccion 19 considera que una
+# sesion de dos horas con UNA pregunta es buena, y con cuarenta y siete es
+# mala.
+enabled = true
+
+# Puntuacion minima. Esta calibrada para que ninguna señal suelta baste:
+# hacen falta al menos dos cosas a la vez.
+threshold = 6
+
+# Veinte minutos entre preguntas.
+min_seconds_between_questions = 1200.0
+
+# Cuanto lleva en el mismo sitio antes de poder preguntar. Interrumpir nada
+# mas cambiar de ventana es justo lo molesto.
+min_seconds_in_context = 120.0
+
+# Por debajo de esta confianza del contexto no se sabe lo suficiente para
+# decir algo que no sea vago.
+min_context_confidence = 0.5
+
+# Preguntas como mucho por sesion.
+max_questions_per_session = 4
+
+# Seis horas sin ver un proyecto: al volver, cuenta como novedad.
+absence_seconds = 21600.0
+
 [privacy]
 # Interruptor general. Con true no se observa el titulo de NINGUNA ventana.
 # Tambien se puede activar solo para una ejecucion con:  --privacy
