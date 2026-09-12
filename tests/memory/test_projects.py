@@ -12,10 +12,10 @@ from tests.memory.conftest import T0, minutos
 
 def test_un_proyecto_nuevo_se_guarda_con_su_procedencia(repo: MemoryRepository) -> None:
     proyecto = repo.upsert_project(
-        "KatterinneProject", provenance=Provenance.INFERRED, confidence=0.77, at=T0
+        "ProjectKatterinne", provenance=Provenance.INFERRED, confidence=0.77, at=T0
     )
 
-    assert proyecto.name == "KatterinneProject"
+    assert proyecto.name == "ProjectKatterinne"
     assert proyecto.provenance is Provenance.INFERRED
     assert proyecto.confidence == pytest.approx(0.77)
     assert proyecto.first_seen_at == T0

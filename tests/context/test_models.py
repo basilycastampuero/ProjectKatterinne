@@ -118,13 +118,13 @@ def test_los_huecos_se_serializan_como_nulos() -> None:
 def test_describe_resume_en_una_linea() -> None:
     contexto = CurrentContext(
         application=Signal(value="Visual Studio Code", provenance=Provenance.OBSERVED, confidence=1.0),
-        project=_signal("KatterinneProject", 0.9),
+        project=_signal("ProjectKatterinne", 0.9),
     )
 
     resumen = contexto.describe()
 
     assert "Visual Studio Code" in resumen
-    assert "proyecto=KatterinneProject" in resumen
+    assert "proyecto=ProjectKatterinne" in resumen
 
 
 def test_las_procedencias_son_exactamente_las_tres_de_la_seccion_11() -> None:

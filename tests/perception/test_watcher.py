@@ -40,9 +40,9 @@ def test_cambiar_de_aplicacion_emite_application_changed() -> None:
 
 def test_cambiar_de_archivo_en_el_mismo_ide_emite_window_changed() -> None:
     detector = WindowChangeDetector()
-    detector.observe(make_window("Code.exe", title="settings.py - KatterinneProject"))
+    detector.observe(make_window("Code.exe", title="settings.py - ProjectKatterinne"))
 
-    evento = detector.observe(make_window("Code.exe", title="watcher.py - KatterinneProject"))
+    evento = detector.observe(make_window("Code.exe", title="watcher.py - ProjectKatterinne"))
 
     assert evento is not None
     assert evento.type is EventType.WINDOW_CHANGED

@@ -184,7 +184,7 @@ class ContextEngine:
             return None
         return Signal(
             value=detected,
-            # Inferido, nunca observado: que el titulo diga "KatterinneProject"
+            # Inferido, nunca observado: que el titulo diga "ProjectKatterinne"
             # sugiere el proyecto con mucha fuerza, pero no lo demuestra.
             provenance=Provenance.INFERRED,
             confidence=confidence,

@@ -103,12 +103,12 @@ def test_un_proceso_bloqueado_conserva_la_aplicacion() -> None:
 
 def test_las_aplicaciones_no_bloqueadas_pasan_intactas() -> None:
     policy = PrivacyPolicy.from_names(blocked_processes=[GESTOR])
-    ventana = make_window("Code.exe", title="settings.py - KatterinneProject")
+    ventana = make_window("Code.exe", title="settings.py - ProjectKatterinne")
 
     filtrada = policy.apply(ventana)
 
     assert filtrada is not None
-    assert filtrada.window_title == "settings.py - KatterinneProject"
+    assert filtrada.window_title == "settings.py - ProjectKatterinne"
     assert filtrada.redacted is False
 
 

@@ -24,7 +24,7 @@ def win32(monkeypatch: pytest.MonkeyPatch):
     estado = {
         "hwnd": 132456,
         "pid": 21033,
-        "title": "companion.toml - KatterinneProject",
+        "title": "companion.toml - ProjectKatterinne",
         "path": CODE_PATH,
     }
 
@@ -54,7 +54,7 @@ def test_devuelve_la_ventana_activa_completa(provider) -> None:
     assert ventana.pid == 21033
     assert ventana.process_name == "Code.exe"
     assert ventana.application == "Visual Studio Code"
-    assert ventana.window_title == "companion.toml - KatterinneProject"
+    assert ventana.window_title == "companion.toml - ProjectKatterinne"
     assert ventana.executable_path == CODE_PATH
 
 
@@ -107,7 +107,7 @@ def test_un_proceso_protegido_se_reporta_con_lo_que_se_sepa(provider, win32) -> 
     assert ventana is not None
     assert ventana.process_name == ""
     assert ventana.application == "Desconocida"
-    assert ventana.window_title == "companion.toml - KatterinneProject"
+    assert ventana.window_title == "companion.toml - ProjectKatterinne"
 
 
 @pytest.mark.parametrize(
@@ -142,7 +142,7 @@ def test_el_detector_no_registra_nada_identificable(provider, caplog) -> None:
     with caplog.at_level("DEBUG", logger="companion.perception"):
         provider.get_active_window()
 
-    assert "KatterinneProject" not in caplog.text  # el titulo
+    assert "ProjectKatterinne" not in caplog.text  # el titulo
     assert "Code.exe" not in caplog.text  # el proceso
     assert "Visual Studio Code" not in caplog.text  # la aplicacion
     assert "21033" in caplog.text  # el PID si, para poder depurar

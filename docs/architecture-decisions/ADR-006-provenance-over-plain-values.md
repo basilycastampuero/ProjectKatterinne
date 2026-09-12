@@ -9,9 +9,9 @@
 CLAUDE.md §11 exige distinguir tres cosas que es muy tentador mezclar:
 
 ```
-observed_project        el título de la ventana dice "KatterinneProject"
+observed_project        el título de la ventana dice "ProjectKatterinne"
 inferred_project        probablemente el proyecto se llama así
-user_confirmed_project  ella dijo que trabaja en KatterinneProject
+user_confirmed_project  ella dijo que trabaja en ProjectKatterinne
 ```
 
 Y añade: *"Nunca convertir automáticamente una inferencia en un hecho
@@ -105,7 +105,7 @@ contaría, e inflaría la confianza con un dato hueco.
 VS Code usa el mismo formato de dos trozos para dos situaciones distintas:
 
 ```
-KatterinneProject - Visual Studio Code     carpeta abierta, sin archivo
+ProjectKatterinne - Visual Studio Code     carpeta abierta, sin archivo
 borrador.py - Visual Studio Code           archivo suelto, sin carpeta
 ```
 

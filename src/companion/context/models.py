@@ -2,9 +2,9 @@
 
 La pieza central es la distincion de CLAUDE.md seccion 11:
 
-    observado        el titulo de la ventana dice "KatterinneProject"
+    observado        el titulo de la ventana dice "ProjectKatterinne"
     inferido         *probablemente* el proyecto se llama asi
-    confirmado       ella dijo que trabaja en KatterinneProject
+    confirmado       ella dijo que trabaja en ProjectKatterinne
 
 Parecen lo mismo y no lo son. Si el sistema guarda inferencias como si
 fueran hechos, en dos semanas la memoria esta llena de cosas que se invento
@@ -34,7 +34,7 @@ class Provenance(StrEnum):
     OBSERVED = "observed"
 
     #: Deducido con reglas a partir de lo observado. Puede estar mal: que el
-    #: titulo diga "KatterinneProject" sugiere el proyecto, no lo demuestra.
+    #: titulo diga "ProjectKatterinne" sugiere el proyecto, no lo demuestra.
     INFERRED = "inferred"
 
     #: Dicho explicitamente por la usuaria. Manda sobre cualquier inferencia.

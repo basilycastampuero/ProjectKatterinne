@@ -8,7 +8,7 @@ from companion.context.engine import ContextEngine
 from companion.context.models import ActivityType, Provenance
 from tests.conftest import make_window
 
-VSCODE = "pyproject.toml - KatterinneProject - Visual Studio Code"
+VSCODE = "pyproject.toml - ProjectKatterinne - Visual Studio Code"
 
 
 @pytest.fixture
@@ -28,7 +28,7 @@ def test_convierte_una_ventana_en_contexto_con_significado(engine: ContextEngine
     assert contexto.application is not None
     assert contexto.application.value == "Visual Studio Code"
     assert contexto.project is not None
-    assert contexto.project.value == "KatterinneProject"
+    assert contexto.project.value == "ProjectKatterinne"
     assert contexto.document is not None
     assert contexto.document.value == "pyproject.toml"
     assert contexto.activity is not None
@@ -67,7 +67,7 @@ def test_una_inferencia_nunca_se_vuelve_hecho_sola(engine: ContextEngine) -> Non
 def test_confirmar_el_proyecto_lo_asciende_a_hecho(engine: ContextEngine) -> None:
     engine.observe(make_window("Code.exe", title=VSCODE))
 
-    engine.confirm_project("KatterinneProject")
+    engine.confirm_project("ProjectKatterinne")
     contexto, _ = engine.observe(make_window("Code.exe", title=VSCODE, hwnd=2000))
 
     assert contexto.project is not None
@@ -95,7 +95,7 @@ def test_la_confirmacion_caduca_al_detectar_otro_proyecto(engine: ContextEngine)
     contexto, _ = engine.observe(make_window("Code.exe", title=VSCODE))
 
     assert contexto.project is not None
-    assert contexto.project.value == "KatterinneProject"
+    assert contexto.project.value == "ProjectKatterinne"
     assert contexto.project.provenance is Provenance.INFERRED
     assert engine.confirmed_project is None
 

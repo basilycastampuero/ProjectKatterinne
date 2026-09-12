@@ -84,7 +84,7 @@ def test_pedir_una_sesion_inexistente_falla(repo: MemoryRepository) -> None:
 
 def test_se_registra_una_actividad_completa(repo: MemoryRepository) -> None:
     sesion = repo.start_session(at=T0)
-    proyecto = repo.upsert_project("KatterinneProject")
+    proyecto = repo.upsert_project("ProjectKatterinne")
 
     actividad = repo.record_activity(
         sesion.id,

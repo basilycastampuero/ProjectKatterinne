@@ -8,7 +8,7 @@ from companion.perception.project_detector import TitleParts, detect
 from tests.conftest import make_window
 
 # Títulos observados de verdad en el equipo objetivo.
-VSCODE_REAL = "pyproject.toml - KatterinneProject - Visual Studio Code"
+VSCODE_REAL = "pyproject.toml - ProjectKatterinne - Visual Studio Code"
 
 
 # ----------------------------------------------------------------------
@@ -19,7 +19,7 @@ VSCODE_REAL = "pyproject.toml - KatterinneProject - Visual Studio Code"
 def test_extrae_proyecto_y_archivo_de_un_titulo_real() -> None:
     partes = detect(make_window("Code.exe", title=VSCODE_REAL))
 
-    assert partes.project == "KatterinneProject"
+    assert partes.project == "ProjectKatterinne"
     assert partes.document == "pyproject.toml"
     assert partes.confidence == pytest.approx(0.9)
 
@@ -46,16 +46,16 @@ def test_una_carpeta_abierta_sin_archivo_es_proyecto_no_documento() -> None:
 
     Se desempata por la extensión: los archivos la llevan, las carpetas no.
     """
-    partes = detect(make_window("Code.exe", title="KatterinneProject - Visual Studio Code"))
+    partes = detect(make_window("Code.exe", title="ProjectKatterinne - Visual Studio Code"))
 
-    assert partes.project == "KatterinneProject"
+    assert partes.project == "ProjectKatterinne"
     assert partes.document is None
 
 
 def test_el_caso_ambiguo_declara_menos_confianza() -> None:
     # Donde hay una suposición, la confianza tiene que notarlo.
     claro = detect(make_window("Code.exe", title=VSCODE_REAL))
-    ambiguo = detect(make_window("Code.exe", title="KatterinneProject - Visual Studio Code"))
+    ambiguo = detect(make_window("Code.exe", title="ProjectKatterinne - Visual Studio Code"))
 
     assert ambiguo.confidence < claro.confidence
 
@@ -90,7 +90,7 @@ def test_la_marca_de_sin_guardar_no_ensucia_el_nombre() -> None:
     partes = detect(make_window("Code.exe", title=f"● {VSCODE_REAL}"))
 
     assert partes.document == "pyproject.toml"
-    assert partes.project == "KatterinneProject"
+    assert partes.project == "ProjectKatterinne"
 
 
 def test_el_sufijo_de_workspace_se_recorta() -> None:
@@ -105,7 +105,7 @@ def test_el_sufijo_de_workspace_se_recorta() -> None:
 def test_los_editores_derivados_usan_la_misma_regla(proceso: str) -> None:
     partes = detect(make_window(proceso, title=VSCODE_REAL))
 
-    assert partes.project == "KatterinneProject"
+    assert partes.project == "ProjectKatterinne"
 
 
 # ----------------------------------------------------------------------

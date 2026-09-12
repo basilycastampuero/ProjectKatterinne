@@ -89,7 +89,7 @@ def fake_provider() -> FakeProvider:
 def make_window(
     process_name: str = "Code.exe",
     *,
-    title: str = "companion.toml - KatterinneProject",
+    title: str = "companion.toml - ProjectKatterinne",
     hwnd: int = 1000,
     pid: int = 4242,
     application: str | None = None,

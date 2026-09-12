@@ -104,7 +104,7 @@ archivo, no imprime nada: el silencio es el estado normal (§19).
 
 ```
 00:33:07  cambio de app  Visual Studio Code
-                         ├ proyecto   KatterinneProject     inferido · 0.77
+                         ├ proyecto   ProjectKatterinne     inferido · 0.77
                          ├ actividad  coding                inferido · 0.85
                          └ confianza  0.65
 ```

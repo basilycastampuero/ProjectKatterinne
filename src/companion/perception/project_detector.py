@@ -2,7 +2,7 @@
 
 CLAUDE.md seccion 11. La informacion ya esta ahi: cuando el titulo dice
 
-    settings.py - KatterinneProject - Visual Studio Code
+    settings.py - ProjectKatterinne - Visual Studio Code
 
 el proyecto y el archivo son texto plano, no algo que haya que adivinar con
 un modelo. Esto es seccion 3.4 llevada hasta el final.
@@ -82,7 +82,7 @@ def _parse_dash_trailing_app(title: str, *, confidence: float) -> TitleParts:
         0 trozos  -> nada abierto
 
     El caso de un solo trozo es real y se detecto ejecutando la aplicacion:
-    VS Code muestra `KatterinneProject - Visual Studio Code` cuando hay una
+    VS Code muestra `ProjectKatterinne - Visual Studio Code` cuando hay una
     carpeta abierta sin archivo enfocado, y `borrador.py - Visual Studio
     Code` cuando hay un archivo suelto sin carpeta. El mismo formato para
     dos cosas distintas.

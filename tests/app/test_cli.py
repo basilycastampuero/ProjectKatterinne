@@ -192,13 +192,13 @@ def test_watch_no_usa_el_llm(capsys) -> None:
 
 def test_watch_muestra_el_contexto_con_su_procedencia(capsys) -> None:
     provider = FakeActiveWindowProvider(
-        [make_window("Code.exe", title="a.py - KatterinneProject - Visual Studio Code")]
+        [make_window("Code.exe", title="a.py - ProjectKatterinne - Visual Studio Code")]
     )
 
     run_watch(provider, sleep=_sin_dormir, max_iterations=1)
 
     salida = capsys.readouterr().out
-    assert "KatterinneProject" in salida
+    assert "ProjectKatterinne" in salida
     assert "a.py" in salida
     assert "coding" in salida
     # Lo importante de la sección 11: se ve de dónde sale cada dato.

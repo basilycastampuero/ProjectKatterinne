@@ -14,7 +14,7 @@ from companion.perception.models import EventType
 from tests.conftest import make_window
 from tests.memory.conftest import T0, minutos
 
-VSCODE = "pyproject.toml - KatterinneProject - Visual Studio Code"
+VSCODE = "pyproject.toml - ProjectKatterinne - Visual Studio Code"
 
 
 @pytest.fixture
@@ -124,7 +124,7 @@ def test_los_cambios_de_archivo_seguidos_se_limitan(manager: MemoryManager) -> N
         _observar(
             manager,
             engine,
-            make_window("Code.exe", title=f"archivo{i}.py - KatterinneProject - Visual Studio Code"),
+            make_window("Code.exe", title=f"archivo{i}.py - ProjectKatterinne - Visual Studio Code"),
             at=minutos(0),
         )
         for i in range(3)
@@ -140,14 +140,14 @@ def test_pasado_el_intervalo_se_vuelve_a_guardar(manager: MemoryManager) -> None
     _observar(
         manager,
         engine,
-        make_window("Code.exe", title="a.py - KatterinneProject - Visual Studio Code"),
+        make_window("Code.exe", title="a.py - ProjectKatterinne - Visual Studio Code"),
         at=minutos(0),
     )
 
     tardio = _observar(
         manager,
         engine,
-        make_window("Code.exe", title="b.py - KatterinneProject - Visual Studio Code"),
+        make_window("Code.exe", title="b.py - ProjectKatterinne - Visual Studio Code"),
         at=minutos(5),
     )
 
@@ -163,7 +163,7 @@ def test_el_intervalo_es_configurable(repo: MemoryRepository) -> None:
     segundo = _observar(
         manager,
         engine,
-        make_window("Code.exe", title="a.py - KatterinneProject - Visual Studio Code"),
+        make_window("Code.exe", title="a.py - ProjectKatterinne - Visual Studio Code"),
         at=minutos(0),
     )
 
@@ -193,7 +193,7 @@ def test_el_proyecto_llega_a_la_base_de_datos_con_su_procedencia(
 
     _observar(manager, engine, make_window("Code.exe", title=VSCODE), at=minutos(1))
 
-    proyecto = repo.get_project("KatterinneProject")
+    proyecto = repo.get_project("ProjectKatterinne")
     assert proyecto is not None
     assert proyecto.provenance is Provenance.INFERRED  # no se ascendió solo
 
@@ -300,10 +300,10 @@ def test_confirmar_con_proyecto_lo_ata_al_proyecto(
 ) -> None:
     manager.start_session(at=T0)
 
-    hecho = manager.confirm("Usa SQLite para la memoria.", project="KatterinneProject")
+    hecho = manager.confirm("Usa SQLite para la memoria.", project="ProjectKatterinne")
 
     assert hecho.scope is MemoryScope.PROJECT
-    assert hecho.project_id == repo.get_project("KatterinneProject").id
+    assert hecho.project_id == repo.get_project("ProjectKatterinne").id
 
 
 def test_cerrar_la_sesion_retira_lo_que_solo_valia_para_ella(
@@ -334,7 +334,7 @@ def test_cerrar_la_sesion_retira_lo_que_solo_valia_para_ella(
 def test_recall_devuelve_los_hechos_del_proyecto(manager: MemoryManager) -> None:
     manager.start_session(at=T0)
     manager.confirm("Usa Django.", project="StudyFlow")
-    manager.confirm("Usa SQLite.", project="KatterinneProject")
+    manager.confirm("Usa SQLite.", project="ProjectKatterinne")
 
     hechos = manager.recall(project="StudyFlow")
 
