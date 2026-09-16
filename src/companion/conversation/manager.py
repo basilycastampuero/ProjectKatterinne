@@ -23,7 +23,7 @@ from companion.llm.prompts import SYSTEM_PROMPT
 from companion.llm.provider import GenerationResult, LLMProvider, Message, TokenCallback
 from companion.memory.manager import MemoryManager
 from companion.memory.models import Fact
-from companion.memory.rendering import describe_facts
+from companion.memory.rendering import ActivitySpan, describe_activity, describe_facts
 
 log = logging.getLogger("companion.conversation")
 
@@ -91,12 +91,29 @@ class ConversationManager:
             log.warning("no se pudieron recuperar recuerdos: %s", exc)
             return []
 
+    def _recent_activity(self) -> list[ActivitySpan]:
+        """Cuanto tiempo lleva hoy en cada aplicacion.
+
+        CLAUDE.md seccion 25 lo pide como una de las cuatro piezas del
+        payload, y la seccion 26 justifica las sesiones con "poder responder
+        ¿que hiciste ayer?". Sin esto, esa pregunta no tenia respuesta
+        posible por mucho que los datos estuvieran en la base de datos.
+        """
+        if self._memory is None:
+            return []
+        try:
+            return self._memory.recent_activity()
+        except Exception as exc:  # noqa: BLE001 - hablar importa mas
+            log.warning("no se pudo resumir la actividad: %s", exc)
+            return []
+
     def build_payload(self, context: CurrentContext | None = None) -> list[Message]:
         """Mensajes efectivos que se enviaran al modelo."""
         mensajes = [Message(role="system", content=self._system_prompt)]
 
         bloques = [
             describe_context(context),
+            describe_activity(self._recent_activity()),
             describe_facts(self._recall(context)),
         ]
         if presentes := [b for b in bloques if b]:

@@ -295,8 +295,13 @@ def run_once(
 
     memoria = conversation.memory
     if memoria is not None:
-        # También un mensaje suelto es un periodo de uso: sin sesión, la
-        # conversación quedaría colgando de la nada (CLAUDE.md sección 26).
+        # Se une a la sesión en curso para que la conversación cuelgue de
+        # algo (CLAUDE.md sección 26), pero NO la cierra al salir: una
+        # pregunta suelta de dos segundos no es un periodo de uso.
+        #
+        # Cerrarla partía en trozos el historial: cada `--prompt` mataba la
+        # sesión que `--watch` llevaba acumulando, y la siguiente pregunta
+        # arrancaba sin ninguna actividad que contar.
         memoria.start_session()
 
     contexto = None
@@ -310,9 +315,8 @@ def run_once(
     try:
         _stream_answer(conversation, prompt, stream=stream, context=contexto)
     finally:
+        # La conversación sí se cierra: esa sí terminó. La sesión sigue.
         conversation.close()
-        if memoria is not None:
-            memoria.end_session()
     conversation.provider.unload()
     return 0
 

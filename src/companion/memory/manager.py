@@ -17,6 +17,7 @@ from datetime import datetime, timedelta
 from companion.context.models import CurrentContext, Provenance
 from companion.memory.errors import MemoryStoreError
 from companion.memory.models import Activity, Fact, MemoryScope, Project, Session, utcnow
+from companion.memory.rendering import ActivitySpan, summarize_activity
 from companion.memory.repository import MemoryRepository
 from companion.perception.models import EventType, WindowEvent
 
@@ -268,6 +269,31 @@ class MemoryManager:
         # `remember` solo devuelve None por confianza baja, y aqui es 1.0.
         assert fact is not None  # noqa: S101
         return fact
+
+    def recent_activity(
+        self,
+        *,
+        since: datetime | None = None,
+        limit: int = 200,
+        now: datetime | None = None,
+    ) -> list[ActivitySpan]:
+        """Cuanto tiempo ha pasado en cada aplicacion.
+
+        Por defecto mira la sesion en curso. Es lo que hace falta para poder
+        responder "¿que he estado haciendo?" sin haber guardado ni una
+        captura, que es el motivo por el que existen las sesiones
+        (CLAUDE.md seccion 26).
+        """
+        momento = now or utcnow()
+        session_id = self._session.id if self._session else None
+        try:
+            actividades = self._repo.list_activities(
+                session_id=session_id, since=since, limit=limit
+            )
+        except Exception as exc:  # noqa: BLE001 - conversar importa mas
+            log.warning("no se pudo leer la actividad reciente: %s", exc)
+            return []
+        return summarize_activity(actividades, now=momento)
 
     def recall(
         self,

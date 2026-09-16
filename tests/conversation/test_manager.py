@@ -8,8 +8,10 @@ from companion.conversation.manager import ConversationManager
 from companion.llm.errors import GenerationError
 from companion.llm.provider import Message
 from companion.memory.manager import MemoryManager
+from companion.memory.rendering import ACTIVITY_HEADER
 from companion.memory.repository import MemoryRepository
 from tests.conftest import FakeProvider
+from tests.memory.conftest import T0, minutos
 
 
 def test_send_guarda_los_dos_turnos(fake_provider: FakeProvider) -> None:
@@ -198,7 +200,7 @@ def test_el_contexto_viaja_en_un_mensaje_de_sistema_aparte(
 @pytest.fixture
 def memory() -> MemoryManager:
     manager = MemoryManager(MemoryRepository.open(":memory:"))
-    manager.start_session()
+    manager.start_session(at=T0)
     return manager
 
 
@@ -271,6 +273,58 @@ def test_no_se_mezclan_los_recuerdos_de_otros_proyectos(
     payload = conversation.build_payload(_contexto())
 
     assert all("otro sitio" not in m.content for m in payload)
+
+
+def test_la_actividad_reciente_llega_al_modelo(
+    fake_provider: FakeProvider, memory: MemoryManager
+) -> None:
+    """Regresión: los datos estaban en SQLite y nunca llegaban al payload.
+
+    La sección 26 justifica las sesiones con "poder responder ¿qué hiciste
+    ayer?", y la 25 lista `recent_activity` como una de las cuatro piezas.
+    Se registraban actividades desde la fase 4 y ninguna se le contaba al
+    modelo, así que esa pregunta no tenía respuesta posible.
+    """
+    sesion = memory.session
+    assert sesion is not None
+    for minuto, app in ((0, "Visual Studio Code"), (40, "Brave")):
+        memory.repository.record_activity(
+            sesion.id,
+            "application_changed",
+            occurred_at=minutos(minuto),
+            application=app,
+            process=f"{app}.exe",
+        )
+    conversation = ConversationManager(fake_provider, memory=memory)
+
+    bloque = conversation.build_payload(_contexto())[1].content
+
+    assert "Visual Studio Code" in bloque
+    assert "Brave" in bloque
+
+
+def test_sin_memoria_no_se_inyecta_bloque_de_actividad(
+    fake_provider: FakeProvider,
+) -> None:
+    # Se compara contra la cabecera real y no contra un trozo de texto
+    # suelto: la primera versión buscaba "ha estado en" y saltaba porque esa
+    # frase también aparecía, inocentemente, en el prompt del sistema.
+    conversation = ConversationManager(fake_provider, memory=None)
+
+    payload = conversation.build_payload(_contexto())
+
+    assert all(ACTIVITY_HEADER not in m.content for m in payload)
+
+
+def test_un_fallo_al_resumir_la_actividad_no_tumba_el_turno(
+    fake_provider: FakeProvider, memory: MemoryManager
+) -> None:
+    memory.repository.close()
+    conversation = ConversationManager(fake_provider, memory=memory)
+
+    result = conversation.send("hola", context=_contexto())
+
+    assert result.text == "respuesta simulada"
 
 
 def test_el_numero_de_recuerdos_esta_acotado(
