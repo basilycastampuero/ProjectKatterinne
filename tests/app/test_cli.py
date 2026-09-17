@@ -529,6 +529,52 @@ def test_sin_curiosidad_el_repl_no_pregunta_nada(
     assert "IA:" not in capsys.readouterr().out
 
 
+class _LectorQueInterrumpe:
+    """Simula un Ctrl+C mientras se espera una línea."""
+
+    def esperar(self, timeout: float):
+        raise KeyboardInterrupt
+
+
+def test_ctrl_c_esperando_entrada_no_escupe_un_traceback(
+    fake_provider: FakeProvider, memoria: MemoryManager, capsys
+) -> None:
+    """Regresión: salir con Ctrl+C reventaba con un traceback.
+
+    El REPL viejo esperaba con `input()` y capturaba KeyboardInterrupt ahí
+    mismo. Al meter el hilo lector, la espera pasó a `cola.get()` y solo se
+    capturaba `queue.Empty`, así que la interrupción se escapaba por el
+    hueco recién abierto.
+    """
+    memoria.start_session()
+    conversation = ConversationManager(fake_provider, memory=memoria)
+
+    codigo = run_repl(
+        conversation,
+        window_provider=FakeActiveWindowProvider([_ventana_con_proyecto()]),
+        curiosity=CuriosityEngine(
+            policy=CuriosityPolicy(min_seconds_in_context=0.0), memory=memoria
+        ),
+        questions=_generador(),
+        reader=_LectorQueInterrumpe(),
+    )
+
+    assert codigo == 0
+    assert "Hasta luego" in capsys.readouterr().out
+
+
+def test_ctrl_c_cierra_sesion_y_conversacion(
+    fake_provider: FakeProvider, memoria: MemoryManager
+) -> None:
+    # Salir a lo bruto no puede dejar una sesión abierta para siempre.
+    memoria.start_session()
+    conversation = ConversationManager(fake_provider, memory=memoria)
+
+    run_repl(conversation, reader=_LectorQueInterrumpe())
+
+    assert not memoria.repository.list_sessions()[0].is_open
+
+
 def test_el_silencio_no_gasta_turnos(
     fake_provider: FakeProvider, memoria: MemoryManager
 ) -> None:

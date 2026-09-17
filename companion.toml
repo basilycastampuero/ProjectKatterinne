@@ -51,7 +51,7 @@ poll_interval_s = 1.0
 # Ejemplos segun donde la ejecutes:
 #   ignore_processes = ["WindowsTerminal.exe"]
 #   ignore_processes = ["WindowsTerminal.exe", "Code.exe"]   # terminal del IDE
-ignore_processes = []
+ignore_processes = ["WindowsTerminal.exe"]
 
 [memory]
 # Con false la aplicacion funciona igual pero no escribe nada en disco.
@@ -92,7 +92,7 @@ min_seconds_between_questions = 1200.0
 
 # Cuanto lleva en el mismo sitio antes de poder preguntar. Interrumpir nada
 # mas cambiar de ventana es justo lo molesto.
-min_seconds_in_context = 120.0
+min_seconds_in_context = 20.0
 
 # Por debajo de esta confianza del contexto no se sabe lo suficiente para
 # decir algo que no sea vago.

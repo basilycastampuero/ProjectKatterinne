@@ -272,6 +272,12 @@ class _EntradaEnSegundoPlano:
             return self._cola.get(timeout=timeout)
         except queue.Empty:
             return SIN_ENTRADA
+        except KeyboardInterrupt:
+            # Ctrl+C llega al hilo principal, que casi siempre está
+            # esperando justo aquí. La versión con `input()` lo capturaba
+            # sola; al cambiar la espera por una cola se abrió este hueco y
+            # salir por Ctrl+C escupía un traceback.
+            return None
 
 
 def run_repl(
@@ -386,6 +392,11 @@ def run_repl(
             _stream_answer(conversation, texto, stream=stream, context=contexto)
             ultimo_turno = time.monotonic()
             pedir_linea = True
+    except KeyboardInterrupt:
+        # Red de seguridad: Ctrl+C puede caer en cualquier punto del bucle,
+        # no solo esperando entrada. Salir así es lo normal, no un fallo, y
+        # nunca debe enseñar un traceback.
+        _out()
     finally:
         # Cerrar pase lo que pase: una sesión que nunca termina ensucia el
         # historial para siempre.
