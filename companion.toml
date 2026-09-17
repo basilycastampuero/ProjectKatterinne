@@ -42,6 +42,17 @@ max_history_messages = 20
 # sondeo por segundo. No hay capturas de pantalla en esta fase.
 poll_interval_s = 1.0
 
+# Procesos que no cuentan como contexto ni como actividad.
+#
+# Pon aqui el terminal desde el que la lanzas. Si no, mientras le hablas la
+# ventana en primer plano es ese terminal, el contexto pasa a ser
+# "Windows Terminal" y no le queda nada interesante que preguntar.
+#
+# Ejemplos segun donde la ejecutes:
+#   ignore_processes = ["WindowsTerminal.exe"]
+#   ignore_processes = ["WindowsTerminal.exe", "Code.exe"]   # terminal del IDE
+ignore_processes = []
+
 [memory]
 # Con false la aplicacion funciona igual pero no escribe nada en disco.
 # Tambien se puede apagar solo para una ejecucion con:  --no-memory

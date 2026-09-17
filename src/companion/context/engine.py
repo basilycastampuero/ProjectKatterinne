@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 from collections import deque
+from collections.abc import Iterable
 
 from companion.context.activity import classify
 from companion.context.models import (
@@ -24,6 +25,7 @@ from companion.context.models import (
     Signal,
 )
 from companion.perception.models import ActiveWindow, WindowEvent
+from companion.perception.process import normalize_process
 from companion.perception.project_detector import detect
 from companion.perception.watcher import WindowChangeDetector
 
@@ -41,6 +43,7 @@ class ContextEngine:
         *,
         detector: WindowChangeDetector | None = None,
         max_recent_events: int = 20,
+        ignore_processes: Iterable[str] = (),
     ) -> None:
         if max_recent_events < 1:
             raise ValueError("max_recent_events debe ser al menos 1.")
@@ -48,6 +51,11 @@ class ContextEngine:
         self._recent: deque[WindowEvent] = deque(maxlen=max_recent_events)
         self._confirmed_project: str | None = None
         self._current = CurrentContext()
+        self._ignored = frozenset(
+            normalizado
+            for nombre in ignore_processes
+            if (normalizado := normalize_process(nombre))
+        )
 
     # ------------------------------------------------------------------
     # Estado
@@ -73,6 +81,12 @@ class ContextEngine:
         El evento es `None` cuando no ha cambiado nada, que es el caso
         mayoritario con un sondeo por segundo.
         """
+        if self._is_ignored(window):
+            # Se hace como si no hubiera pasado nada: ni contexto nuevo ni
+            # evento. Asi, mientras le hablas desde el terminal, el contexto
+            # sigue siendo aquello en lo que estabas.
+            return self._current, None
+
         event = self._detector.observe(window)
         if event is not None:
             self._recent.append(event)
@@ -118,6 +132,16 @@ class ContextEngine:
     # ------------------------------------------------------------------
     # Construccion
     # ------------------------------------------------------------------
+
+    def _is_ignored(self, window: ActiveWindow | None) -> bool:
+        """True si este proceso no debe contar como contexto.
+
+        Sirve para que la compañera no se cuente a sí misma: el terminal
+        desde el que le hablas no es "lo que estás haciendo".
+        """
+        if window is None or not self._ignored:
+            return False
+        return normalize_process(window.process_name) in self._ignored
 
     def _build(self, window: ActiveWindow | None) -> CurrentContext:
         if window is None:

@@ -11,6 +11,7 @@ from companion import __version__
 from companion.app.cli import force_utf8_stdio, run_once, run_repl, run_watch
 from companion.app.factory import (
     build_active_window_provider,
+    build_context_engine,
     build_curiosity,
     build_memory,
     build_provider,
@@ -181,6 +182,7 @@ def main(argv: list[str] | None = None) -> int:
         return run_watch(
             window_provider,
             interval_s=settings.perception.poll_interval_s,
+            engine=build_context_engine(settings),
             memory=memoria,
             curiosity=build_curiosity(settings, memory=memoria),
             questions=generador,
@@ -215,7 +217,20 @@ def main(argv: list[str] | None = None) -> int:
         return run_once(
             conversation, args.prompt, stream=stream, window_provider=window_provider
         )
-    return run_repl(conversation, stream=stream, window_provider=window_provider)
+
+    # La compañera puede hablar por iniciativa propia mientras conversáis.
+    # El modelo ya está cargado para responder, así que redactar la pregunta
+    # no cuesta VRAM extra.
+    curiosidad = build_curiosity(settings, memory=memory)
+    return run_repl(
+        conversation,
+        stream=stream,
+        window_provider=window_provider,
+        engine=build_context_engine(settings),
+        curiosity=curiosidad,
+        questions=build_question_generator(settings, provider),
+        interval_s=settings.perception.poll_interval_s,
+    )
 
 
 if __name__ == "__main__":

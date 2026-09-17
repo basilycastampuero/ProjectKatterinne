@@ -67,6 +67,21 @@ class PerceptionSettings:
     #: para no perderse cambios de aplicacion.
     poll_interval_s: float = 1.0
 
+    #: Procesos que no cuentan como contexto ni como actividad.
+    #:
+    #: Existe por un problema muy concreto: mientras le hablas desde un
+    #: terminal, la ventana en primer plano **es ese terminal**. El contexto
+    #: pasa a ser "Windows Terminal" en vez de aquello en lo que estabas, y
+    #: con eso no hay nada interesante que preguntar.
+    #:
+    #: Poniendo aqui el terminal desde el que la lanzas, el contexto se
+    #: queda en la ultima ventana de verdad. Vacia por defecto: no se asume
+    #: desde donde se ejecuta.
+    ignore_processes: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "ignore_processes", tuple(self.ignore_processes))
+
 
 @dataclass(frozen=True, slots=True)
 class MemorySettings:

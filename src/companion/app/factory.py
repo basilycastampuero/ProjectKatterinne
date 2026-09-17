@@ -8,6 +8,7 @@ aplicacion.
 from __future__ import annotations
 
 from companion.config.settings import Settings
+from companion.context.engine import ContextEngine
 from companion.curiosity.engine import CuriosityEngine, CuriosityPolicy
 from companion.curiosity.questions import QuestionGenerator
 from companion.llm.ollama import OllamaProvider
@@ -88,6 +89,11 @@ def build_question_generator(
         max_words=settings.curiosity.max_question_words,
         allow_fallback=settings.curiosity.allow_template_fallback,
     )
+
+
+def build_context_engine(settings: Settings) -> ContextEngine:
+    """Motor de contexto con los procesos que hay que ignorar."""
+    return ContextEngine(ignore_processes=settings.perception.ignore_processes)
 
 
 def build_privacy_policy(settings: Settings) -> PrivacyPolicy:

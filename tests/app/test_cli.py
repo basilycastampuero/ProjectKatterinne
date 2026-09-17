@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Iterator
 
 import pytest
 
-from companion.app.cli import preflight, run_repl, run_watch
+from companion.app.cli import SIN_ENTRADA, preflight, run_repl, run_watch
 from companion.context.engine import ContextEngine
 from companion.conversation.manager import ConversationManager
 from companion.curiosity.engine import CuriosityEngine, CuriosityPolicy
+from companion.curiosity.questions import QuestionGenerator
 from companion.llm.errors import ModelNotFoundError, ProviderUnavailableError
 from companion.memory.manager import MemoryManager
 from companion.memory.repository import MemoryRepository
@@ -404,6 +406,148 @@ def test_sin_curiosidad_watch_no_dice_nada_de_ella(capsys) -> None:
     salida = capsys.readouterr().out
     assert "NO_ACTION" not in salida
     assert "HABLARÍA" not in salida
+
+
+# ----------------------------------------------------------------------
+# La compañera habla por iniciativa propia
+# ----------------------------------------------------------------------
+
+
+def _ventana_con_proyecto():
+    """Una ventana cuyo título sí produce proyecto.
+
+    El título por defecto de `make_window` tiene solo dos trozos, así que
+    el parser lo lee como archivo suelto y deja el proyecto vacío. Sin
+    proyecto la curiosidad se queda en 5/6 y no llega a hablar nunca.
+    """
+    return make_window(
+        "Code.exe", title="questions.py - ProjectKatterinne - Visual Studio Code"
+    )
+
+
+class _LectorFalso:
+    """Reproduce un guion de lo que escribe (o no escribe) la usuaria.
+
+    `SIN_ENTRADA` representa un segundo en el que nadie teclea, que es
+    justo cuando la compañera puede meter baza.
+    """
+
+    def __init__(self, guion) -> None:
+        self._guion = iter(guion)
+
+    def esperar(self, timeout: float):
+        try:
+            return next(self._guion)
+        except StopIteration:
+            return None
+
+
+def _generador(texto: str = "¿Qué montas en questions.py?") -> QuestionGenerator:
+    return QuestionGenerator(
+        FakeProvider(replies=[json.dumps({"question": texto, "based_on": "project"})])
+    )
+
+
+def test_la_compañera_pregunta_sin_que_le_hablen(
+    fake_provider: FakeProvider, memoria: MemoryManager, capsys
+) -> None:
+    """El hueco que se encontró probándolo: había que hablarle primero.
+
+    `input()` bloquea, así que mientras espera una línea no se ejecuta
+    nada y la curiosidad nunca llegaba a evaluarse en la conversación.
+    """
+    memoria.start_session()
+    conversation = ConversationManager(fake_provider, memory=memoria)
+    curiosidad = CuriosityEngine(
+        policy=CuriosityPolicy(min_seconds_in_context=0.0), memory=memoria
+    )
+
+    run_repl(
+        conversation,
+        window_provider=FakeActiveWindowProvider([_ventana_con_proyecto()]),
+        curiosity=curiosidad,
+        questions=_generador(),
+        reader=_LectorFalso([SIN_ENTRADA, None]),
+    )
+
+    assert "¿Qué montas en questions.py?" in capsys.readouterr().out
+
+
+def test_lo_que_pregunta_entra_en_el_hilo(
+    fake_provider: FakeProvider, memoria: MemoryManager
+) -> None:
+    # Si respondes, la respuesta necesita tener de qué colgar.
+    memoria.start_session()
+    conversation = ConversationManager(fake_provider, memory=memoria)
+
+    run_repl(
+        conversation,
+        window_provider=FakeActiveWindowProvider([_ventana_con_proyecto()]),
+        curiosity=CuriosityEngine(
+            policy=CuriosityPolicy(min_seconds_in_context=0.0), memory=memoria
+        ),
+        questions=_generador(),
+        reader=_LectorFalso([SIN_ENTRADA, None]),
+    )
+
+    assert conversation.history[-1].role == "assistant"
+    assert conversation.history[-1].content == "¿Qué montas en questions.py?"
+
+
+def test_no_interrumpe_una_conversacion_recien_empezada(
+    fake_provider: FakeProvider, memoria: MemoryManager, capsys
+) -> None:
+    # Sección 21: si ya se está hablando, no se interrumpe.
+    memoria.start_session()
+    conversation = ConversationManager(fake_provider, memory=memoria)
+
+    run_repl(
+        conversation,
+        stream=False,
+        window_provider=FakeActiveWindowProvider([_ventana_con_proyecto()]),
+        curiosity=CuriosityEngine(
+            policy=CuriosityPolicy(min_seconds_in_context=0.0), memory=memoria
+        ),
+        questions=_generador(),
+        reader=_LectorFalso(["hola", SIN_ENTRADA, SIN_ENTRADA, None]),
+    )
+
+    assert "¿Qué montas en questions.py?" not in capsys.readouterr().out
+
+
+def test_sin_curiosidad_el_repl_no_pregunta_nada(
+    fake_provider: FakeProvider, capsys
+) -> None:
+    run_repl(
+        fake_provider and ConversationManager(fake_provider),
+        window_provider=FakeActiveWindowProvider([_ventana_con_proyecto()]),
+        curiosity=None,
+        questions=None,
+        reader=_LectorFalso([SIN_ENTRADA, None]),
+    )
+
+    assert "IA:" not in capsys.readouterr().out
+
+
+def test_el_silencio_no_gasta_turnos(
+    fake_provider: FakeProvider, memoria: MemoryManager
+) -> None:
+    # Muchos sondeos sin nada que decir no deben consumir el cupo.
+    memoria.start_session()
+    memoria.confirm("Ya sé de qué va.", project="ProjectKatterinne")
+    curiosidad = CuriosityEngine(
+        policy=CuriosityPolicy(min_seconds_in_context=0.0), memory=memoria
+    )
+
+    run_repl(
+        ConversationManager(fake_provider, memory=memoria),
+        window_provider=FakeActiveWindowProvider([_ventana_con_proyecto()]),
+        curiosity=curiosidad,
+        questions=_generador(),
+        reader=_LectorFalso([SIN_ENTRADA] * 20 + [None]),
+    )
+
+    assert curiosidad.questions_asked == 0
 
 
 # ----------------------------------------------------------------------

@@ -28,6 +28,9 @@ ACTIVITY_FIELD = "recent_activity"
 #: vistazo de paso, no algo que estuviera haciendo.
 MIN_SPAN_SECONDS = 30.0
 
+#: Cuantas aplicaciones se le listan al modelo como mucho.
+MAX_LISTED_APPS = 6
+
 
 @dataclass(frozen=True, slots=True)
 class ActivitySpan:
@@ -39,12 +42,19 @@ class ActivitySpan:
 
     @property
     def human_duration(self) -> str:
-        minutos = self.seconds / 60
+        """Duracion en horas y minutos enteros.
+
+        Antes esto decia "unas 1.4 h". Un modelo pequeño leyendo una lista
+        de diez aplicaciones confundia ese decimal con la fila de al lado y
+        soltaba numeros que no eran. "1 h 24 min" no se presta a eso.
+        """
+        minutos = round(self.seconds / 60)
         if minutos < 1:
             return "menos de un minuto"
         if minutos < 60:
-            return f"unos {round(minutos)} min"
-        return f"unas {minutos / 60:.1f} h"
+            return f"{minutos} min"
+        horas, resto = divmod(minutos, 60)
+        return f"{horas} h" if resto == 0 else f"{horas} h {resto} min"
 
 
 def summarize_activity(
@@ -82,17 +92,29 @@ def summarize_activity(
     return [s for s in spans if s.seconds >= MIN_SPAN_SECONDS]
 
 
-def describe_activity(spans: Sequence[ActivitySpan]) -> str | None:
+def describe_activity(
+    spans: Sequence[ActivitySpan], *, max_apps: int = MAX_LISTED_APPS
+) -> str | None:
     """Traduce el resumen de actividad a texto para el modelo.
 
     Solo aplicaciones y tiempos. Nunca titulos de ventana, que es lo unico
     que diria *que* estaba haciendo dentro de cada una.
+
+    La lista se recorta: con diez entradas, un modelo pequeño empieza a
+    mezclar filas y atribuye el tiempo de una a otra. La cola son ademas
+    aplicaciones de paso que no aportan nada.
     """
     if not spans:
         return None
+
+    mostradas = list(spans[:max_apps])
+    restantes = len(spans) - len(mostradas)
+
     lineas = [ACTIVITY_HEADER]
-    for span in spans:
+    for span in mostradas:
         lineas.append(f"- {span.application}: {span.human_duration}")
+    if restantes > 0:
+        lineas.append(f"- y {restantes} aplicaciones más, de paso.")
     lineas.append(
         "No sabes qué hacía dentro de cada aplicación, solo cuál tenía delante."
     )

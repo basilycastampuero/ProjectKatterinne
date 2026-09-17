@@ -172,15 +172,48 @@ def test_el_texto_lista_aplicacion_y_duracion(repo: MemoryRepository) -> None:
     texto = describe_activity(summarize_activity(actividades, now=minutos(60)))
 
     assert texto is not None
-    assert "Visual Studio Code: unos 45 min" in texto
-    assert "Brave: unos 15 min" in texto
+    assert "Visual Studio Code: 45 min" in texto
+    assert "Brave: 15 min" in texto
 
 
-def test_las_duraciones_largas_se_dicen_en_horas(repo: MemoryRepository) -> None:
+def test_las_duraciones_largas_van_en_horas_y_minutos(repo: MemoryRepository) -> None:
+    """Regresión: antes decía "2.5 h".
+
+    Con una lista de diez aplicaciones, un modelo pequeño confundía ese
+    decimal con la fila de al lado y atribuía el tiempo de una a otra. Le
+    pasó de verdad: dijo "Brave unos 30 minutos" cuando Brave llevaba 1.4 h
+    y los 36 min eran de Chrome.
+    """
     sesion = repo.start_session(at=T0)
     actividades = _actividades(repo, sesion.id, [(0, "Code", False)])
 
     texto = describe_activity(summarize_activity(actividades, now=minutos(150)))
 
     assert texto is not None
-    assert "2.5 h" in texto
+    assert "2 h 30 min" in texto
+    assert "2.5" not in texto
+
+
+def test_las_horas_exactas_no_dicen_cero_minutos(repo: MemoryRepository) -> None:
+    sesion = repo.start_session(at=T0)
+    actividades = _actividades(repo, sesion.id, [(0, "Code", False)])
+
+    texto = describe_activity(summarize_activity(actividades, now=minutos(120)))
+
+    assert texto is not None
+    assert "Code: 2 h" in texto
+    assert "0 min" not in texto
+
+
+def test_la_lista_se_recorta(repo: MemoryRepository) -> None:
+    # Con diez entradas el modelo empieza a mezclar filas, y la cola son
+    # aplicaciones de paso que no aportan nada.
+    sesion = repo.start_session(at=T0)
+    entradas = [(i * 5, f"App{i:02d}", False) for i in range(10)]
+    actividades = _actividades(repo, sesion.id, entradas)
+
+    texto = describe_activity(summarize_activity(actividades, now=minutos(60)), max_apps=3)
+
+    assert texto is not None
+    assert texto.count("\n- ") == 4  # 3 aplicaciones + la línea del resto
+    assert "aplicaciones más, de paso" in texto

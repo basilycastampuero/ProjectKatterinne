@@ -7,7 +7,9 @@ ventana de escritorio y el avatar son fases posteriores.
 from __future__ import annotations
 
 import logging
+import queue
 import sys
+import threading
 import time
 from collections.abc import Callable
 from typing import Any
@@ -219,21 +221,84 @@ def _stream_answer(
     _out()
 
 
+#: Marcador de "nadie ha escrito todavía" al esperar una línea.
+SIN_ENTRADA = object()
+
+#: Tras un turno, se considera que la conversación sigue viva este rato y
+#: no se interrumpe (CLAUDE.md sección 21).
+CONVERSACION_VIVA_S = 120.0
+
+
+class _EntradaBloqueante:
+    """Espera una línea y punto. Es lo que basta si nadie puede interrumpir."""
+
+    def esperar(self, timeout: float) -> str | None:
+        try:
+            return input()
+        except (EOFError, KeyboardInterrupt):
+            return None
+
+
+class _EntradaEnSegundoPlano:
+    """Lee stdin en un hilo aparte para no bloquear el bucle principal.
+
+    `input()` bloquea hasta que hay línea. Mientras tanto no se ejecuta
+    nada, así que la compañera no puede decir nada por iniciativa propia:
+    hay que hablarle primero para que hable.
+
+    Un hilo lector que empuja a una cola lo arregla: el bucle pregunta
+    "¿ha escrito algo?" cada segundo y, si no, aprovecha para observar. El
+    hilo sigue usando `input()`, así que no se pierde la edición de línea
+    del terminal.
+
+    El hilo es demonio y solo lee stdin: nunca toca la base de datos ni el
+    modelo, así que no hay nada que sincronizar.
+    """
+
+    def __init__(self) -> None:
+        self._cola: queue.Queue[str | None] = queue.Queue()
+        threading.Thread(target=self._leer, daemon=True).start()
+
+    def _leer(self) -> None:
+        while True:
+            try:
+                self._cola.put(input())
+            except (EOFError, KeyboardInterrupt):
+                self._cola.put(None)
+                return
+
+    def esperar(self, timeout: float) -> str | None | object:
+        try:
+            return self._cola.get(timeout=timeout)
+        except queue.Empty:
+            return SIN_ENTRADA
+
+
 def run_repl(
     conversation: ConversationManager,
     *,
     stream: bool = True,
     window_provider: ActiveWindowProvider | None = None,
     engine: ContextEngine | None = None,
+    curiosity: CuriosityEngine | None = None,
+    questions: QuestionGenerator | None = None,
+    interval_s: float = 1.0,
+    reader: Any | None = None,
+    max_polls: int | None = None,
 ) -> int:
     """Bucle principal de conversacion. Devuelve el codigo de salida.
 
-    Cuando se le pasa un `window_provider`, mira qué ventana está activa
-    **justo antes de cada mensaje**, no en un hilo de fondo. Es mucho más
-    simple y además es honesto: la compañera se asoma cuando le hablas.
+    Con `window_provider` mira qué ventana está activa antes de responder.
+    Si además recibe `curiosity` y `questions`, observa mientras espera y
+    puede hablar por iniciativa propia.
     """
     engine = engine or ContextEngine()
     memoria = conversation.memory
+    puede_hablar_sola = (
+        curiosity is not None and questions is not None and window_provider is not None
+    )
+    if reader is None:
+        reader = _EntradaEnSegundoPlano() if puede_hablar_sola else _EntradaBloqueante()
 
     _out(BANNER)
     if not preflight(conversation.provider):
@@ -241,7 +306,11 @@ def run_repl(
     if memoria is not None:
         memoria.start_session()
         _print_memory_status(memoria)
-        _out()
+    if puede_hablar_sola:
+        _out("Observando mientras hablamos. Puede que pregunte algo por su cuenta.")
+    _out()
+
+    ultimo_turno: float | None = None
 
     def percibir() -> CurrentContext | None:
         if window_provider is None:
@@ -251,24 +320,72 @@ def run_repl(
             memoria.observe(contexto, evento)
         return contexto
 
+    def quizas_hablar() -> bool:
+        """Observa y, si hay motivo, dice algo. True si llegó a hablar."""
+        contexto = percibir()
+        if contexto is None or curiosity is None or questions is None:
+            return False
+
+        viva = (
+            ultimo_turno is not None
+            and (time.monotonic() - ultimo_turno) < CONVERSACION_VIVA_S
+        )
+        decision = curiosity.evaluate(contexto, conversation_active=viva)
+        if not decision.should_speak:
+            return False
+
+        recuerdos = []
+        if memoria is not None and contexto.project is not None:
+            recuerdos = memoria.recall(project=contexto.project.value, limit=5)
+
+        pregunta = questions.generate(decision, contexto, recuerdos)
+        if pregunta is None:
+            return False
+
+        _out()
+        _out(f"IA: {pregunta.text}")
+        # Entra en el hilo de la conversación: si respondes, la respuesta
+        # tiene de qué colgar (CLAUDE.md sección 47).
+        conversation.note_assistant_message(pregunta.text)
+        curiosity.record_question(decision)
+        return True
+
+    pedir_linea = True
+    sondeos = 0
     try:
-        while True:
-            try:
-                entrada = input("Tu: ").strip()
-            except (EOFError, KeyboardInterrupt):
+        while max_polls is None or sondeos < max_polls:
+            sondeos += 1
+            if pedir_linea:
+                print("Tu: ", end="", flush=True)
+                pedir_linea = False
+
+            entrada = reader.esperar(interval_s)
+
+            if entrada is SIN_ENTRADA:
+                # Nadie está escribiendo: es el momento de mirar.
+                if quizas_hablar():
+                    pedir_linea = True
+                continue
+
+            if entrada is None:
                 _out()
                 break
 
-            if not entrada:
+            texto = entrada.strip()
+            if not texto:
+                pedir_linea = True
                 continue
 
             contexto = percibir()
-            if entrada.startswith("/"):
-                if not _handle_command(entrada, conversation, contexto):
+            if texto.startswith("/"):
+                if not _handle_command(texto, conversation, contexto):
                     break
+                pedir_linea = True
                 continue
 
-            _stream_answer(conversation, entrada, stream=stream, context=contexto)
+            _stream_answer(conversation, texto, stream=stream, context=contexto)
+            ultimo_turno = time.monotonic()
+            pedir_linea = True
     finally:
         # Cerrar pase lo que pase: una sesión que nunca termina ensucia el
         # historial para siempre.

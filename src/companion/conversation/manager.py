@@ -165,6 +165,27 @@ class ConversationManager:
         log.info("turno completado turnos=%d", len(self._history))
         return result
 
+    def note_assistant_message(self, text: str) -> None:
+        """Anota algo que la compañera dijo sin que nadie preguntara.
+
+        Las preguntas que nacen de la curiosidad no pasan por `send()`,
+        pero tienen que entrar en el hilo igual: si la usuaria responde,
+        la respuesta necesita tener de qué colgar. Sin esto, el modelo
+        recibiria un turno suyo suelto sin la pregunta que lo provoco.
+        """
+        limpio = text.strip()
+        if not limpio:
+            return
+        self._history.append(Message(role="assistant", content=limpio))
+        if self._memory is None:
+            return
+        try:
+            self._memory.repository.add_message(
+                self._ensure_conversation(), "assistant", limpio
+            )
+        except Exception as exc:  # noqa: BLE001 - hablar importa mas
+            log.warning("no se pudo guardar la pregunta: %s", exc)
+
     # ------------------------------------------------------------------
     # Persistencia
     # ------------------------------------------------------------------

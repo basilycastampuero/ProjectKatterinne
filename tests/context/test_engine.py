@@ -223,6 +223,57 @@ def test_reset_lo_deja_todo_limpio(engine: ContextEngine) -> None:
     assert engine.current.application is None
 
 
+# ----------------------------------------------------------------------
+# Procesos ignorados
+# ----------------------------------------------------------------------
+
+
+def test_un_proceso_ignorado_no_cambia_el_contexto() -> None:
+    """La compañera no debe contarse a sí misma.
+
+    Mientras le hablas desde un terminal, la ventana en primer plano es ese
+    terminal. Sin esto, el contexto pasaba a ser "Windows Terminal" con
+    confianza 0.46 y la curiosidad se bloqueaba en `not_enough_context`:
+    nunca podría preguntar nada mientras conversáis.
+    """
+    engine = ContextEngine(ignore_processes=["WindowsTerminal.exe"])
+    engine.observe(make_window("Code.exe", title=VSCODE))
+
+    contexto, evento = engine.observe(make_window("WindowsTerminal.exe", title="bash"))
+
+    assert evento is None  # no ha pasado nada
+    assert contexto.application is not None
+    assert contexto.application.value == "Visual Studio Code"  # sigue lo de antes
+
+
+def test_ignorar_no_distingue_mayusculas_ni_extension() -> None:
+    engine = ContextEngine(ignore_processes=["windowsterminal"])
+    engine.observe(make_window("Code.exe", title=VSCODE))
+
+    _, evento = engine.observe(make_window("WindowsTerminal.exe", title="bash"))
+
+    assert evento is None
+
+
+def test_sin_lista_de_ignorados_todo_cuenta(engine: ContextEngine) -> None:
+    engine.observe(make_window("Code.exe", title=VSCODE))
+
+    contexto, evento = engine.observe(make_window("WindowsTerminal.exe", title="bash"))
+
+    assert evento is not None
+    assert contexto.application is not None
+    assert contexto.application.value == "Windows Terminal"
+
+
+def test_lo_ignorado_tampoco_entra_en_el_historial() -> None:
+    engine = ContextEngine(ignore_processes=["WindowsTerminal.exe"])
+    engine.observe(make_window("Code.exe", title=VSCODE))
+
+    contexto, _ = engine.observe(make_window("WindowsTerminal.exe", title="bash"))
+
+    assert len(contexto.recent_events) == 1
+
+
 def test_current_expone_el_ultimo_contexto(engine: ContextEngine) -> None:
     contexto, _ = engine.observe(make_window("Code.exe", title=VSCODE))
 
