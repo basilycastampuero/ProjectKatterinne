@@ -2,8 +2,12 @@
 
 Qué falta, por qué importa y con qué contexto retomarlo.
 
-Estado a 2026-09-17: `main` en `dfca1ac`, 491 tests en verde.
-El MVP de CLAUDE.md §45 está completo — los once puntos.
+Estado: el MVP de CLAUDE.md §45 está completo — los once puntos. Fases 0 a
+4, 6 y 7 terminadas; faltan visión, voz y avatar.
+
+Antes de empezar, `pytest` en verde es la línea base. Para el resto del
+estado, `git log --oneline`: un hash escrito aquí envejecería al siguiente
+commit.
 
 Lo que sigue es, por orden, lo que más valor daría.
 
