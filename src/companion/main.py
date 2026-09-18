@@ -1,4 +1,4 @@
-"""Punto de entrada del Local Companion."""
+"""Punto de entrada de ProjectKatterinne."""
 
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="companion",
         description="Compañera de IA local y contextual. PHASE 1: chat con modelo local.",
     )
-    parser.add_argument("--version", action="version", version=f"local-companion {__version__}")
+    parser.add_argument("--version", action="version", version=f"projectkatterinne {__version__}")
     parser.add_argument("--config", type=Path, help="ruta a un TOML de configuracion")
     parser.add_argument("--model", help="modelo a usar (sobrescribe la configuracion)")
     parser.add_argument("--host", help="host del runtime local (por defecto 127.0.0.1:11434)")

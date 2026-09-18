@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "local-companion"
+name = "projectkatterinne"
 version = "0.1.0"
 description = "Compañera de IA local y contextual para Windows 11 (local-first, privacy-first, read-only)"
 readme = "README.md"

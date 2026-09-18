@@ -1,4 +1,4 @@
-# Local Companion
+# ProjectKatterinne
 
 Una compañera de IA **local** que acompaña mientras usas el ordenador. No te
 controla, no te vigila y no te da consejos de productividad: observa, tiene

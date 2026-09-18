@@ -38,7 +38,7 @@ log = logging.getLogger("companion.app")
 
 BANNER = """\
 ╭──────────────────────────────────────────────╮
-│  Local Companion  ·  PHASE 1 (chat local)    │
+│  ProjectKatterinne  ·  PHASE 1 (chat local)  │
 ╰──────────────────────────────────────────────╯"""
 
 HELP = """\
@@ -451,7 +451,7 @@ def run_once(
 
 WATCH_BANNER = """\
 ╭──────────────────────────────────────────────╮
-│  Local Companion  ·  PHASE 7 (curiosidad)   │
+│  ProjectKatterinne  ·  PHASE 7 (curiosidad)  │
 ╰──────────────────────────────────────────────╯
 Observando qué ventana tiene el foco. Ctrl+C para parar.
 Sin capturas de pantalla y sin tocar nada."""
