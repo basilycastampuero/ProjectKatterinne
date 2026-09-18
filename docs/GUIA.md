@@ -502,6 +502,22 @@ tests se rompieron al reescribir un banner porque comprobaban frases de la
 interfaz en vez de comportamiento. Si quieres saber que no se usa el
 modelo, mira `provider.calls == []`, no un cartel.
 
+Las convenciones completas están en CLAUDE.md §52.
+
+---
+
+## Convenciones del repositorio
+
+Están escritas en `CLAUDE.md`, secciones 49 a 53. En resumen:
+
+| | Dónde |
+|---|---|
+| Formato de commits | §49 — Conventional Commits, en español, sin referencias a IA |
+| Ramas | §50 — una por fase; `main` siempre ejecutable; fusionar solo cuando se confirme |
+| Idioma | §51 — prosa en español con tildes, identificadores en inglés |
+| Tests | §52 — el nombre describe la regla; nunca comprobar texto decorativo |
+| Documentación | §53 — GUIA, PENDIENTE y README se actualizan al cerrar fase |
+
 ---
 
 ## Configuración

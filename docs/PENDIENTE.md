@@ -135,6 +135,7 @@ Ninguna urgente. Buenas para entrar en calor.
 | Sesiones huérfanas | `memory/manager.py` | `start_session(resume=True)` las retoma, pero si nadie las cierra se acumulan. Hay 20 sesiones en la base de datos actual |
 | `min_seconds_in_context` | `companion.toml` | Diseñado a 120. Si lo bajas para probar, acuérdate de subirlo |
 | Deduplicación de memoria | `memory/manager.py` | §17 la menciona para más adelante. Se vuelve urgente en cuanto exista el punto 1 |
+| Tildes en los comentarios | `src/` | §51 pide tildes en toda la prosa. Los módulos escritos primero (`llm/`, `perception/`) las tienen a medias, de una convención anterior. Se corrigen al tocar cada archivo, no de golpe |
 
 ---
 
