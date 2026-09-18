@@ -7,7 +7,11 @@ curiosidad y a veces pregunta.
 Todo ocurre en tu máquina. Sin API de OpenAI, sin Anthropic, sin Google, sin
 servicios de visión ni de voz en la nube.
 
-> Estado actual: **PHASE 7 — preguntas contextuales**.
+> Estado actual: **MVP completo** (CLAUDE.md §45, los once puntos).
+> Fases 0 a 4, 6 y 7 terminadas. Faltan visión, voz y avatar.
+>
+> **¿Nuevo en el proyecto?** Empieza por [`docs/GUIA.md`](docs/GUIA.md).
+> **¿Retomando?** [`docs/PENDIENTE.md`](docs/PENDIENTE.md).
 > Ver [CLAUDE.md](CLAUDE.md) para la arquitectura completa y el plan de fases.
 
 ---
@@ -32,7 +36,8 @@ servicios de visión ni de voz en la nube.
   validada: nunca afirma ver algo que no ve.
 - Configuración por TOML, variables de entorno y flags.
 - Diagnóstico del runtime local (`--check`).
-- 464 tests, de los que solo 7 necesitan Windows.
+- **Habla por iniciativa propia** cuando hay motivo, sin que le preguntes.
+- 491 tests, de los que solo 7 necesitan Windows.
 
 ## Qué todavía NO existe
 
@@ -41,10 +46,10 @@ Capturas de pantalla, visión, voz y avatar. Son PHASE 5, 8 y 10.
 Tampoco extrae hechos de lo que le cuentas: las conversaciones se guardan,
 pero convertir lo dicho en un recuerdo estructurado sigue pendiente.
 
-La compañera **lo sabe**: su prompt de sistema le dice explícitamente que no
-puede ver la pantalla, para que no se invente lo que estás haciendo. La
-percepción de ventanas todavía no está conectada a la conversación — eso es
-PHASE 3.
+La compañera **sabe dónde están sus límites**: su prompt de sistema le dice
+qué percibe y qué no, así que responde "no oigo nada" en vez de inventarse
+qué música suena. Mantener ese bloque al día importa — uno desfasado es peor
+que ninguno, porque le hace negar cosas que sí sabe.
 
 ## Lo que nunca hará
 
@@ -235,6 +240,18 @@ Flags útiles: `--no-stream`, `--temperature`, `--host`, `--config`,
 
 ## Configuración
 
+> ⚠️ **Lo primero que hay que configurar.** Mientras le hablas desde una
+> terminal, la ventana en primer plano **es esa terminal**: el contexto pasa
+> a ser "Windows Terminal" y no le queda nada interesante que preguntar.
+>
+> ```toml
+> [perception]
+> ignore_processes = ["WindowsTerminal.exe"]
+> ```
+>
+> Llega vacío porque no se puede asumir desde dónde la lanzas. Pon ahí tu
+> terminal y el contexto se quedará en la última ventana de verdad.
+
 Precedencia, de menor a mayor:
 
 ```
@@ -298,11 +315,13 @@ src/companion/
 ├── context/
 │   ├── models.py        ← Signal, Provenance, CurrentContext
 │   ├── activity.py      tipo de actividad desde proceso y ruta
+│   ├── rendering.py     cómo se le cuenta el contexto al modelo
 │   └── engine.py        combina las señales en un contexto
 ├── memory/
 │   ├── schema.py        seis tablas SQLite + versión del esquema
 │   ├── models.py        entidades inmutables
 │   ├── repository.py    ← lo único que escribe SQL
+│   ├── rendering.py     resumen de actividad y recuerdos
 │   └── manager.py       qué merece guardarse y cuánto dura (§17)
 └── curiosity/
     ├── models.py        CuriosityDecision y los motivos del silencio
@@ -316,7 +335,18 @@ La regla que sostiene el resto, aplicada dos veces: **nada fuera de
 sabe que existe Win32.** Cambiar de runtime o de plataforma es escribir un
 módulo hermano y añadir una rama en `factory.py`.
 
-Decisiones documentadas en [`docs/architecture-decisions/`](docs/architecture-decisions/).
+## Documentación
+
+| Documento | Para qué |
+|---|---|
+| [`docs/GUIA.md`](docs/GUIA.md) | Cómo funciona, archivo por archivo, y el porqué de cada cosa |
+| [`docs/PENDIENTE.md`](docs/PENDIENTE.md) | Qué falta y con qué contexto retomarlo |
+| [`docs/architecture-decisions/`](docs/architecture-decisions/) | Nueve ADRs: las decisiones y por qué se tomaron |
+| [`CLAUDE.md`](CLAUDE.md) | La especificación del proyecto |
+
+Si vas a cambiar algo que ya tiene un ADR, léelo antes: casi siempre la
+alternativa obvia ya se consideró y hay un motivo escrito para no haberla
+tomado.
 
 ## Privacidad
 
