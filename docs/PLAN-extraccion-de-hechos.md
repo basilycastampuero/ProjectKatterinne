@@ -91,7 +91,7 @@ percibe la persona. No puede ir en el camino de la respuesta.
 |---|---|
 | Tras `extraction_idle_s` (30 s) sin escribir después de un turno | El REPL ya tiene esos huecos: es donde la curiosidad mira. Nadie espera una respuesta en ese momento |
 | Al hacer `/reset` | Lo que se vacía del historial tiene que haberse revisado antes |
-| Al cerrar (`/salir`, Ctrl+C, fin de `--prompt`) | Última oportunidad. Si el modelo falla aquí, se pierde el lote y **no** se bloquea la salida |
+| Al cerrar (`/exit`, Ctrl+C, fin de `--prompt`) | Última oportunidad. Si el modelo falla aquí, se pierde el lote y **no** se bloquea la salida |
 
 En el modo sin curiosidad (`_EntradaBloqueante`) no hay huecos: solo se
 extrae con `/reset` y al cerrar. Es aceptable.
@@ -299,8 +299,8 @@ max_facts_per_extraction = 3
 
 Con escritura automática, la persona necesita poder corregir:
 
-- `/recuerdos` enseña el `id` de cada hecho.
-- `/olvidar <id>` lo borra. Usa `delete_fact()`, que ya existe.
+- `/memory` enseña el `id` de cada hecho.
+- `/forget <id>` lo borra. Usa `delete_fact()`, que ya existe.
 
 Si la compañera recordara cosas que no se pueden borrar, dejaría de ser una
 presencia y pasaría a sentirse como vigilancia.
@@ -315,7 +315,7 @@ tests.
    con cosas que sí merecen recordarse.
 2. Salir, volver a entrar y preguntar *"¿qué sabes de lo que estoy
    haciendo?"* y *"¿qué sabes de mí?"*.
-3. Revisar con `/recuerdos` qué entró, y con el log **cuántos** candidatos
+3. Revisar con `/memory` qué entró, y con el log **cuántos** candidatos
    se rechazaron y por qué.
 4. Medir la latencia de una extracción en caliente y comprobar que no se
    nota al escribir.
@@ -336,7 +336,7 @@ tests.
 - `GUIA.md`: `conversation/facts.py` en el mapa, y el recorrido de un turno
   hasta convertirse en recuerdo.
 - `README.md`: quitar *"Tampoco extrae hechos"* de lo que no existe, y
-  documentar `/olvidar`.
+  documentar `/forget`.
 - `PENDIENTE.md`: quitar el punto 1, mover la deduplicación y el
   seguimiento de la calidad de extracción a "Cosas pequeñas", y borrar este
   plan.
@@ -352,7 +352,7 @@ tests.
 - Ningún proyecto inferido pasa a confirmado por efecto secundario.
 - La respuesta a un mensaje no tarda más que antes.
 - El contenido de los hechos no aparece en el log a ningún nivel.
-- `/olvidar` borra.
+- `/forget` borra.
 - Tests en verde y la aplicación probada a mano (paso 8).
 
 ## Decisiones abiertas
@@ -360,7 +360,7 @@ tests.
 Tienen un valor por defecto razonable, pero conviene revisarlas con el uso:
 
 - **¿Avisar al guardar?** Por defecto no dice nada: el silencio es lo
-  normal y `/recuerdos` está a mano. La alternativa es una línea discreta
+  normal y `/memory` está a mano. La alternativa es una línea discreta
   del tipo `(lo recordaré)`, que da más transparencia pero rompe el
   silencio en cada lote.
 - **¿Guardar inferencias algún día?** Quedan fuera de esta versión. Si se

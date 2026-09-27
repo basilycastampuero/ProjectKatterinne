@@ -134,13 +134,13 @@ Dentro del REPL:
 
 | Comando | Qué hace |
 |---|---|
-| `/ayuda` | lista los comandos |
+| `/help` | lista los comandos |
 | `/info` | modelo, cuantización, ventana de contexto |
-| `/contexto` | qué percibe ahora y con qué procedencia |
-| `/recuerdos` | qué tiene guardado en la memoria local |
-| `/historial` | turnos que se están enviando al modelo |
+| `/context` | qué percibe ahora y con qué procedencia |
+| `/memory` | qué tiene guardado en la memoria local |
+| `/record` | turnos que se están enviando al modelo |
 | `/reset` | vacía la conversación |
-| `/salir` | cierra y libera la VRAM |
+| `/exit` | cierra y libera la VRAM |
 
 Mientras conversas, mira qué ventana tienes delante **justo antes de cada
 mensaje** — no hay ningún hilo vigilándote de fondo.

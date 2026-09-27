@@ -43,13 +43,13 @@ BANNER = """\
 
 HELP = """\
 Comandos disponibles:
-  /ayuda       muestra esta ayuda
-  /info        modelo, cuantizacion y ventana de contexto
-  /contexto    que percibe ahora mismo y con que procedencia
-  /recuerdos   que tiene guardado en la memoria local
-  /historial   turnos que se estan enviando al modelo
-  /reset       vacia la conversacion
-  /salir       cierra el companion (tambien Ctrl+C o Ctrl+Z+Enter)
+  /help      muestra esta ayuda
+  /info      modelo, cuantización y ventana de contexto
+  /context   qué percibe ahora mismo y con qué procedencia
+  /memory    qué tiene guardado en la memoria local
+  /record    turnos que se están enviando al modelo
+  /reset     vacía la conversación
+  /exit      cierra el companion (también Ctrl+C o Ctrl+Z+Enter)
 """
 
 
@@ -90,7 +90,7 @@ def preflight(provider: LLMProvider) -> bool:
     _out(f"Tamano:    {info.human_size()}    Contexto: {ctx}")
     _out("Todo local. Sin red, sin capturas, sin control del PC.")
     _out()
-    _out("Escribe /ayuda para ver los comandos.")
+    _out("Escribe /help para ver los comandos.")
     _out()
     return True
 
@@ -154,23 +154,23 @@ def _handle_command(
 ) -> bool:
     """Procesa un comando `/...`. Devuelve False si hay que salir."""
     match command.lower():
-        case "/salir" | "/exit" | "/quit":
+        case "/exit" | "/quit":
             return False
-        case "/ayuda" | "/help":
+        case "/help":
             _out(HELP)
         case "/reset":
             conversation.reset()
             _out("Conversacion reiniciada.")
         case "/info":
             _print_info(conversation)
-        case "/contexto":
+        case "/context":
             _print_context(context)
-        case "/recuerdos":
+        case "/memory":
             _print_memories(conversation)
-        case "/historial":
+        case "/record":
             _print_history(conversation)
         case _:
-            _out(f"Comando desconocido: {command}. Prueba /ayuda.")
+            _out(f"Comando desconocido: {command}. Prueba /help.")
     return True
 
 

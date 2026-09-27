@@ -62,7 +62,7 @@ def test_preflight_explica_como_instalar_el_modelo(capsys) -> None:
 def test_el_repl_conversa_y_sale_limpio(
     fake_provider: FakeProvider, monkeypatch: pytest.MonkeyPatch, capsys
 ) -> None:
-    _inputs(monkeypatch, ["hola", "/salir"])
+    _inputs(monkeypatch, ["hola", "/exit"])
 
     codigo = run_repl(ConversationManager(fake_provider), stream=False)
 
@@ -83,7 +83,7 @@ def test_el_repl_devuelve_error_si_el_preflight_falla(
 def test_el_repl_ignora_lineas_vacias(
     fake_provider: FakeProvider, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _inputs(monkeypatch, ["", "   ", "/salir"])
+    _inputs(monkeypatch, ["", "   ", "/exit"])
 
     run_repl(ConversationManager(fake_provider), stream=False)
 
@@ -94,7 +94,7 @@ def test_reset_desde_el_repl_vacia_la_conversacion(
     fake_provider: FakeProvider, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     conversation = ConversationManager(fake_provider)
-    _inputs(monkeypatch, ["hola", "/reset", "/salir"])
+    _inputs(monkeypatch, ["hola", "/reset", "/exit"])
 
     run_repl(conversation, stream=False)
 
@@ -104,7 +104,7 @@ def test_reset_desde_el_repl_vacia_la_conversacion(
 def test_comando_desconocido_no_rompe_el_repl(
     fake_provider: FakeProvider, monkeypatch: pytest.MonkeyPatch, capsys
 ) -> None:
-    _inputs(monkeypatch, ["/inventado", "/salir"])
+    _inputs(monkeypatch, ["/inventado", "/exit"])
 
     assert run_repl(ConversationManager(fake_provider), stream=False) == 0
     assert "Comando desconocido" in capsys.readouterr().out
@@ -122,7 +122,7 @@ def test_un_fallo_del_runtime_no_tumba_el_repl(
     monkeypatch: pytest.MonkeyPatch, capsys
 ) -> None:
     provider = FakeProvider(raises=ProviderUnavailableError("ollama murio"))
-    _inputs(monkeypatch, ["hola", "/salir"])
+    _inputs(monkeypatch, ["hola", "/exit"])
 
     codigo = run_repl(ConversationManager(provider), stream=False)
 
@@ -607,7 +607,7 @@ def test_el_repl_mira_la_ventana_antes_de_responder(
     # Sin hilos de fondo: se asoma cuando le hablas.
     ventanas = FakeActiveWindowProvider([make_window("Code.exe")])
     conversation = ConversationManager(fake_provider)
-    _inputs(monkeypatch, ["hola", "/salir"])
+    _inputs(monkeypatch, ["hola", "/exit"])
 
     run_repl(conversation, stream=False, window_provider=ventanas)
 
@@ -621,7 +621,7 @@ def test_el_repl_sin_percepcion_no_inyecta_contexto(
     fake_provider: FakeProvider, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     conversation = ConversationManager(fake_provider)
-    _inputs(monkeypatch, ["hola", "/salir"])
+    _inputs(monkeypatch, ["hola", "/exit"])
 
     run_repl(conversation, stream=False, window_provider=None)
 
@@ -632,7 +632,7 @@ def test_el_comando_contexto_muestra_lo_que_percibe(
     fake_provider: FakeProvider, monkeypatch: pytest.MonkeyPatch, capsys
 ) -> None:
     ventanas = FakeActiveWindowProvider([make_window("Code.exe")])
-    _inputs(monkeypatch, ["/contexto", "/salir"])
+    _inputs(monkeypatch, ["/context", "/exit"])
 
     run_repl(ConversationManager(fake_provider), window_provider=ventanas)
 
@@ -646,7 +646,7 @@ def test_el_comando_recuerdos_lista_la_memoria(
 ) -> None:
     memoria.start_session()
     memoria.confirm("Prefiere modelos locales.")
-    _inputs(monkeypatch, ["/recuerdos", "/salir"])
+    _inputs(monkeypatch, ["/memory", "/exit"])
 
     run_repl(ConversationManager(fake_provider, memory=memoria))
 
@@ -657,7 +657,7 @@ def test_el_repl_cierra_sesion_y_conversacion_al_salir(
     fake_provider: FakeProvider, memoria: MemoryManager, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     conversation = ConversationManager(fake_provider, memory=memoria)
-    _inputs(monkeypatch, ["hola", "/salir"])
+    _inputs(monkeypatch, ["hola", "/exit"])
 
     run_repl(conversation, stream=False)
 
