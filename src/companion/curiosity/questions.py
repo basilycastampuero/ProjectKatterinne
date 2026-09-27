@@ -1,8 +1,8 @@
-"""Redaccion de la pregunta. CLAUDE.md PHASE 7.
+"""Redacción de la pregunta. PHASE 7.
 
 Aqui es donde el modelo se usa por primera vez para algo que **no** es
 responderle a la usuaria: habla con el sistema. Y cuando eso pasa, la
-seccion 24 manda salida estructurada y **validacion de todo**.
+salida va estructurada y **se valida todo**.
 
 El reparto de trabajo con PHASE 6 es estricto:
 
@@ -39,11 +39,11 @@ from companion.memory.rendering import MEMORY_FIELD, describe_facts
 
 log = logging.getLogger("companion.curiosity")
 
-#: Cuantas palabras como mucho. La seccion 38 pide brevedad, y una pregunta
+#: Cuantas palabras como mucho. Se busca brevedad, y una pregunta
 #: larga casi siempre son dos preguntas disfrazadas.
 MAX_WORDS = 25
 
-#: Frases de coach de productividad. Prohibidas por las secciones 38 y 40.
+#: Frases de coach de productividad. Prohibidas: ni motivar, ni juzgar, ni meter prisa.
 #:
 #: Van como expresiones regulares y no como texto literal porque el español
 #: conjuga: "sigue así", "seguir así" y "sigues así" son la misma cosa y una
@@ -60,7 +60,7 @@ BANNED_COACHING: tuple[str, ...] = (
     r"procrastin",
 )
 
-#: Frases que afirman una percepcion que no tiene. Secciones 3.3 y 7.
+#: Frases que afirman una percepción que no tiene.
 BANNED_VISION: tuple[str, ...] = (
     r"ve[o]\s+que",
     r"estoy viendo",
@@ -144,7 +144,7 @@ def validate_question(
         return "no es una pregunta"
 
     if limpio.count("?") > 1:
-        # Dos preguntas de golpe abruman, y la seccion 38 pide brevedad.
+        # Dos preguntas de golpe abruman, y se busca brevedad.
         return "más de una pregunta"
 
     minusculas = limpio.lower()
@@ -186,8 +186,7 @@ class QuestionGenerator:
     ) -> GeneratedQuestion | None:
         """Redacta la pregunta, o devuelve `None` si no hay nada decente.
 
-        `None` no es un fallo: callarse siempre es una salida valida
-        (CLAUDE.md seccion 19).
+        `None` no es un fallo: callarse siempre es una salida válida.
         """
         if not decision.should_speak or decision.question_type is None:
             return None
@@ -195,7 +194,7 @@ class QuestionGenerator:
         permitidos = self._allowed_fields(context, memories)
         if not permitidos:
             # Sin nada real en lo que apoyarse, cualquier pregunta seria
-            # inventada. Seccion 20: no crear preguntas artificialmente.
+            # inventada. No se crean preguntas artificialmente.
             log.info("sin contexto en el que apoyar una pregunta: silencio")
             return None
 

@@ -6,8 +6,8 @@
 
 ## Contexto
 
-CLAUDE.md §22 pide un modo privacidad y una lista negra de aplicaciones
-"desde temprano". Hasta PHASE 2 no había nada que proteger. Ahora la
+Hacía falta un modo privacidad y una lista negra de aplicaciones
+desde temprano. Hasta PHASE 2 no había nada que proteger. Ahora la
 aplicación lee títulos de ventana, que es el primer dato genuinamente
 sensible del proyecto: pueden contener nombres de documentos, URLs, números
 de cuenta o el nombre de una conversación privada.
@@ -40,7 +40,7 @@ en lugar de devolver `None`.
 *"la usuaria está en su banco"* con *"la usuaria bloqueó el ordenador"* haría
 que el sistema tratara mal ambos casos.
 
-Y §21 exige `if application_blacklisted: don't_interrupt()`. Para no
+Y la curiosidad exige `if application_blacklisted: don't_interrupt()`. Para no
 interrumpir hay que **saber** que se está en una aplicación protegida.
 
 ### 3. Qué se conserva y qué no
@@ -93,7 +93,7 @@ Ambas tienen test de regresión:
 
 ## Consecuencias
 
-- La lista negra llega **vacía**. §22 prohíbe asumir qué aplicaciones usa
+- La lista negra llega **vacía**. No se puede asumir qué aplicaciones usa
   cada persona.
 - Los nombres se comparan normalizados (sin distinguir mayúsculas, con o sin
   `.exe`), para que nadie tenga que recordar cómo lo escribió.
@@ -106,5 +106,5 @@ Ambas tienen test de regresión:
 ## Alcance futuro
 
 En PHASE 5 esta misma `PrivacyPolicy` será la que decida si se puede
-capturar la pantalla y ejecutar OCR, que es el uso principal que le da §22.
+capturar la pantalla y ejecutar OCR, que es su uso principal.
 La estructura ya está: hará falta un método más, no un rediseño.

@@ -1,9 +1,8 @@
 """Esquema SQLite de la memoria local.
 
-CLAUDE.md seccion 30, PHASE 4: sesiones, actividades, proyectos, hechos y
-conversaciones. Sin embeddings y sin base de datos vectorial: seccion 16 lo
-dice expresamente, y seccion 9 del plan de fases deja eso para mas adelante,
-solo si SQLite deja de bastar.
+PHASE 4: sesiones, actividades, proyectos, hechos y conversaciones. Sin
+embeddings y sin base de datos vectorial: eso queda para PHASE 9, y solo
+si SQLite deja de bastar.
 
 `sqlite3` es de la biblioteca estandar, asi que el proyecto sigue sin
 dependencias de runtime (ver ADR-002).
@@ -42,7 +41,7 @@ _TABLES = (
     )
     """,
     # ------------------------------------------------------------------
-    # Sesiones (seccion 26)
+    # Sesiones
     # ------------------------------------------------------------------
     """
     CREATE TABLE IF NOT EXISTS sessions (
@@ -54,7 +53,7 @@ _TABLES = (
     )
     """,
     # ------------------------------------------------------------------
-    # Actividades (seccion 10)
+    # Actividades
     #
     # `redacted` existe para poder registrar que hubo un cambio sin
     # registrar cual. Con redacted=1, application/process/project_id van
@@ -74,7 +73,7 @@ _TABLES = (
     )
     """,
     # ------------------------------------------------------------------
-    # Hechos (secciones 16 y 17)
+    # Hechos
     #
     # provenance + confidence + source son ADR-006 hecho columnas.
     # ------------------------------------------------------------------

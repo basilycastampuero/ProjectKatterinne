@@ -1,10 +1,8 @@
 """Motor de curiosidad: decide **si** hablar, nunca que decir.
 
-CLAUDE.md secciones 18, 19 y 21.
-
 El orden importa mucho. Primero se pasa por una serie de barreras que solo
-pueden decir que no; solo lo que las sobrevive todas llega a puntuarse. La
-seccion 21 lo escribe casi como pseudocodigo:
+pueden decir que no; solo lo que las sobrevive todas llega a puntuarse. En
+pseudocódigo:
 
     if conversation_active:      don't_interrupt()
     if cooldown_active:          don't_interrupt()
@@ -39,7 +37,7 @@ log = logging.getLogger("companion.curiosity")
 
 @dataclass(frozen=True, slots=True)
 class CuriosityPolicy:
-    """Cuando se permite hablar. Todo configurable (CLAUDE.md seccion 21)."""
+    """Cuándo se permite hablar. Todo configurable."""
 
     enabled: bool = True
 
@@ -47,7 +45,7 @@ class CuriosityPolicy:
     threshold: int = 6
 
     #: Tiempo minimo entre dos preguntas. Veinte minutos por defecto:
-    #: la seccion 19 quiere una sesion de dos horas con **una** pregunta,
+    #: se busca una sesión de dos horas con **una** pregunta,
     #: no con cuarenta y siete.
     min_seconds_between_questions: float = 1200.0
 
@@ -125,7 +123,7 @@ class CuriosityEngine:
 
         if (resultado.topic, resultado.question_type) in self._asked:
             # Preguntar dos veces lo mismo es de las cosas mas molestas que
-            # puede hacer (seccion 21).
+            # puede hacer.
             return self._log(
                 CuriosityDecision.silence(
                     SilenceReason.ALREADY_ASKED,
@@ -281,7 +279,6 @@ class CuriosityEngine:
         self._context_since = None
 
     def _log(self, decision: CuriosityDecision) -> CuriosityDecision:
-        # Formato de CLAUDE.md seccion 32.
         log.debug(
             "score=%d umbral=%d decision=%s motivo=%s",
             decision.score,

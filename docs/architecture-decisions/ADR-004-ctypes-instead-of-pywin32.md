@@ -10,8 +10,9 @@ PHASE 2 necesita saber qué ventana tiene el foco. En Windows eso son cuatro
 llamadas nativas: `GetForegroundWindow`, `GetWindowTextW`,
 `GetWindowThreadProcessId` y `QueryFullProcessImageNameW`.
 
-CLAUDE.md §5 menciona "pywin32 o APIs equivalentes", así que la puerta estaba
-abierta a la dependencia. §34 obliga a justificarla antes de añadirla.
+El plan inicial mencionaba "pywin32 o APIs equivalentes", así que la puerta
+estaba abierta a la dependencia. Pero cada dependencia tiene que
+justificarse antes de añadirla.
 
 ## Decisión
 
@@ -20,7 +21,7 @@ Usar `ctypes` de la biblioteca estándar. Todas las declaraciones viven en
 
 ## Justificación
 
-Aplicando el cuestionario de §34:
+Aplicando el cuestionario de dependencias:
 
 | Pregunta | Respuesta |
 |---|---|

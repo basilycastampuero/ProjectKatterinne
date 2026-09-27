@@ -1,6 +1,6 @@
 """Tipos del motor de contexto.
 
-La pieza central es la distincion de CLAUDE.md seccion 11:
+La pieza central es la distinción entre tres niveles:
 
     observado        el titulo de la ventana dice "ProjectKatterinne"
     inferido         *probablemente* el proyecto se llama asi
@@ -63,8 +63,8 @@ _AUTHORITY: dict[Provenance, int] = {
 class ActivityType(StrEnum):
     """Que clase de uso del ordenador es este.
 
-    Son categorias **descriptivas**, nunca juicios. CLAUDE.md seccion 10
-    prohibe expresamente etiquetar `productive`, `distracted` o
+    Son categorias **descriptivas**, nunca juicios. Está prohibido
+    expresamente etiquetar `productive`, `distracted` o
     `procrastinating`: el sistema registra lo que ocurre, no opina sobre
     ello.
     """
@@ -89,8 +89,8 @@ class Signal[T]:
     provenance: Provenance
     confidence: float
     #: Que mecanismo lo produjo: "process", "window_title", "user"...
-    #: Sirve para depurar y, mas adelante, para el campo `source` que pide
-    #: la memoria en CLAUDE.md seccion 16.
+    #: Sirve para depurar y, mas adelante, para el campo `source` de
+    #: la memoria.
     source: str = ""
 
     @property
@@ -114,7 +114,7 @@ _CONTEXT_SLOTS = 4
 class CurrentContext:
     """Lo que el sistema cree entender de la situacion actual.
 
-    CLAUDE.md seccion 15 avisa de que esto **no** debe ser un prompt gigante.
+    Esto **no** es un prompt gigante.
     Es un objeto estructurado: quien lo consuma decide que parte necesita.
     """
 

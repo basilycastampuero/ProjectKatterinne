@@ -1,4 +1,4 @@
-"""Tests de sesiones y actividades (CLAUDE.md secciones 10 y 26)."""
+"""Tests de sesiones y actividades."""
 
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ def test_una_sesion_nueva_nace_abierta(repo: MemoryRepository) -> None:
 
 
 def test_cerrar_una_sesion_registra_el_resumen(repo: MemoryRepository) -> None:
-    # La sección 26 quiere poder responder "¿qué hiciste ayer?" sin guardar
+    # Se quiere poder responder "¿qué hiciste ayer?" sin guardar
     # ni una captura.
     proyecto = repo.upsert_project("StudyFlow")
     sesion = repo.start_session(at=T0)

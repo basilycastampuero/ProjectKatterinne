@@ -1,4 +1,4 @@
-"""Tests de la redacción de preguntas (CLAUDE.md PHASE 7 y secciones 7, 20, 24).
+"""Tests de la redacción de preguntas.
 
 Lo que más se prueba aquí no es generar, sino **rechazar**. Un modelo puede
 devolver JSON perfectamente válido y aun así inventarse lo que hay en la
@@ -59,7 +59,7 @@ def test_se_rechaza_lo_que_no_es_una_pregunta() -> None:
 
 
 def test_se_rechazan_dos_preguntas_de_golpe() -> None:
-    # Abruman, y la sección 38 pide brevedad.
+    # Abruman, y se busca brevedad.
     motivo = validate_question("¿Qué haces? ¿Y por qué?", "project", CAMPOS)
 
     assert motivo == "más de una pregunta"
@@ -84,7 +84,7 @@ def test_se_rechaza_una_pregunta_kilometrica() -> None:
     ],
 )
 def test_se_rechaza_el_tono_de_coach(texto: str) -> None:
-    """Secciones 38 y 40: ni motivar, ni juzgar, ni meter prisa.
+    """Ni motivar, ni juzgar, ni meter prisa.
 
     Es la diferencia entre una compañera y un gestor de productividad.
     """
@@ -103,7 +103,7 @@ def test_se_rechaza_el_tono_de_coach(texto: str) -> None:
     ],
 )
 def test_se_rechaza_afirmar_que_ve_la_pantalla(texto: str) -> None:
-    # No la ve. Secciones 3.3 y 7.
+    # No la ve.
     motivo = validate_question(texto, "project", CAMPOS)
 
     assert motivo is not None
@@ -151,7 +151,7 @@ def test_una_respuesta_valida_del_modelo_se_usa_tal_cual() -> None:
 
 
 def test_se_pide_salida_json_al_modelo() -> None:
-    # Sección 24: cuando el modelo habla con el sistema, va estructurado.
+    # Cuando el modelo habla con el sistema, va estructurado.
     provider = _provider(question="¿Qué montas?", based_on="project")
 
     QuestionGenerator(provider).generate(_decision(), contexto())
@@ -257,7 +257,7 @@ def test_una_decision_de_silencio_no_genera_nada() -> None:
 
 
 def test_sin_contexto_no_se_pregunta_nada() -> None:
-    # Sección 20: no crear preguntas artificialmente sin contexto.
+    # No crear preguntas artificialmente sin contexto.
     provider = _provider(question="¿Qué montas?", based_on="project")
 
     assert QuestionGenerator(provider).generate(_decision(), CurrentContext()) is None

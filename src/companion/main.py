@@ -171,7 +171,7 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         memoria = build_memory(settings)
         # El modelo solo se carga si de verdad se va a preguntar: observar
-        # no debe costar VRAM (CLAUDE.md seccion 33).
+        # no debe costar VRAM.
         generador = None
         if args.ask:
             try:

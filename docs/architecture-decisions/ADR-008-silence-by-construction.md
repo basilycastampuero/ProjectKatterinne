@@ -6,12 +6,11 @@
 
 ## Contexto
 
-CLAUDE.md §19 es inusual como requisito de producto:
+El requisito de producto es inusual: una buena sesión podría tener 2
+horas, 47 cambios de contexto y 1 pregunta, y eso es mejor que 2 horas y
+47 preguntas.
 
-> *"Una buena sesión podría tener: 2 horas, 47 cambios de contexto, 1
-> pregunta. Eso puede ser mejor que 2 horas, 47 preguntas."*
-
-Es decir: el sistema **no** debe optimizar para conversar. Y §21 pide un
+Es decir: el sistema **no** debe optimizar para conversar. Hace falta un
 sistema de cooldown explícito para impedirlo.
 
 Eso choca con cómo se diseña normalmente un asistente, donde hablar es el
@@ -20,7 +19,7 @@ objetivo y callarse es el fallo. Aquí es al revés.
 ## Decisión 1 — Barreras primero, puntuación después
 
 `evaluate()` pasa por una secuencia de barreras que **solo pueden decir que
-no**, en el orden de §21. Solo lo que las sobrevive todas llega a puntuarse:
+no**, en orden. Solo lo que las sobrevive todas llega a puntuarse:
 
 ```
 apagada             → DISABLED
@@ -107,8 +106,8 @@ de que nadie escriba.** Regresión en
 El motor devuelve un `QuestionType`, nunca un texto. Redactar la pregunta es
 PHASE 7.
 
-§30 lo pide así —*"Only call the LLM when the score passes a threshold"*— y
-la consecuencia práctica es que **las evaluaciones son gratis**: ni un token,
+Solo se llama al modelo cuando la puntuación supera el umbral, y la
+consecuencia práctica es que **las evaluaciones son gratis**: ni un token,
 ni un milisegundo de GPU, en el 99% de los casos en que la respuesta es
 callarse.
 

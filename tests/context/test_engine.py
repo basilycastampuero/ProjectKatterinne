@@ -1,4 +1,4 @@
-"""Tests del motor de contexto (CLAUDE.md secciones 11 y 15)."""
+"""Tests del motor de contexto."""
 
 from __future__ import annotations
 
@@ -37,12 +37,12 @@ def test_convierte_una_ventana_en_contexto_con_significado(engine: ContextEngine
 
 
 # ----------------------------------------------------------------------
-# Observado / inferido / confirmado (sección 11)
+# Observado / inferido / confirmado
 # ----------------------------------------------------------------------
 
 
 def test_la_aplicacion_es_observada_y_el_proyecto_inferido(engine: ContextEngine) -> None:
-    # La distinción central de la sección 11. El proceso lo dice Windows;
+    # La distinción central. El proceso lo dice Windows;
     # el proyecto es una lectura del título que puede estar mal.
     contexto, _ = engine.observe(make_window("Code.exe", title=VSCODE))
 

@@ -29,7 +29,7 @@ def _tablas(repo: MemoryRepository) -> set[str]:
 
 
 def test_se_crean_las_tablas_de_la_fase_4(repo: MemoryRepository) -> None:
-    # CLAUDE.md PHASE 4: sesiones, actividades, proyectos, hechos y
+    # PHASE 4: sesiones, actividades, proyectos, hechos y
     # conversaciones. Ni una tabla más.
     assert TABLAS_ESPERADAS <= _tablas(repo)
 

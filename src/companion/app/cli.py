@@ -1,6 +1,6 @@
 """Interfaz de terminal (PHASE 1).
 
-Un REPL sencillo. CLAUDE.md seccion 28 pide empezar por lo minimo: la
+Un REPL sencillo. La interfaz empieza por lo mínimo: la
 ventana de escritorio y el avatar son fases posteriores.
 """
 
@@ -61,7 +61,7 @@ def preflight(provider: LLMProvider) -> bool:
     """Comprueba que el runtime local esta listo antes de abrir el REPL.
 
     Devuelve False y explica que hacer en lugar de dejar que el primer
-    mensaje del usuario reviente (CLAUDE.md: los errores se manejan bien).
+    mensaje del usuario reviente.
     """
     try:
         info = provider.model_info()
@@ -225,7 +225,7 @@ def _stream_answer(
 SIN_ENTRADA = object()
 
 #: Tras un turno, se considera que la conversación sigue viva este rato y
-#: no se interrumpe (CLAUDE.md sección 21).
+#: no se interrumpe.
 CONVERSACION_VIVA_S = 120.0
 
 
@@ -351,7 +351,7 @@ def run_repl(
         _out()
         _out(f"IA: {pregunta.text}")
         # Entra en el hilo de la conversación: si respondes, la respuesta
-        # tiene de qué colgar (CLAUDE.md sección 47).
+        # tiene de qué colgar.
         conversation.note_assistant_message(pregunta.text)
         curiosity.record_question(decision)
         return True
@@ -424,7 +424,7 @@ def run_once(
     memoria = conversation.memory
     if memoria is not None:
         # Se une a la sesión en curso para que la conversación cuelgue de
-        # algo (CLAUDE.md sección 26), pero NO la cierra al salir: una
+        # algo, pero NO la cierra al salir: una
         # pregunta suelta de dos segundos no es un periodo de uso.
         #
         # Cerrarla partía en trozos el historial: cada `--prompt` mataba la
@@ -456,7 +456,7 @@ WATCH_BANNER = """\
 Observando qué ventana tiene el foco. Ctrl+C para parar.
 Sin capturas de pantalla y sin tocar nada."""
 
-#: Como se muestra el origen de cada dato (CLAUDE.md sección 11).
+#: Cómo se muestra el origen de cada dato.
 _PROVENANCE_LABELS = {
     Provenance.OBSERVED: "observado",
     Provenance.INFERRED: "inferido",
@@ -515,7 +515,7 @@ def _format_event(event: WindowEvent, context: CurrentContext) -> str:
 
 
 def _print_privacy_status(provider: ActiveWindowProvider) -> None:
-    """Muestra si hay filtro activo. CLAUDE.md sección 28 lo pide en la UI."""
+    """Muestra si hay filtro activo: el estado de privacidad siempre se ve."""
     if not isinstance(provider, PrivacyFilteredWindowProvider):
         return
     policy = provider.policy
@@ -568,7 +568,7 @@ def _preguntar(
     pregunta = questions.generate(decision, context, recuerdos)
     if pregunta is None:
         # Ni el modelo ni la plantilla dieron nada decente. Callarse es una
-        # salida válida (§19), y el enfriamiento no debe empezar.
+        # salida válida, y el enfriamiento no debe empezar.
         _out(f"{' ' * _DETAIL_INDENT}              (sin pregunta que merezca la pena)")
         return
 
@@ -623,7 +623,7 @@ def run_watch(
                     _preguntar(decision, contexto, curiosity, questions, memory)
             if memory is not None:
                 # Puede devolver None: la mayoría de lo que pasa no merece
-                # una fila (CLAUDE.md sección 17).
+                # una fila.
                 memory.observe(contexto, evento)
             iteraciones += 1
             if max_iterations is None or iteraciones < max_iterations:

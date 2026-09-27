@@ -9,11 +9,9 @@
 PHASE 7 es la primera vez que el modelo se usa para algo que **no** es
 responderle a la usuaria: habla con el sistema, proponiendo una pregunta.
 
-CLAUDE.md §24 es tajante sobre eso: salida estructurada, y *"Validar todos
-los outputs del LLM"*. Y §7 añade el requisito de fondo:
-
-> *"Questions must derive from actual context. Never fabricate knowledge of
-> what the user is doing."*
+La regla es tajante: salida estructurada, y se valida todo lo que dice el
+modelo. Y hay un requisito de fondo: las preguntas tienen que salir del
+contexto real, sin inventarse nunca lo que hace la usuaria.
 
 Un modelo de 8B puede devolver JSON perfectamente válido y aun así
 inventarse lo que hay en la pantalla, soltar un "¡sigue así!" o preguntar
@@ -23,7 +21,7 @@ tres cosas a la vez. **JSON válido no es JSON correcto.**
 
 Ollama acepta `"format": "json"` y restringe la generación a JSON
 sintácticamente válido. Se comprobó contra el runtime instalado antes de
-apoyarse en ello, como pide §43.
+apoyarse en ello, en vez de suponerlo.
 
 Eso añade `json_mode` a `LLMProvider.generate()`. Un proveedor que no lo
 soporte puede ignorarlo: **quien llama valida igualmente**, porque esto solo
@@ -51,12 +49,12 @@ verificable.
 | Filtro | Por qué |
 |---|---|
 | No vacía | obvio |
-| ≤ 25 palabras | §38 pide brevedad |
+| ≤ 25 palabras | se busca brevedad |
 | Termina en `?` | tiene que ser una pregunta |
 | Un solo `?` | dos preguntas de golpe abruman |
-| Sin tono de coach | §38 y §40 |
-| Sin afirmar que ve la pantalla | §3.3 y §7 |
-| `based_on` válido | §7 |
+| Sin tono de coach | ni motivar, ni juzgar, ni meter prisa |
+| Sin afirmar que ve la pantalla | no la ve |
+| `based_on` válido | nada de inventar contexto |
 
 `validate_question()` devuelve **el motivo** del rechazo, no un booleano. Es
 lo único que permite ajustar el prompt después: sin saber por qué se
@@ -95,8 +93,8 @@ cuántas veces falla el modelo de verdad.
 Cuando el contexto no tiene ningún campo disponible —o está censurado por
 privacidad— `generate()` devuelve `None` **sin llamar al modelo**.
 
-§20: *"No crear preguntas artificialmente si no existe contexto
-suficiente."* El silencio sigue siendo una salida válida en esta fase igual
+No se crean preguntas artificialmente si no existe contexto suficiente. El
+silencio sigue siendo una salida válida en esta fase igual
 que en la anterior.
 
 ## Lo que hizo falta para que las preguntas dejaran de ser sosas
@@ -104,8 +102,8 @@ que en la anterior.
 La primera versión producía siempre *"¿Qué estás intentando hacer en este
 proyecto?"*. Válida y anclada, pero inútil: eso se pregunta sin mirar nada.
 
-Lo que lo arregló fue meter en el prompt los ejemplos que la propia §20 ya
-daba, más una frase explicando qué tienen en común:
+Lo que lo arregló fue meter en el prompt los ejemplos de preguntas que ya
+teníamos, más una frase explicando qué tienen en común:
 
 > *"Fíjate en que nombran algo concreto. '¿Qué estás haciendo?' a secas no
 > aporta nada: eso ya se lo podría preguntar cualquiera sin mirar."*
@@ -118,7 +116,7 @@ elegir el campo más específico disponible. Con contexto rico se apoya en
 
 - PHASE 6 sigue sin costar un token: el modelo solo entra cuando ya se
   decidió hablar.
-- `--watch --ask` carga el modelo; `--watch` a secas no. §33 quiere la
-  aplicación ligera mientras solo observa.
+- `--watch --ask` carga el modelo; `--watch` a secas no: la
+  aplicación tiene que ser ligera mientras solo observa.
 - El enfriamiento empieza al **producir** la pregunta, no al decidirla: si
   ni el modelo ni la plantilla dan nada, no se pierde el turno.

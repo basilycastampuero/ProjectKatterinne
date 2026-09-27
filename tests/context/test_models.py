@@ -87,7 +87,7 @@ def test_has_project_refleja_si_hay_proyecto() -> None:
 
 def test_la_serializacion_conserva_el_origen_de_cada_dato() -> None:
     # Sin esto, la memoria de PHASE 4 no podría distinguir un hecho de una
-    # suposición (CLAUDE.md sección 16).
+    # suposición.
     contexto = CurrentContext(
         project=Signal(
             value="StudyFlow",

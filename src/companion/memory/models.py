@@ -1,7 +1,5 @@
 """Entidades de la memoria local.
 
-CLAUDE.md secciones 16, 17 y 26.
-
 Estos dataclasses son el reflejo de las filas de SQLite. Son inmutables: una
 fila leida es una foto del pasado, y mutarla en memoria sin escribirla seria
 la forma mas facil de que la base de datos y el programa dejen de estar de
@@ -33,7 +31,7 @@ def utcnow() -> datetime:
 
 
 class MemoryScope(StrEnum):
-    """Cuanto deberia durar un recuerdo. CLAUDE.md seccion 17.
+    """Cuánto debería durar un recuerdo.
 
     La memoria tiene que crecer despacio. No todo lo que se observa merece
     sobrevivir a la sesion, y decidirlo al guardar es mas barato que
@@ -59,7 +57,7 @@ class Project:
 
     `provenance` guarda el nivel **mas alto** alcanzado nunca. Una vez que
     la usuaria confirma un proyecto, ninguna inferencia posterior lo degrada:
-    CLAUDE.md seccion 11 prohibe convertir inferencias en hechos, y lo
+    una inferencia nunca se convierte en hecho, y lo
     contrario tambien seria perder informacion.
     """
 
@@ -77,7 +75,7 @@ class Project:
 
 @dataclass(frozen=True, slots=True)
 class Session:
-    """Un periodo de uso. CLAUDE.md seccion 26.
+    """Un periodo de uso.
 
     Existe para poder responder "¿que hiciste ayer?" sin haber guardado ni
     una sola captura de pantalla.
@@ -102,7 +100,7 @@ class Session:
 
 @dataclass(frozen=True, slots=True)
 class Activity:
-    """Un evento observable. CLAUDE.md seccion 10.
+    """Un evento observable.
 
     Descriptivo, nunca valorativo: aqui no hay `productive` ni `distracted`.
 
@@ -178,7 +176,7 @@ class Message:
 
     El contenido se guarda tal cual: es la conversacion de la usuaria con su
     propia compañera, en su propio equipo, y sin el no hay continuidad
-    posible entre sesiones. Nunca sale de aqui (CLAUDE.md seccion 3.2).
+    posible entre sesiones. Nunca sale de aquí.
     """
 
     id: int

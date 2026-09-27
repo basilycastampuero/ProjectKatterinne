@@ -1,4 +1,4 @@
-"""Tests de proyectos en memoria (CLAUDE.md secciones 11 y 16)."""
+"""Tests de proyectos en memoria."""
 
 from __future__ import annotations
 
@@ -40,7 +40,7 @@ def test_no_se_duplica_un_proyecto_visto_muchas_veces(repo: MemoryRepository) ->
 
 
 # ----------------------------------------------------------------------
-# La regla de la sección 11: las confirmaciones no se degradan
+# La regla: las confirmaciones no se degradan
 # ----------------------------------------------------------------------
 
 

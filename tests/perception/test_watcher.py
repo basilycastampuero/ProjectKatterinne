@@ -16,7 +16,7 @@ def test_la_primera_observacion_es_un_cambio_de_aplicacion() -> None:
 
 
 def test_observar_lo_mismo_dos_veces_no_emite_nada() -> None:
-    # El caso mayoritario con un sondeo por segundo. CLAUDE.md seccion 19:
+    # El caso mayoritario con un sondeo por segundo:
     # que no pase nada es el comportamiento normal.
     detector = WindowChangeDetector()
     ventana = make_window("Code.exe")
@@ -117,7 +117,7 @@ def test_una_secuencia_larga_emite_solo_los_cambios() -> None:
 
 
 # ----------------------------------------------------------------------
-# Evento estructurado (CLAUDE.md seccion 8)
+# Evento estructurado
 # ----------------------------------------------------------------------
 
 

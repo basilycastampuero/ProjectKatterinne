@@ -1,9 +1,9 @@
 """Puntuacion determinista de la curiosidad.
 
-CLAUDE.md PHASE 6 es explicito: "Implement deterministic scoring first. Only
-call the LLM when the score passes a threshold."
+Primero se puntúa de forma determinista, y solo se llama al modelo cuando
+la puntuación supera el umbral.
 
-Asi que aqui **no hay modelo**. Es aritmetica sobre señales observables, y
+Así que aquí **no hay modelo**. Es aritmetica sobre señales observables, y
 por eso se puede testear entero sin GPU, razonar sobre sus resultados y
 ajustarlo sin adivinar.
 
@@ -74,9 +74,8 @@ class ScoreResult:
 def score(inputs: ScoringInput, weights: CuriosityWeights | None = None) -> ScoreResult:
     """Puntua cuanto merece la pena preguntar algo ahora mismo.
 
-    Devuelve 0 y sin tipo de pregunta cuando no hay de que hablar. CLAUDE.md
-    seccion 20: "No crear preguntas artificialmente si no existe contexto
-    suficiente."
+    Devuelve 0 y sin tipo de pregunta cuando no hay de que hablar: no se
+    crean preguntas artificialmente si no existe contexto suficiente.
     """
     weights = weights or CuriosityWeights()
     context = inputs.context

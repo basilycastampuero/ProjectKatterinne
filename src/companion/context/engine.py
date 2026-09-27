@@ -1,6 +1,6 @@
 """Motor de contexto: de observaciones crudas a algo con significado.
 
-CLAUDE.md seccion 15. Recibe la ventana activa y produce un `CurrentContext`
+Recibe la ventana activa y produce un `CurrentContext`
 estructurado, combinando:
 
     proceso           -> aplicacion y tipo de actividad
@@ -108,8 +108,8 @@ class ContextEngine:
     def confirm_project(self, name: str) -> None:
         """Registra que la usuaria dijo explicitamente en que proyecto esta.
 
-        Una confirmacion manda sobre cualquier inferencia (CLAUDE.md
-        seccion 11) y se mantiene hasta que se limpie o hasta que se detecte
+        Una confirmacion manda sobre cualquier inferencia y se
+        mantiene hasta que se limpie o hasta que se detecte
         un proyecto distinto en el titulo, que es senal de que se movio a
         otra cosa.
         """

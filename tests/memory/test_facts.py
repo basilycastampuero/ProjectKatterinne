@@ -1,4 +1,4 @@
-"""Tests de hechos en memoria (CLAUDE.md secciones 16 y 17)."""
+"""Tests de hechos en memoria."""
 
 from __future__ import annotations
 
@@ -95,7 +95,7 @@ def test_editar_con_confianza_invalida_tambien_se_rechaza(repo: MemoryRepository
 
 
 # ----------------------------------------------------------------------
-# Alcance (sección 17)
+# Alcance
 # ----------------------------------------------------------------------
 
 
@@ -202,7 +202,7 @@ def test_un_hecho_nace_sin_haberse_usado(repo: MemoryRepository) -> None:
 
 
 def test_usar_un_hecho_queda_registrado(repo: MemoryRepository) -> None:
-    # La sección 16 pide `last_accessed`. La consolidación de PHASE 9 lo
+    # `last_accessed` tiene que mantenerse. La consolidación de PHASE 9 lo
     # necesitará para saber qué recuerdos siguen vivos.
     hecho = _add(repo)
 

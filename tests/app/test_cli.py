@@ -186,7 +186,7 @@ def test_watch_sobrevive_a_que_no_haya_ventana(capsys) -> None:
 
 
 def test_watch_sin_preguntas_no_toca_el_modelo(fake_provider: FakeProvider) -> None:
-    """Observar no debe costar VRAM (CLAUDE.md sección 33).
+    """Observar no debe costar VRAM.
 
     Antes esto comprobaba una frase del banner, así que se rompió al
     reescribirlo y no comprobaba nada real. Ahora mira lo que importa: que
@@ -212,7 +212,7 @@ def test_watch_muestra_el_contexto_con_su_procedencia(capsys) -> None:
     assert "ProjectKatterinne" in salida
     assert "a.py" in salida
     assert "coding" in salida
-    # Lo importante de la sección 11: se ve de dónde sale cada dato.
+    # Lo importante: se ve de dónde sale cada dato.
     assert "inferido" in salida
     assert "confianza" in salida
 
@@ -497,7 +497,7 @@ def test_lo_que_pregunta_entra_en_el_hilo(
 def test_no_interrumpe_una_conversacion_recien_empezada(
     fake_provider: FakeProvider, memoria: MemoryManager, capsys
 ) -> None:
-    # Sección 21: si ya se está hablando, no se interrumpe.
+    # Si ya se está hablando, no se interrumpe.
     memoria.start_session()
     conversation = ConversationManager(fake_provider, memory=memoria)
 

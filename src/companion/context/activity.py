@@ -1,10 +1,9 @@
 """Clasificacion del tipo de actividad a partir de senales deterministas.
 
 Una tabla y unas pistas de ruta. Nada de LLM: preguntarle a un modelo si
-"Code.exe" es programar seria gastar una GPU en algo que resuelve un `dict`
-(CLAUDE.md seccion 3.4).
+"Code.exe" es programar seria gastar una GPU en algo que resuelve un `dict`.
 
-Recordatorio de la seccion 10: estas categorias describen **que clase de uso
+Recordatorio: estas categorías describen **que clase de uso
 del ordenador es**, no si merece la pena. No existe `productive` ni
 `distracted` y no deben anadirse.
 """

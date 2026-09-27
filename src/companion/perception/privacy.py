@@ -1,6 +1,6 @@
 """Modo privacidad y lista de aplicaciones bloqueadas.
 
-CLAUDE.md seccion 22. La percepcion tiene que poder apagarse, y tiene que
+La percepción tiene que poder apagarse, y tiene que
 poder apagarse **para aplicaciones concretas** sin apagarse del todo.
 
 El filtro se implementa como un decorador de `ActiveWindowProvider`, no como
@@ -96,7 +96,7 @@ class PrivacyFilteredWindowProvider(ActiveWindowProvider):
         self._policy = policy
         if policy.is_active:
             # Cuantos procesos, no cuales: la propia lista negra dice cosas
-            # del usuario. Ver CLAUDE.md seccion 32.
+            # del usuario.
             log.info(
                 "filtro de privacidad activo modo_global=%s procesos_bloqueados=%d",
                 policy.privacy_mode,

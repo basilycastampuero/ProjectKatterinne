@@ -1,7 +1,7 @@
 """Interfaz `LLMProvider` y tipos de datos asociados.
 
 El resto de la aplicacion depende UNICAMENTE de este modulo, nunca de un
-runtime concreto. Ver CLAUDE.md seccion 6: la abstraccion existe para poder
+runtime concreto. La abstracción existe para poder
 sustituir Ollama por llama.cpp, LM Studio u otro runtime local sin tocar
 context/, memory/, curiosity/ ni conversation/.
 """
@@ -51,7 +51,7 @@ class GenerationResult:
     """Resultado de una generacion, con metricas para observabilidad.
 
     Las metricas se miden aqui y no dentro de la UI para que cualquier
-    consumidor (CLI, tests, benchmarks de la seccion 37) las reciba igual.
+    consumidor (CLI, tests, benchmarks) las reciba igual.
     """
 
     text: str
@@ -102,7 +102,7 @@ class LLMProvider(ABC):
         llegan; el texto completo sigue estando en el resultado.
 
         `json_mode` pide al runtime que restrinja la salida a JSON valido.
-        CLAUDE.md seccion 24 prefiere salidas estructuradas siempre que el
+        Se prefieren salidas estructuradas siempre que el
         modelo hable con el sistema en vez de con la usuaria. Un proveedor
         que no lo soporte puede ignorarlo: **quien llama debe validar el
         resultado igualmente**, porque JSON valido no significa JSON
@@ -121,7 +121,7 @@ class LLMProvider(ABC):
     ) -> GenerationResult:
         """Genera una respuesta a partir de mensajes + una imagen.
 
-        Declarado aqui porque forma parte del contrato de CLAUDE.md seccion 6,
+        Declarado aquí porque forma parte del contrato del proveedor,
         pero sin implementacion: la vision es PHASE 5. Los proveedores que no
         soporten multimodal deben dejar este comportamiento por defecto.
         """
@@ -132,6 +132,6 @@ class LLMProvider(ABC):
     def unload(self) -> None:
         """Libera el modelo de memoria/VRAM si el runtime lo permite.
 
-        Por defecto no hace nada. Ver CLAUDE.md seccion 33.
+        Por defecto no hace nada.
         """
         return None

@@ -100,7 +100,7 @@ def test_log_path_cuelga_de_data_dir(tmp_path: Path) -> None:
 
 
 def test_la_privacidad_llega_apagada_y_sin_lista(tmp_path: Path) -> None:
-    # CLAUDE.md sección 22 prohíbe asumir qué aplicaciones usa cada persona.
+    # No se puede asumir qué aplicaciones usa cada persona.
     settings = load_settings(root=tmp_path, env={})
 
     assert settings.privacy.privacy_mode is False

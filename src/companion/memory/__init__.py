@@ -1,8 +1,8 @@
 """Memoria local persistente sobre SQLite.
 
 Alcance de PHASE 4: sesiones, actividades, proyectos, hechos y
-conversaciones. Sin embeddings y sin base de datos vectorial (CLAUDE.md
-seccion 16 y PHASE 9).
+conversaciones. Sin embeddings y sin base de datos vectorial hasta
+PHASE 9.
 """
 
 from companion.memory.errors import (

@@ -1,7 +1,7 @@
-"""Tests del resumen de actividad (CLAUDE.md secciones 25 y 26).
+"""Tests del resumen de actividad.
 
-La sección 26 justifica las sesiones con "poder responder ¿qué hiciste
-ayer? sin guardar cada screenshot". Esto es lo que hace esa frase posible.
+Las sesiones existen para poder responder "¿qué hiciste ayer?" sin guardar
+ni una captura. Esto es lo que hace esa frase posible.
 """
 
 from __future__ import annotations

@@ -6,7 +6,7 @@
 
 ## Contexto
 
-CLAUDE.md §11 exige distinguir tres cosas que es muy tentador mezclar:
+Hay que distinguir tres cosas que es muy tentador mezclar:
 
 ```
 observed_project        el título de la ventana dice "ProjectKatterinne"
@@ -68,12 +68,12 @@ mentira actual.
 
 Es una decisión de PHASE 3 que existe para PHASE 4 y PHASE 7.
 
-La memoria (§16) tiene que guardar `source` y `confidence` por cada hecho.
+La memoria tiene que guardar `source` y `confidence` por cada hecho.
 Si el contexto entrega valores pelados, la memoria no tiene nada que
 guardar ahí, y en dos semanas la base de datos está llena de suposiciones
 indistinguibles de los hechos. A partir de ahí el sistema empieza a
 afirmarle a la usuaria cosas que se inventó él mismo — exactamente lo que
-§7 prohíbe con *"Never fabricate knowledge of what the user is doing"*.
+no puede pasar: inventarse lo que hace la usuaria.
 
 La estructura de datos es lo que hace que esa promesa se pueda cumplir.
 

@@ -1,8 +1,6 @@
 """Tipos del motor de curiosidad.
 
-CLAUDE.md secciones 18, 19 y 20.
-
-La idea que ordena todo este modulo esta en la seccion 19: **el silencio es
+La idea que ordena todo este módulo: **el silencio es
 una salida valida**, y ademas es la normal. Una buena sesion puede ser dos
 horas, 47 cambios de contexto y una sola pregunta. Por eso `SilenceReason`
 tiene mas valores que `QuestionType`: hay muchas mas formas de decidir
@@ -17,7 +15,7 @@ from typing import Any
 
 
 class QuestionType(StrEnum):
-    """Que clase de pregunta seria. CLAUDE.md seccion 20.
+    """Qué clase de pregunta sería.
 
     `visual_curiosity` no esta: necesita vision, que es PHASE 5 y todavia no
     existe. Añadirlo ahora seria un valor que nada puede producir.
@@ -127,7 +125,7 @@ class CuriosityDecision:
 
         Es un numero **nuestro y determinista**, calculado a partir de
         señales observables. No tiene nada que ver con una confianza que
-        diga un modelo, de las que CLAUDE.md seccion 24 advierte no fiarse.
+        diga un modelo, de las que no hay que fiarse.
         """
         if self.threshold <= 0 or self.score <= 0:
             return 0.0

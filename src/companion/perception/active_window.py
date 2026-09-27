@@ -4,7 +4,7 @@
 modelos: una interfaz que permite testear todo lo de arriba sin depender de
 Windows, y sustituir la implementacion sin tocar nada mas.
 
-CLAUDE.md seccion 9 exige que esto sea robusto ante ventanas que
+Esto tiene que ser robusto ante ventanas que
 desaparecen, procesos cerrados, aplicaciones protegidas, ventanas sin titulo
 y errores de permisos. Esa robustez es casi todo el codigo de este modulo.
 """

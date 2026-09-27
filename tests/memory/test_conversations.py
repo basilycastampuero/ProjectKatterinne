@@ -1,4 +1,4 @@
-"""Tests de conversaciones persistidas (CLAUDE.md secciones 25 y 26)."""
+"""Tests de conversaciones persistidas."""
 
 from __future__ import annotations
 
@@ -56,7 +56,7 @@ def test_los_mensajes_vuelven_en_orden_cronologico(repo: MemoryRepository) -> No
 
 
 def test_el_limite_devuelve_los_ultimos_no_los_primeros(repo: MemoryRepository) -> None:
-    # La sección 25 dice que no hay que pasar todo el historial al modelo.
+    # No hay que pasar todo el historial al modelo.
     # Lo que importa es el final de la conversación, no el principio.
     conversacion = repo.start_conversation(at=T0)
     for i in range(10):
@@ -117,7 +117,7 @@ def test_pedir_una_conversacion_inexistente_falla(repo: MemoryRepository) -> Non
 
 def test_el_texto_del_mensaje_se_conserva_tal_cual(repo: MemoryRepository) -> None:
     # Sin él no hay continuidad entre sesiones, que es el objetivo de la
-    # fase. Nunca sale del equipo (sección 3.2).
+    # fase. Nunca sale del equipo.
     conversacion = repo.start_conversation(at=T0)
     original = "¿Qué estás implementando ahí? — con acentos y guiones largos"
 

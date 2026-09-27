@@ -1,4 +1,4 @@
-"""Tests de la política de memoria (CLAUDE.md sección 17)."""
+"""Tests de la política de memoria."""
 
 from __future__ import annotations
 
@@ -68,7 +68,7 @@ def test_se_puede_forzar_una_sesion_nueva(repo: MemoryRepository) -> None:
 def test_cerrar_la_sesion_calcula_la_aplicacion_dominante(
     manager: MemoryManager,
 ) -> None:
-    # CLAUDE.md sección 26: poder responder "¿qué hiciste ayer?".
+    # Poder responder "¿qué hiciste ayer?".
     engine = ContextEngine()
     manager.start_session(at=T0)
     _observar(manager, engine, make_window("Code.exe", title=VSCODE), at=minutos(1))
@@ -306,6 +306,38 @@ def test_confirmar_con_proyecto_lo_ata_al_proyecto(
     assert hecho.project_id == repo.get_project("ProjectKatterinne").id
 
 
+def test_un_hecho_confirmado_no_asciende_un_proyecto_inferido(
+    manager: MemoryManager, repo: MemoryRepository
+) -> None:
+    """La procedencia del hecho no es la del proyecto.
+
+    `remember()` registraba el proyecto con la procedencia del hecho. Un
+    hecho que la persona sí dijo, atado al proyecto que solo se dedujo del
+    título de la ventana, convertía ese proyecto en confirmado sin que
+    nadie lo confirmara. No se vio porque hasta ahora nadie guardaba hechos
+    sobre un proyecto inferido; con la extracción automática pasaría en
+    cada turno.
+    """
+    manager.start_session(at=T0)
+    repo.upsert_project("StudyFlow", provenance=Provenance.INFERRED, confidence=0.6, at=T0)
+
+    manager.remember(
+        "Está montando la memoria con SQLite.",
+        provenance=Provenance.USER_CONFIRMED,
+        confidence=1.0,
+        source="conversation",
+        scope=MemoryScope.PROJECT,
+        project="StudyFlow",
+        project_provenance=Provenance.INFERRED,
+        project_confidence=0.6,
+        at=T0,
+    )
+
+    proyecto = repo.get_project("StudyFlow")
+    assert proyecto.provenance is Provenance.INFERRED
+    assert proyecto.confidence == pytest.approx(0.6)
+
+
 def test_cerrar_la_sesion_retira_lo_que_solo_valia_para_ella(
     manager: MemoryManager, repo: MemoryRepository
 ) -> None:
@@ -345,6 +377,43 @@ def test_recall_de_un_proyecto_desconocido_devuelve_vacio(manager: MemoryManager
     manager.start_session(at=T0)
 
     assert manager.recall(project="NoExiste") == []
+
+
+def test_los_recuerdos_sobre_la_persona_llegan_aunque_haya_proyecto(
+    manager: MemoryManager,
+) -> None:
+    """Lo que se sabe de la persona no depende de qué proyecto tenga abierto.
+
+    `recall(project=X)` filtraba por proyecto, y los hechos `long_term` se
+    guardan sin proyecto. Como casi siempre hay un proyecto en contexto,
+    esos recuerdos no llegaban nunca al modelo. No se vio porque la base de
+    datos real no tenía ningún hecho.
+    """
+    manager.start_session(at=T0)
+    manager.confirm("Prefiero modelos locales.")
+    manager.confirm("Usa Django.", project="StudyFlow")
+
+    con_proyecto = {h.content for h in manager.recall(project="StudyFlow")}
+    proyecto_nuevo = {h.content for h in manager.recall(project="NoExiste")}
+
+    assert con_proyecto == {"Usa Django.", "Prefiero modelos locales."}
+    assert proyecto_nuevo == {"Prefiero modelos locales."}
+
+
+def test_los_hechos_del_proyecto_no_expulsan_a_los_de_la_persona(
+    manager: MemoryManager,
+) -> None:
+    # El límite se reparte: si no, un proyecto con muchos hechos llenaría
+    # todo el hueco y la persona volvería a desaparecer del prompt.
+    manager.start_session(at=T0)
+    manager.confirm("Prefiero modelos locales.")
+    for n in range(6):
+        manager.confirm(f"Detalle {n} de StudyFlow.", project="StudyFlow")
+
+    hechos = manager.recall(project="StudyFlow", limit=4)
+
+    assert len(hechos) == 4
+    assert "Prefiero modelos locales." in {h.content for h in hechos}
 
 
 def test_recordar_algo_deja_constancia_de_que_se_uso(

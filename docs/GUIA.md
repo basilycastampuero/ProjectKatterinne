@@ -35,10 +35,6 @@ Lo que **no** es, y conviene tenerlo claro desde el principio:
 - No manda nada fuera del equipo. El único tráfico de red es a
   `127.0.0.1:11434`, donde escucha Ollama.
 
-El objetivo de diseño está en `CLAUDE.md`, que es la especificación del
-proyecto. Cuando este documento cita "§7" o "§22" se refiere a sus
-secciones numeradas.
-
 ---
 
 ## Arranque rápido
@@ -73,7 +69,7 @@ Modos de ejecución:
 | `--prompt "..."` | Un mensaje y sale | Sí |
 
 Que `--watch` **no** cargue el modelo es deliberado: observar cuesta 26
-microsegundos, cargar el modelo cuesta 5 GB de VRAM (§33).
+microsegundos, cargar el modelo cuesta 5 GB de VRAM.
 
 ---
 
@@ -117,7 +113,7 @@ guardara primero, el proyecto ya existiría y nada sería nunca nuevo. Ese
 bug existió y está documentado en [ADR-008](architecture-decisions/ADR-008-silence-by-construction.md).
 
 **El paso 10 casi siempre no guarda nada.** Los cambios de archivo dentro
-de la misma aplicación se limitan a uno por minuto (§17).
+de la misma aplicación se limitan a uno por minuto.
 
 ### Y cuando decide hablar
 
@@ -142,7 +138,7 @@ ni un token, y eso es lo que permite evaluarlo cada segundo.
 
 ## Las tres reglas que explican casi todo
 
-### 1. Determinista antes que inteligente (§3.4)
+### 1. Determinista antes que inteligente
 
 Si un dato se puede obtener de forma exacta, no se le pregunta al modelo.
 
@@ -158,7 +154,7 @@ Por eso hay tanto código "aburrido": tablas de procesos, parseo de títulos,
 expresiones regulares. **El LLM se usa solo para lenguaje**: conversar y
 redactar preguntas. Los hechos los pone el sistema.
 
-### 2. Cada dato lleva de dónde salió (§11)
+### 2. Cada dato lleva de dónde salió
 
 Ningún dato interpretado viaja como valor pelado. Todos van envueltos:
 
@@ -182,10 +178,10 @@ Esto no es burocracia. Llega hasta el prompt del modelo:
 ```
 
 Y por eso responde *"infiero que…"* en vez de afirmarlo. Sin la
-procedencia, la promesa de §7 —*no inventarse lo que hace el usuario*— no
+procedencia, la promesa —*no inventarse lo que hace el usuario*— no
 se podría cumplir. Ver [ADR-006](architecture-decisions/ADR-006-provenance-over-plain-values.md).
 
-### 3. El silencio es la salida por defecto (§19)
+### 3. El silencio es la salida por defecto
 
 > Una sesión de dos horas con **una** pregunta es buena. Con cuarenta y
 > siete es mala.
@@ -204,7 +200,6 @@ ya es conocido, **ninguna**. Ver [ADR-008](architecture-decisions/ADR-008-silenc
 
 ```
 ProjectKatterinne/
-├── CLAUDE.md              ← la especificación. La fuente de verdad
 ├── README.md              qué es y cómo usarlo
 ├── companion.toml         configuración por defecto
 ├── pyproject.toml         empaquetado y configuración de pytest
@@ -236,15 +231,15 @@ con un modelo. `app` está debajo de todo y es quien monta las piezas.
 
 ### `perception/` — mirar, sin tocar
 
-Observa el sistema. Solo lectura, siempre (§3.3).
+Observa el sistema. Solo lectura, siempre.
 
 | Archivo | Qué hace | Por qué existe así |
 |---|---|---|
 | `_win32.py` | Enlaces con la API de Windows vía `ctypes` | **El único archivo que habla con Windows.** Cambiar de plataforma es reescribir esto y nada más |
 | `active_window.py` | `ActiveWindowProvider` (interfaz) + implementación Win32 | La interfaz permite testear todo lo de arriba sin Windows |
-| `models.py` | `ActiveWindow`, `WindowEvent`, `EventType` | Eventos estructurados, no texto suelto (§8) |
+| `models.py` | `ActiveWindow`, `WindowEvent`, `EventType` | Eventos estructurados, no texto suelto |
 | `process.py` | `Code.exe` → `Visual Studio Code`. Normaliza nombres | Lógica pura, sin plataforma. Testeable en cualquier sitio |
-| `project_detector.py` | Saca proyecto y archivo del título de la ventana | §11: el dato ya está ahí, solo hay que parsearlo |
+| `project_detector.py` | Saca proyecto y archivo del título de la ventana | El dato ya está ahí, solo hay que parsearlo |
 | `watcher.py` | Detecta cambios entre observaciones sucesivas | Lógica pura: comparar dos observaciones no necesita reloj ni sistema |
 | `privacy.py` | Modo privacidad y lista negra | **Decorador** sobre la interfaz: el detector no sabe que existe |
 
@@ -292,13 +287,13 @@ continuidad la construimos nosotros.
 | `schema.py` | Seis tablas SQLite y la versión del esquema |
 | `models.py` | Entidades inmutables: `Project`, `Session`, `Activity`, `Fact`… |
 | `repository.py` | **El único archivo que escribe SQL** |
-| `manager.py` | Decide *qué merece guardarse* y cuánto dura (§17) |
+| `manager.py` | Decide *qué merece guardarse* y cuánto dura |
 | `rendering.py` | Resume la actividad y los recuerdos para el modelo |
 | `errors.py` | `MemoryStoreError`. Se llama así para no tapar el `MemoryError` de Python |
 
 **Repositorio y manager son cosas distintas.** El repositorio sabe *cómo*
-guardar; el manager decide *si*. Sin esa separación, la política de §17
-("no guardar todo") acabaría repartida por todas partes.
+guardar; el manager decide *si*. Sin esa separación, la política de
+"no guardar todo" acabaría repartida por todas partes.
 
 **Dos trampas de SQLite que están resueltas ahí:**
 
@@ -316,7 +311,7 @@ guardar; el manager decide *si*. Sin esa separación, la política de §17
 |---|---|
 | `models.py` | `CuriosityDecision`, `QuestionType`, `SilenceReason` |
 | `scorer.py` | Puntuación determinista. Lógica pura, sin reloj ni base de datos |
-| `engine.py` | Las barreras de §21 en orden, y luego la puntuación |
+| `engine.py` | Las barreras del silencio en orden, y luego la puntuación |
 | `questions.py` | Redacta la pregunta con el modelo **y la valida** |
 
 **`SilenceReason` tiene nueve valores; `QuestionType`, seis.** Hay más
@@ -361,8 +356,7 @@ palabra por palabra una frase de ejemplo, duración inventada incluida.
 
 ### `conversation/` — el hilo con la persona
 
-Un solo archivo, `manager.py`. Construye lo que se le envía al modelo
-siguiendo §25:
+Un solo archivo, `manager.py`. Construye lo que se le envía al modelo:
 
 ```
 prompt del sistema          quién es
@@ -405,7 +399,7 @@ sincronizar.
 | Archivo | Qué hace |
 |---|---|
 | `main.py` | Punto de entrada, argumentos, y decide qué modo ejecutar |
-| `logging_setup.py` | Logs con formato `[COMPONENTE]` (§32) |
+| `logging_setup.py` | Logs con formato `[COMPONENTE]` |
 | `config/settings.py` | Dataclasses congelados + TOML + variables de entorno |
 
 **El logging tiene una regla de privacidad que hay que respetar:** nunca
@@ -455,7 +449,7 @@ UNKNOWN  → "lo sé, y la respuesta es: desconocido"
 La segunda contaría como información e inflaría la confianza con un dato
 hueco.
 
-### Los cuatro alcances de memoria (§17)
+### Los cuatro alcances de memoria
 
 | Alcance | Vive | Ejemplo |
 |---|---|---|
@@ -484,7 +478,7 @@ saltarse en otras plataformas. El resto corre con dobles:
 | SQLite en disco | `:memory:` | `tests/memory/conftest.py` |
 | El reloj | Instantes fijos inyectados | `tests/curiosity/conftest.py` |
 
-Esto es un requisito explícito de §31, no una preferencia: **nada del
+Esto es un requisito explícito, no una preferencia: **nada del
 proyecto debe necesitar GPU para testearse.**
 
 ### Cómo escribir un test aquí
@@ -502,21 +496,17 @@ tests se rompieron al reescribir un banner porque comprobaban frases de la
 interfaz en vez de comportamiento. Si quieres saber que no se usa el
 modelo, mira `provider.calls == []`, no un cartel.
 
-Las convenciones completas están en CLAUDE.md §52.
-
 ---
 
 ## Convenciones del repositorio
 
-Están escritas en `CLAUDE.md`, secciones 49 a 53. En resumen:
-
-| | Dónde |
+| | Regla |
 |---|---|
-| Formato de commits | §49 — Conventional Commits, en español, sin referencias a IA |
-| Ramas | §50 — una por fase; `main` siempre ejecutable; fusionar solo cuando se confirme |
-| Idioma | §51 — prosa en español con tildes, identificadores en inglés |
-| Tests | §52 — el nombre describe la regla; nunca comprobar texto decorativo |
-| Documentación | §53 — GUIA, PENDIENTE y README se actualizan al cerrar fase |
+| Formato de commits | Conventional Commits, en español, sin referencias a IA |
+| Ramas | Una por fase; `main` siempre ejecutable; fusionar solo cuando se confirme |
+| Idioma | Prosa en español con tildes, identificadores en inglés |
+| Tests | El nombre describe la regla; nunca comprobar texto decorativo |
+| Documentación | GUIA, PENDIENTE y README se actualizan al cerrar fase |
 
 ---
 

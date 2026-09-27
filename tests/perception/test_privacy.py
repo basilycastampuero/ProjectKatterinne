@@ -1,4 +1,4 @@
-"""Tests del modo privacidad y la lista negra (CLAUDE.md secciones 22 y 31)."""
+"""Tests del modo privacidad y la lista negra."""
 
 from __future__ import annotations
 
@@ -89,7 +89,7 @@ def test_un_proceso_bloqueado_pierde_el_titulo() -> None:
 
 def test_un_proceso_bloqueado_conserva_la_aplicacion() -> None:
     # El sistema necesita saber que estas en una app protegida para NO
-    # interrumpirte (CLAUDE.md seccion 21). Lo que no debe saber es que
+    # interrumpirte. Lo que no debe saber es que
     # haces alli. Ademas, el proceso lo escribiste tu en la config: no es
     # informacion nueva.
     policy = PrivacyPolicy.from_names(blocked_processes=[GESTOR])
@@ -190,7 +190,7 @@ def test_el_decorador_propaga_la_ausencia_de_ventana() -> None:
 
 def test_el_decorador_no_anuncia_que_procesos_bloquea(caplog) -> None:
     # La propia lista negra dice cosas del usuario: se registra cuantos hay,
-    # nunca cuales (CLAUDE.md seccion 32).
+    # nunca cuáles.
     with caplog.at_level("INFO", logger="companion.perception"):
         PrivacyFilteredWindowProvider(
             FakeActiveWindowProvider(),

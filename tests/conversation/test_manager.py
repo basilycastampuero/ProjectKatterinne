@@ -107,7 +107,7 @@ def test_ventana_minima_invalida(fake_provider: FakeProvider) -> None:
 
 
 # ----------------------------------------------------------------------
-# Contexto inyectado (CLAUDE.md secciones 11 y 25)
+# Contexto inyectado
 # ----------------------------------------------------------------------
 
 
@@ -128,8 +128,8 @@ def test_el_bloque_de_contexto_declara_la_procedencia() -> None:
     """La razón de ser de ADR-006, llevada hasta el prompt.
 
     Decirle "Proyecto: X" invita al modelo a afirmarlo. Decirle que es
-    inferido le permite preguntar en vez de dar por hecho, que es lo que
-    exige la sección 7.
+    inferido le permite preguntar en vez de dar por hecho, que es la
+    promesa de no inventarse lo que hace la usuaria.
     """
     texto = describe_context(_contexto())
 
@@ -280,8 +280,8 @@ def test_la_actividad_reciente_llega_al_modelo(
 ) -> None:
     """Regresión: los datos estaban en SQLite y nunca llegaban al payload.
 
-    La sección 26 justifica las sesiones con "poder responder ¿qué hiciste
-    ayer?", y la 25 lista `recent_activity` como una de las cuatro piezas.
+    Las sesiones existen para poder responder "¿qué hiciste ayer?", y
+    `recent_activity` es una de las cuatro piezas del payload.
     Se registraban actividades desde la fase 4 y ninguna se le contaba al
     modelo, así que esa pregunta no tenía respuesta posible.
     """
@@ -330,7 +330,7 @@ def test_un_fallo_al_resumir_la_actividad_no_tumba_el_turno(
 def test_el_numero_de_recuerdos_esta_acotado(
     fake_provider: FakeProvider, memory: MemoryManager
 ) -> None:
-    # CLAUDE.md sección 25: no volcarle toda la memoria al modelo.
+    # No volcarle toda la memoria al modelo.
     for i in range(10):
         memory.confirm(f"Dato {i}.", project="ProjectKatterinne")
     conversation = ConversationManager(fake_provider, memory=memory, recall_limit=3)

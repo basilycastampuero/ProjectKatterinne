@@ -2,8 +2,8 @@
 
 El repositorio sabe *como* guardar. Este modulo decide *si*.
 
-CLAUDE.md seccion 17 es tajante: "No guardar todo" y "la memoria debe crecer
-lentamente". Sin una politica explicita, una sesion de ocho horas deja
+La regla es tajante: no guardar todo, y la memoria debe crecer
+lentamente. Sin una politica explicita, una sesion de ocho horas deja
 decenas de miles de filas que no le sirven a nadie, y encontrar algo util
 entre ellas se vuelve imposible.
 """
@@ -101,7 +101,7 @@ class MemoryManager:
         dominante = self._repo.dominant_application(session_id)
 
         # Los recuerdos de alcance `session` mueren con la sesion: eso es
-        # exactamente lo que significa ese alcance (CLAUDE.md seccion 17).
+        # exactamente lo que significa ese alcance.
         retirados = self._repo.delete_facts_for_session(
             session_id, scope=MemoryScope.SESSION
         )
@@ -205,6 +205,8 @@ class MemoryManager:
         source: str,
         scope: MemoryScope = MemoryScope.SESSION,
         project: str | None = None,
+        project_provenance: Provenance | None = None,
+        project_confidence: float | None = None,
         at: datetime | None = None,
     ) -> Fact | None:
         """Guarda un hecho si supera el umbral de confianza.
@@ -212,6 +214,11 @@ class MemoryManager:
         Devuelve `None` cuando la inferencia es demasiado floja para
         merecer sitio. Lo que dice la usuaria entra siempre: una
         confirmacion no se descarta por un numero.
+
+        La procedencia del proyecto va aparte porque no es la del hecho: la
+        persona puede confirmar algo sobre un proyecto que solo se dedujo
+        del título de la ventana. Si no se indica, se usa la del hecho, que
+        es lo correcto cuando ella misma nombró el proyecto (`confirm`).
         """
         momento = at or utcnow()
 
@@ -225,7 +232,10 @@ class MemoryManager:
         project_id = None
         if project:
             project_id = self._repo.upsert_project(
-                project, provenance=provenance, confidence=confidence, at=momento
+                project,
+                provenance=project_provenance or provenance,
+                confidence=confidence if project_confidence is None else project_confidence,
+                at=momento,
             ).id
 
         expira = None
@@ -281,8 +291,7 @@ class MemoryManager:
 
         Por defecto mira la sesion en curso. Es lo que hace falta para poder
         responder "¿que he estado haciendo?" sin haber guardado ni una
-        captura, que es el motivo por el que existen las sesiones
-        (CLAUDE.md seccion 26).
+        captura, que es el motivo por el que existen las sesiones.
         """
         momento = now or utcnow()
         session_id = self._session.id if self._session else None
@@ -304,18 +313,48 @@ class MemoryManager:
     ) -> list[Fact]:
         """Recupera hechos relevantes y marca que se han usado.
 
-        El `touch` importa: CLAUDE.md seccion 16 pide `last_accessed`, y la
+        El `touch` importa: mantiene `last_accessed` al día, y la
         consolidacion de PHASE 9 lo necesitara para distinguir los recuerdos
         vivos de los que llevan meses sin hacer falta.
-        """
-        project_id = None
-        if project:
-            encontrado = self._repo.get_project(project)
-            if encontrado is None:
-                return []
-            project_id = encontrado.id
 
-        hechos = self._repo.list_facts(project_id=project_id, scope=scope, limit=limit)
+        Con un proyecto, devuelve los suyos **y** los `long_term`: lo que se
+        sabe de la persona no depende de qué tenga abierto. Sin esto no
+        llegarían nunca al modelo, porque casi siempre hay un proyecto en
+        contexto.
+        """
+        if not project:
+            hechos = self._repo.list_facts(scope=scope, limit=limit)
+        else:
+            hechos = self._recall_for_project(project, scope=scope, limit=limit)
+
         for hecho in hechos:
             self._repo.touch_fact(hecho.id)
         return hechos
+
+    def _recall_for_project(
+        self, project: str, *, scope: MemoryScope | None, limit: int
+    ) -> list[Fact]:
+        encontrado = self._repo.get_project(project)
+        del_proyecto = (
+            self._repo.list_facts(project_id=encontrado.id, scope=scope, limit=limit)
+            if encontrado
+            else []
+        )
+        # Pedir un alcance concreto es pedir solo ese: no se mezcla nada más.
+        if scope is not None and scope is not MemoryScope.LONG_TERM:
+            return del_proyecto
+
+        vistos = {h.id for h in del_proyecto}
+        personales = [
+            h
+            for h in self._repo.list_facts(scope=MemoryScope.LONG_TERM, limit=limit)
+            if h.id not in vistos
+        ]
+
+        # Cada grupo tiene garantizada la mitad del hueco; lo que uno no use
+        # lo aprovecha el otro. Si no, un proyecto con muchos hechos
+        # expulsaría a la persona del prompt.
+        mitad = max(1, limit // 2)
+        n_personales = min(len(personales), max(mitad, limit - len(del_proyecto)))
+        n_proyecto = min(len(del_proyecto), limit - n_personales)
+        return del_proyecto[:n_proyecto] + personales[:n_personales]

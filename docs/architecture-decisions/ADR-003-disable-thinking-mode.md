@@ -42,22 +42,22 @@ El campo **sólo se envía a modelos que declaran la capacidad `thinking`**.
 
 ## Justificación
 
-- **Latencia.** CLAUDE.md §39 quiere "alguien sentado a tu lado", no un
+- **Latencia.** La idea es "alguien sentado a tu lado", no un
   servicio al que se consulta. Casi seis segundos de silencio antes de la
   primera palabra rompe esa sensación. Es el argumento principal.
-- **§33 (recursos).** Cientos de tokens por saludo es cómputo desperdiciado
+- **Recursos.** Cientos de tokens por saludo es cómputo desperdiciado
   en un equipo que además tendrá que cargar un VLM en PHASE 5.
 - **El razonamiento no aporta aquí.** Las tareas de PHASE 1 son conversación
   y preguntas cortas, no problemas de varios pasos.
 
 ## Por qué la comprobación de capacidad y no mandarlo siempre
 
-CLAUDE.md §37 obliga a comparar varios modelos antes de fijar uno. Modelos
+Hay que comparar varios modelos antes de fijar uno. Modelos
 como `llama3.1:8b` o `qwen2.5:7b` no tienen modo de razonamiento, y enviarles
 un campo `think` puede hacer fallar la petición.
 
 Leer `capabilities` es información determinista que el runtime ya expone, así
-que aplica §3.4: si el dato se puede obtener de forma estructurada, no se
+que se aplica lo de siempre: si el dato se puede obtener de forma estructurada, no se
 adivina ni se descubre a base de errores. Cambiar de modelo no requiere tocar
 la configuración.
 

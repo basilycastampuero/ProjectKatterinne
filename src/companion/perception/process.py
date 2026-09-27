@@ -4,7 +4,7 @@ Logica pura, sin Windows de por medio: entra `"Code.exe"`, sale
 `"Visual Studio Code"`. Se puede testear en cualquier plataforma.
 
 No se usa el LLM para esto. Convertir un nombre de ejecutable en un nombre de
-aplicacion es una tabla, no un problema de lenguaje (CLAUDE.md seccion 3.4).
+aplicacion es una tabla, no un problema de lenguaje.
 """
 
 from __future__ import annotations

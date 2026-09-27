@@ -1,4 +1,4 @@
-"""Tests de la detección de proyecto y documento (CLAUDE.md sección 11)."""
+"""Tests de la detección de proyecto y documento."""
 
 from __future__ import annotations
 
@@ -122,7 +122,7 @@ def test_jetbrains_pone_el_proyecto_primero() -> None:
 
 
 def test_las_reglas_no_verificadas_declaran_menos_confianza() -> None:
-    # CLAUDE.md sección 43: no afirmar con seguridad lo que no se ha
+    # No afirmar con seguridad lo que no se ha
     # comprobado. Las reglas de VS Code sí se verificaron en este equipo.
     vscode = detect(make_window("Code.exe", title=VSCODE_REAL))
     jetbrains = detect(make_window("pycharm64.exe", title="StudyFlow – a.py"))
@@ -163,7 +163,7 @@ def test_una_pestana_nueva_sin_titulo_no_produce_nada() -> None:
 
 def test_una_aplicacion_desconocida_no_se_interpreta() -> None:
     # El título de VALORANT es "VALORANT": llamar a eso "documento" sería
-    # inventarse información (CLAUDE.md sección 43).
+    # inventarse información.
     partes = detect(make_window("VALORANT-Win64-Shipping.exe", title="VALORANT"))
 
     assert partes.document is None

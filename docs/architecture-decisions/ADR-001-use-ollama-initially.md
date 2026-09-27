@@ -6,7 +6,7 @@
 
 ## Contexto
 
-El companion necesita ejecutar un LLM en local (CLAUDE.md §3.1). Las opciones
+El companion necesita ejecutar un LLM en local, sin APIs en la nube. Las opciones
 razonables en Windows 11 con una RTX 4070 Laptop son Ollama, llama.cpp
 compilado a mano y LM Studio.
 
@@ -30,7 +30,7 @@ proyecto que conoce el formato de la API de Ollama, y `app/factory.py` es el
 
 - Cero fricción de arranque: ya estaba instalado y funcionando.
 - Gestión de modelos, cuantización y descarga de VRAM resueltas por Ollama.
-- `keep_alive` da control directo sobre la residencia en VRAM (§33).
+- `keep_alive` da control directo sobre la residencia en VRAM.
 - La API HTTP mantiene el proceso del modelo separado del de la aplicación.
 
 **En contra**

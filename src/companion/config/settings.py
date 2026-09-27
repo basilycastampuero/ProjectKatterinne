@@ -4,7 +4,7 @@ Precedencia (de menor a mayor): valores por defecto -> fichero TOML ->
 variables de entorno `COMPANION_*` -> argumentos de linea de comandos.
 
 Todo sobre stdlib: `tomllib` esta en la biblioteca estandar desde 3.11, asi
-que no hace falta pydantic ni dynaconf en esta fase (CLAUDE.md seccion 34).
+que no hace falta pydantic ni dynaconf en esta fase.
 """
 
 from __future__ import annotations
@@ -51,7 +51,7 @@ class ConversationSettings:
     """Cuanta conversacion se le pasa al modelo.
 
     `max_history_messages` cuenta turnos user/assistant; el prompt del
-    sistema siempre se conserva aparte. Ver CLAUDE.md seccion 25.
+    sistema siempre se conserva aparte.
     """
 
     max_history_messages: int = 20
@@ -85,7 +85,7 @@ class PerceptionSettings:
 
 @dataclass(frozen=True, slots=True)
 class MemorySettings:
-    """Memoria local persistente. Ver CLAUDE.md secciones 16 y 17."""
+    """Memoria local persistente."""
 
     #: Se puede apagar del todo. Con `false` la aplicacion funciona igual
     #: pero no escribe nada en disco: ni actividades, ni conversaciones.
@@ -105,21 +105,21 @@ class MemorySettings:
     #: diga la usuaria entra siempre, sin umbral.
     min_confidence_to_store: float = 0.3
 
-    #: Cuantos recuerdos se le pasan al modelo por turno (CLAUDE.md 25).
+    #: Cuantos recuerdos se le pasan al modelo por turno.
     recall_limit: int = 5
 
 
 @dataclass(frozen=True, slots=True)
 class CuriositySettings:
-    """Cuando se le permite hablar. Ver CLAUDE.md secciones 19 y 21."""
+    """Cuándo se le permite hablar."""
 
     enabled: bool = True
 
     #: Puntuacion minima para que merezca la pena preguntar.
     threshold: int = 6
 
-    #: Tiempo minimo entre preguntas. Veinte minutos: la seccion 19 quiere
-    #: una sesion de dos horas con una pregunta, no con cuarenta y siete.
+    #: Tiempo minimo entre preguntas. Veinte minutos: se busca
+    #: una sesión de dos horas con una pregunta, no con cuarenta y siete.
     min_seconds_between_questions: float = 1200.0
 
     #: Cuanto lleva en el mismo contexto antes de poder preguntar.
@@ -146,7 +146,7 @@ class CuriositySettings:
 
 @dataclass(frozen=True, slots=True)
 class PrivacySettings:
-    """Que puede observar el companion. Ver CLAUDE.md seccion 22."""
+    """Qué puede observar el companion."""
 
     #: Interruptor general. En PHASE 2 oculta el titulo de todas las
     #: ventanas; cuando exista la captura de pantalla, tambien la desactivara.
@@ -155,8 +155,8 @@ class PrivacySettings:
     #: Procesos cuyo titulo nunca se observa. Se comparan sin distinguir
     #: mayusculas y con o sin ".exe".
     #:
-    #: Llega vacia a proposito: CLAUDE.md seccion 22 prohibe asumir que
-    #: aplicaciones concretas usa cada persona.
+    #: Llega vacía a propósito: no se puede asumir qué aplicaciones
+    #: concretas usa cada persona.
     blocked_processes: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:

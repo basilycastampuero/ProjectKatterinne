@@ -1,6 +1,6 @@
 """Dobles de prueba compartidos.
 
-CLAUDE.md seccion 31: el proyecto debe ser testeable sin LLM. Todos los
+El proyecto debe ser testeable sin LLM. Todos los
 tests de esta suite corren sin Ollama ni GPU.
 """
 

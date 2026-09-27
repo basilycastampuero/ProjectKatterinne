@@ -1,19 +1,19 @@
 """Deteccion de proyecto y documento a partir del titulo de la ventana.
 
-CLAUDE.md seccion 11. La informacion ya esta ahi: cuando el titulo dice
+La información ya está ahí: cuando el titulo dice
 
     settings.py - ProjectKatterinne - Visual Studio Code
 
 el proyecto y el archivo son texto plano, no algo que haya que adivinar con
-un modelo. Esto es seccion 3.4 llevada hasta el final.
+un modelo. Determinista antes que inteligente, llevado hasta el final.
 
 Logica pura: entra una `ActiveWindow`, sale una `TitleParts`. Sin Windows,
 sin red, sin LLM.
 
 **Cada regla lleva su propia confianza.** Las de VS Code se han verificado
 contra titulos reales; las demas son formatos documentados que no se han
-comprobado en este equipo, y su confianza lo refleja. Ver CLAUDE.md
-seccion 43: no inventar lo que no se ha verificado.
+comprobado en este equipo, y su confianza lo refleja: no se
+inventa lo que no se ha verificado.
 """
 
 from __future__ import annotations
@@ -173,8 +173,7 @@ def detect(window: ActiveWindow | None) -> TitleParts:
 
     Devuelve una `TitleParts` vacia cuando no hay nada fiable que extraer.
     Eso incluye las aplicaciones sin regla conocida: para VALORANT el titulo
-    es "VALORANT", y llamar a eso "documento" seria inventarse informacion
-    (CLAUDE.md seccion 43).
+    es "VALORANT", y llamar a eso "documento" sería inventarse información.
     """
     # Una ventana censurada por privacidad no se analiza. El filtro vacio el
     # titulo, pero la comprobacion explicita evita que un cambio futuro en

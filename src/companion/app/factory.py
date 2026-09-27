@@ -82,7 +82,7 @@ def build_question_generator(
     """Instancia el redactor de preguntas.
 
     Necesita el modelo, asi que solo se construye cuando de verdad se va a
-    preguntar: CLAUDE.md seccion 33 quiere la aplicacion ligera en reposo.
+    preguntar: la aplicación tiene que ser ligera en reposo.
     """
     return QuestionGenerator(
         provider,

@@ -1,4 +1,4 @@
-"""Tests de la clasificación de actividad (CLAUDE.md secciones 3.4 y 10)."""
+"""Tests de la clasificación de actividad."""
 
 from __future__ import annotations
 
@@ -106,8 +106,8 @@ def test_una_ventana_censurada_si_se_clasifica() -> None:
 
 
 def test_no_existen_categorias_de_juicio() -> None:
-    # CLAUDE.md sección 10 lo prohíbe expresamente. Este test está para que
-    # nadie las añada por comodidad más adelante.
+    # Se describe el uso, nunca se juzga. Este test está para que nadie
+    # las añada por comodidad más adelante.
     prohibidas = {"productive", "unproductive", "distracted", "procrastinating", "focused"}
     existentes = {str(tipo) for tipo in ActivityType}
 

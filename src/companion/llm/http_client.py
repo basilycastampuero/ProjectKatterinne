@@ -1,6 +1,6 @@
 """Cliente HTTP minimo sobre `urllib` (stdlib).
 
-CLAUDE.md seccion 34 obliga a justificar cada dependencia. Hablar con un
+Cada dependencia tiene que justificarse. Hablar con un
 servidor HTTP local que devuelve JSON y NDJSON no requiere `requests` ni
 `httpx`: `urllib.request` lo resuelve y mantiene el runtime en cero
 dependencias externas.

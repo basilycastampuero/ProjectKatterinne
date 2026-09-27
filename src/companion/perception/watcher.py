@@ -34,7 +34,7 @@ class WindowChangeDetector:
 
         Devuelve `None` cuando no ha cambiado nada, que es el caso
         mayoritario: en un sondeo por segundo, la inmensa mayoria de las
-        observaciones son identicas a la anterior. Ver CLAUDE.md seccion 19:
+        observaciones son idénticas a la anterior:
         no pasar nada es el estado normal del sistema.
         """
         previous = self._previous
@@ -71,7 +71,7 @@ class WindowChangeDetector:
         previous: ActiveWindow | None,
     ) -> WindowEvent:
         # Sin titulo de ventana en el log, por lo mismo de siempre: puede
-        # llevar datos personales (CLAUDE.md seccion 32). Y de una ventana
+        # llevar datos personales. Y de una ventana
         # censurada no se registra ni la aplicacion: saber a que hora abres
         # tu banco tambien es informacion sobre ti.
         if window.redacted:

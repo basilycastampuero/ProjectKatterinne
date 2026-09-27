@@ -6,7 +6,7 @@
 
 ## Contexto
 
-CLAUDE.md §34 exige justificar cada dependencia antes de añadirla, empezando
+Cada dependencia tiene que justificarse antes de añadirla, empezando
 por "¿puede resolverlo la biblioteca estándar?".
 
 PHASE 0/1 necesita exactamente dos cosas externas al lenguaje:
@@ -36,7 +36,7 @@ No añadir ninguna dependencia de runtime.
 **A favor**
 
 - La instalación no descarga nada de PyPI para funcionar: coherente con
-  local-first (§3.1) y con "aplicación ligera en reposo" (§33).
+  local-first y con "aplicación ligera en reposo".
 - No hay superficie de dependencias que auditar por privacidad.
 - Menos versiones que fijar y romper.
 
@@ -54,4 +54,4 @@ No añadir ninguna dependencia de runtime.
 
 - Si PHASE 5 necesita inferencia concurrente → evaluar `httpx`.
 - Si el esquema de configuración crece o los outputs estructurados del LLM
-  (§24) necesitan validación seria → evaluar `pydantic`.
+  necesitan validación seria → evaluar `pydantic`.

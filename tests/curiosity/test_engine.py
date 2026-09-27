@@ -1,6 +1,6 @@
 """Tests del motor de curiosidad: sobre todo, de cuándo se calla.
 
-CLAUDE.md secciones 19 y 21, y los casos que la sección 31 exige cubrir:
+Las barreras del silencio y los casos que hay que cubrir sí o sí:
 puntuación, enfriamiento, modo privacidad, lista negra y procesado de
 eventos.
 """
@@ -55,7 +55,7 @@ def test_la_decision_se_puede_explicar(engine: CuriosityEngine) -> None:
 
 
 # ----------------------------------------------------------------------
-# Las barreras de la sección 21, una por una
+# Las barreras, una por una
 # ----------------------------------------------------------------------
 
 
@@ -252,7 +252,7 @@ def test_un_fallo_de_la_memoria_lleva_al_silencio(engine: CuriosityEngine, memor
 
 
 # ----------------------------------------------------------------------
-# Sección 19: el silencio es lo normal
+# El silencio es lo normal
 # ----------------------------------------------------------------------
 
 
@@ -268,7 +268,7 @@ def _simular(engine: CuriosityEngine, contextos) -> int:
 
 
 def test_dos_horas_en_un_proyecto_dan_una_sola_pregunta(memoria: MemoryManager) -> None:
-    """El criterio de la sección 19, convertido en test.
+    """Dos horas con una sola pregunta, convertido en test.
 
     Una jornada normal: casi todo el rato en el mismo proyecto, con alguna
     escapada al navegador. Debe preguntar una vez y luego callarse.

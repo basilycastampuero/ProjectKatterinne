@@ -3,7 +3,7 @@
 Responsabilidad: construir lo que se le envia al modelo y mantener el hilo.
 No sabe que proveedor hay debajo ni como se guarda nada en disco.
 
-CLAUDE.md seccion 25 dicta la forma del payload. No es todo el historial ni
+La forma del payload está decidida. No es todo el historial ni
 un prompt gigante, sino cuatro cosas:
 
     prompt del sistema      quien es
@@ -94,9 +94,8 @@ class ConversationManager:
     def _recent_activity(self) -> list[ActivitySpan]:
         """Cuanto tiempo lleva hoy en cada aplicacion.
 
-        CLAUDE.md seccion 25 lo pide como una de las cuatro piezas del
-        payload, y la seccion 26 justifica las sesiones con "poder responder
-        ¿que hiciste ayer?". Sin esto, esa pregunta no tenia respuesta
+        Es una de las cuatro piezas del payload, y las sesiones existen
+        precisamente para poder responder "¿qué hiciste ayer?". Sin esto, esa pregunta no tenia respuesta
         posible por mucho que los datos estuvieran en la base de datos.
         """
         if self._memory is None:

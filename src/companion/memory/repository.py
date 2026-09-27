@@ -4,8 +4,8 @@ Esta clase es la **unica** que escribe SQL. Todo lo de arriba trabaja con
 los dataclasses de `models.py` y no sabe que hay una base de datos debajo,
 igual que nada fuera de `llm/ollama.py` sabe que existe Ollama.
 
-Alcance de PHASE 4: CRUD y poco mas. La politica de que merece guardarse
-(CLAUDE.md seccion 17) vive por encima, en el manager.
+Alcance de PHASE 4: CRUD y poco mas. La política de qué merece guardarse
+vive por encima, en el manager.
 """
 
 from __future__ import annotations
@@ -155,8 +155,7 @@ class MemoryRepository:
         """Abre (o crea) la base de datos en disco.
 
         Usa `":memory:"` para una base efimera, que es lo que hacen los
-        tests: CLAUDE.md seccion 31 pide que todo sea testeable sin
-        infraestructura.
+        tests: todo tiene que ser testeable sin infraestructura.
         """
         if path != ":memory:":
             Path(path).parent.mkdir(parents=True, exist_ok=True)
@@ -209,8 +208,8 @@ class MemoryRepository:
 
         La procedencia guardada es siempre la **mas alta** vista hasta
         ahora. Una inferencia posterior no degrada lo que la usuaria ya
-        confirmo: seria perder informacion, y ademas contradice el espiritu
-        de CLAUDE.md seccion 11.
+        confirmo: seria perder informacion, y ademas contradice el espíritu
+        de distinguir lo inferido de lo confirmado.
         """
         cleaned = name.strip()
         if not cleaned:
@@ -402,7 +401,7 @@ class MemoryRepository:
         return [_row_to_activity(row) for row in rows]
 
     def dominant_application(self, session_id: int) -> str | None:
-        """La aplicacion con mas eventos de la sesion. CLAUDE.md seccion 26.
+        """La aplicación con más eventos de la sesión.
 
         Se resuelve con `GROUP BY` en vez de contando filas en Python: una
         sesion de ocho horas puede tener miles de actividades y no hay
@@ -487,7 +486,7 @@ class MemoryRepository:
     def touch_fact(self, fact_id: int, *, at: datetime | None = None) -> None:
         """Marca que un hecho se ha usado.
 
-        CLAUDE.md seccion 16 pide `last_accessed`. Sirve para que la
+        Mantiene `last_accessed` al día. Sirve para que la
         consolidacion de PHASE 9 sepa que recuerdos siguen vivos y cuales
         llevan meses sin hacer falta.
         """
@@ -586,7 +585,7 @@ class MemoryRepository:
         """Borra los hechos de un alcance concreto atados a una sesion.
 
         Lo usa el cierre de sesion para retirar lo que solo tenia sentido
-        mientras esa sesion duraba (CLAUDE.md seccion 17).
+        mientras esa sesión duraba.
         """
         with self._connection:
             cursor = self._connection.execute(

@@ -1,7 +1,6 @@
 """Dobles y fixtures de la memoria.
 
 Todo corre sobre `:memory:`: los tests no tocan el disco ni dejan restos.
-CLAUDE.md sección 31.
 """
 
 from __future__ import annotations

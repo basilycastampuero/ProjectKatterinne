@@ -1,7 +1,7 @@
 """Tests del detector de ventana activa.
 
 Se sustituyen las cuatro funciones de `_win32` por dobles. Asi se prueban
-todos los escenarios hostiles de CLAUDE.md seccion 9 —ventanas que
+todos los escenarios hostiles —ventanas que
 desaparecen, procesos protegidos, errores del sistema— que en la practica
 serian casi imposibles de provocar a mano.
 """
@@ -67,7 +67,7 @@ def test_la_observacion_lleva_marca_de_tiempo(provider) -> None:
 
 
 # ----------------------------------------------------------------------
-# Escenarios hostiles (CLAUDE.md seccion 9)
+# Escenarios hostiles
 # ----------------------------------------------------------------------
 
 

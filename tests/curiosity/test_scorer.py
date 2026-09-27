@@ -1,4 +1,4 @@
-"""Tests de la puntuación determinista (CLAUDE.md PHASE 6 y sección 20)."""
+"""Tests de la puntuación determinista."""
 
 from __future__ import annotations
 
@@ -107,7 +107,7 @@ def test_sin_aplicacion_no_hay_nada() -> None:
 
 
 def test_una_aplicacion_desconocida_sin_proyecto_no_produce_preguntas() -> None:
-    """Sección 20: no crear preguntas artificialmente sin contexto.
+    """No crear preguntas artificialmente sin contexto.
 
     Si solo se sabe que hay un ejecutable raro abierto, cualquier pregunta
     sería inventada.
@@ -133,7 +133,7 @@ def test_ninguna_senal_aislada_llega_al_umbral() -> None:
     Es deliberado: hacen falta al menos dos cosas a la vez, algo
     interesante *y* que lleve un rato ahí. Si una sola bastara, cualquier
     cambio de ventana podría disparar una pregunta, que es justo lo que
-    prohíbe la sección 19.
+    hay que evitar: el silencio es lo normal.
     """
     umbral = 6
     individuales = [

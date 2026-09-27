@@ -19,3 +19,6 @@ companion.local.toml
 # Editores
 .vscode/
 .idea/
+
+# Instrucciones locales del proyecto para el agente (uso personal, no público)
+CLAUDE.md

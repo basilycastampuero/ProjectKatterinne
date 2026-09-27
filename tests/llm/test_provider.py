@@ -8,7 +8,7 @@ from tests.conftest import FakeProvider
 
 
 def test_la_vision_no_esta_soportada_todavia(fake_provider: FakeProvider) -> None:
-    # generate_with_image forma parte del contrato (CLAUDE.md seccion 6) pero
+    # generate_with_image forma parte del contrato pero
     # la implementacion es PHASE 5: debe fallar de forma explicita.
     with pytest.raises(CapabilityNotSupportedError):
         fake_provider.generate_with_image([], b"")

@@ -1,7 +1,7 @@
 """Capa de percepcion: observacion pasiva y de solo lectura del sistema.
 
 Alcance de PHASE 2: unicamente la ventana activa. Sin capturas de pantalla,
-sin OCR, sin vision y sin LLM. Ver CLAUDE.md secciones 3.3 y 8.
+sin OCR, sin visión y sin LLM.
 """
 
 from companion.perception.active_window import ActiveWindowProvider, Win32ActiveWindowProvider

@@ -1,6 +1,6 @@
 """Configuracion de logging.
 
-CLAUDE.md seccion 32 pide logs estructurados por componente:
+Logs estructurados por componente:
 
     [PERCEPTION] active_window_changed
     [CONTEXT]    project=StudyFlow
@@ -9,7 +9,7 @@ CLAUDE.md seccion 32 pide logs estructurados por componente:
 El componente se deriva del nombre del logger (`companion.llm` -> `LLM`),
 asi que cada modulo solo necesita `logging.getLogger("companion.<area>")`.
 
-Reglas de privacidad (seccion 32): no se registra el contenido de las
+Reglas de privacidad: no se registra el contenido de las
 capturas, ni el audio, ni el texto de la conversacion. Aqui solo entran
 metadatos y metricas.
 """

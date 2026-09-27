@@ -7,12 +7,11 @@ curiosidad y a veces pregunta.
 Todo ocurre en tu máquina. Sin API de OpenAI, sin Anthropic, sin Google, sin
 servicios de visión ni de voz en la nube.
 
-> Estado actual: **MVP completo** (CLAUDE.md §45, los once puntos).
+> Estado actual: **MVP completo** (los once puntos de la definición de MVP).
 > Fases 0 a 4, 6 y 7 terminadas. Faltan visión, voz y avatar.
 >
 > **¿Nuevo en el proyecto?** Empieza por [`docs/GUIA.md`](docs/GUIA.md).
 > **¿Retomando?** [`docs/PENDIENTE.md`](docs/PENDIENTE.md).
-> Ver [CLAUDE.md](CLAUDE.md) para la arquitectura completa y el plan de fases.
 
 ---
 
@@ -53,9 +52,9 @@ que ninguno, porque le hace negar cosas que sí sabe.
 
 ## Lo que nunca hará
 
-Por diseño (CLAUDE.md §3.3 y §44), no puede hacer clic, escribir, mover el
+Por diseño, no puede hacer clic, escribir, mover el
 ratón, ejecutar comandos, modificar archivos ni abrir aplicaciones. Es una
-observadora de solo lectura.
+observadora de solo lectura, según lo planeado.
 
 ---
 
@@ -110,7 +109,7 @@ Si dice que no hay runtime, arráncalo con `ollama serve`.
 ```
 
 `--watch` imprime solo los **cambios**. Si te quedas media hora en el mismo
-archivo, no imprime nada: el silencio es el estado normal (§19).
+archivo, no imprime nada: el silencio es el estado normal.
 
 ```
 11:07:47  cambio de app  Visual Studio Code
@@ -170,7 +169,7 @@ Guarda sesiones, actividades, proyectos, hechos y conversaciones en
 procedencia, su confianza y su origen, así que nunca se confunde lo que tú
 dijiste con lo que el sistema dedujo.
 
-No guarda todo (§17): los cambios de aplicación siempre, los cambios de
+No guarda todo: los cambios de aplicación siempre, los cambios de
 archivo como mucho uno por minuto, y las inferencias flojas no entran. Lo
 que tú confirmes entra siempre.
 
@@ -190,8 +189,7 @@ min_seconds_in_context = 120.0
 max_questions_per_session = 4
 ```
 
-Estos números existen **para que se calle**, no para que hable. §19 considera
-que una sesión de dos horas con *una* pregunta es buena, y con cuarenta y
+Estos números existen **para que se calle**, no para que hable. Una sesión de dos horas con *una* pregunta es buena, y con cuarenta y
 siete es mala.
 
 Los pesos están calibrados para que **ninguna señal suelta llegue al
@@ -275,8 +273,8 @@ $env:COMPANION_LLM_TEMPERATURE = "0.4"
 
 Ninguna prueba habla con Ollama ni necesita GPU: `LLMProvider` y
 `ActiveWindowProvider` se sustituyen por dobles (`tests/conftest.py`), y las
-funciones HTTP y de Win32 se interceptan. Es un requisito explícito de
-CLAUDE.md §31.
+funciones HTTP y de Win32 se interceptan. Es un requisito explícito de la
+estrategia de tests del proyecto.
 
 La excepción es `tests/perception/test_win32_real.py`, que sí llama a las DLL
 de Windows. Existe porque un `restype` mal declarado en `ctypes` pasa todos
@@ -290,7 +288,7 @@ Windows.
 ```
 src/companion/
 ├── main.py              punto de entrada y parseo de argumentos
-├── logging_setup.py     logs con formato [COMPONENTE] (§32)
+├── logging_setup.py     logs con formato [COMPONENTE]
 ├── app/
 │   ├── factory.py       único sitio que elige la implementación concreta
 │   └── cli.py           REPL, preflight y formato de salida
@@ -302,15 +300,15 @@ src/companion/
 │   ├── provider.py      ← interfaz LLMProvider. De esto depende todo
 │   ├── ollama.py        ← lo único que sabe de la API de Ollama
 │   ├── http_client.py   urllib + traducción de errores de red
-│   ├── prompts.py       prompt de sistema (personalidad, §38)
+│   ├── prompts.py       prompt de sistema (personalidad)
 │   └── errors.py        jerarquía de errores agnóstica del proveedor
 ├── perception/
 │   ├── models.py        ActiveWindow y eventos estructurados
 │   ├── active_window.py ← interfaz ActiveWindowProvider + impl. Windows
 │   ├── _win32.py        ← lo único que sabe de la API de Windows
-│   ├── privacy.py       filtro que envuelve al detector (§22)
+│   ├── privacy.py       filtro que envuelve al detector
 │   ├── process.py       nombre legible desde el ejecutable (lógica pura)
-│   ├── project_detector.py  proyecto y documento desde el título (§11)
+│   ├── project_detector.py  proyecto y documento desde el título
 │   └── watcher.py       detección de cambios (lógica pura)
 ├── context/
 │   ├── models.py        ← Signal, Provenance, CurrentContext
@@ -322,11 +320,11 @@ src/companion/
 │   ├── models.py        entidades inmutables
 │   ├── repository.py    ← lo único que escribe SQL
 │   ├── rendering.py     resumen de actividad y recuerdos
-│   └── manager.py       qué merece guardarse y cuánto dura (§17)
+│   └── manager.py       qué merece guardarse y cuánto dura
 └── curiosity/
     ├── models.py        CuriosityDecision y los motivos del silencio
     ├── scorer.py        puntuación determinista (lógica pura)
-    ├── engine.py        las barreras de §21, en orden
+    ├── engine.py        las barreras del silencio, en orden
     └── questions.py     ← redacta y VALIDA la pregunta
 ```
 
@@ -342,7 +340,6 @@ módulo hermano y añadir una rama en `factory.py`.
 | [`docs/GUIA.md`](docs/GUIA.md) | Cómo funciona, archivo por archivo, y el porqué de cada cosa |
 | [`docs/PENDIENTE.md`](docs/PENDIENTE.md) | Qué falta y con qué contexto retomarlo |
 | [`docs/architecture-decisions/`](docs/architecture-decisions/) | Nueve ADRs: las decisiones y por qué se tomaron |
-| [`CLAUDE.md`](CLAUDE.md) | La especificación del proyecto |
 
 Si vas a cambiar algo que ya tiene un ADR, léelo antes: casi siempre la
 alternativa obvia ya se consideró y hay un motivo escrito para no haberla
@@ -381,8 +378,8 @@ una sola ejecución:
 No hay flag para *apagarlo*: un ajuste de privacidad guardado no debería
 poder desactivarse sin querer desde la línea de comandos.
 
-La lista llega **vacía**. CLAUDE.md §22 prohíbe asumir qué aplicaciones usa
-cada persona: rellénala tú.
+La lista llega **vacía**. No se asume qué aplicaciones usa cada persona:
+rellénala tú.
 
 El diseño y una fuga real que se encontró implementándolo están en
 [ADR-005](docs/architecture-decisions/ADR-005-privacy-as-a-filter-layer.md).
@@ -392,7 +389,7 @@ El diseño y una fuga real que se encontró implementándolo están en
 ## El modelo
 
 `companion.toml` usa **`qwen3:8b`** en Q4_K_M (~5.2 GB). Entra entero en los
-8 GB de la RTX 4070 Laptop, que es el requisito duro de §2 y §33.
+8 GB de la RTX 4070 Laptop, que es el requisito duro del equipo objetivo.
 
 Medido en ese equipo, comparado con el modelo provisional anterior:
 
@@ -404,8 +401,8 @@ Medido en ese equipo, comparado con el modelo provisional anterior:
 | Primer token | ~6.0 s | **~0.6 s** |
 | Velocidad | 3–7 tok/s | **~28 tok/s** |
 
-Sigue siendo una elección provisional hasta el benchmark de §37, pero ya
-cumple el rango 4B–8B de §7 y deja ~1.7 GB de VRAM libres.
+Sigue siendo una elección provisional hasta el benchmark, pero ya
+cumple el rango 4B–8B previsto y deja ~1.7 GB de VRAM libres.
 
 **El modo de razonamiento va desactivado** (`think = false`). Ver
 [ADR-003](docs/architecture-decisions/ADR-003-disable-thinking-mode.md).

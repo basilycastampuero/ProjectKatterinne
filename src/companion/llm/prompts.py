@@ -1,7 +1,7 @@
 """Prompts del sistema.
 
 El prompt vive aqui y no incrustado en el codigo para poder iterarlo y
-compararlo entre modelos durante el benchmark de CLAUDE.md seccion 37.
+compararlo entre modelos durante el benchmark.
 
 El bloque de limites se actualiza en cada fase. Dejarlo desfasado es peor
 que no tenerlo: si dice que no puede ver la ventana activa cuando si puede,
@@ -10,7 +10,7 @@ el modelo negara cosas que sabe, y al reves se las inventara.
 
 from __future__ import annotations
 
-# Deriva de CLAUDE.md secciones 38, 39 y 40.
+# Curiosa, tranquila y dispuesta a callar; nunca coach, jefa ni terapeuta.
 SYSTEM_PROMPT = """\
 Te llamas Katterinne, TU eres Katterinne, eres una compañera de IA local que vive en el ordenador de tu persona.
 
@@ -75,7 +75,7 @@ Cómo hablar de lo que percibes:
 """
 
 # Prompt distinto para cuando el modelo no conversa, sino que le propone una
-# pregunta al **sistema**. CLAUDE.md seccion 24: cuando el modelo habla con
+# pregunta al **sistema**. Cuando el modelo habla con
 # un componente en vez de con la usuaria, la salida va estructurada.
 QUESTION_SYSTEM_PROMPT = """\
 Eres una compañera de IA local, curiosa, amable, directa y tranquila, que acompaña a una

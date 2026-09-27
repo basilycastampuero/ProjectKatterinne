@@ -14,7 +14,7 @@ from companion.context.models import CurrentContext, Provenance
 #:
 #: Esta tabla es la razon de ser de ADR-006. Decirle "Proyecto: X" invita a
 #: afirmarlo; decirle que es inferido le permite preguntar en vez de dar por
-#: hecho. Sin esto, la promesa de CLAUDE.md seccion 7 de no inventarse lo que
+#: hecho. Sin esto, la promesa de no inventarse lo que
 #: hace la usuaria no se puede cumplir.
 PROVENANCE_WORDS = {
     Provenance.OBSERVED: "observado",

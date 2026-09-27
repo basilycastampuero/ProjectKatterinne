@@ -1,6 +1,6 @@
 """Tipos de la capa de percepcion.
 
-CLAUDE.md seccion 8: la percepcion produce **eventos estructurados**, no texto
+La percepción produce **eventos estructurados**, no texto
 suelto que se le pasa al LLM. Estos dataclasses son ese contrato.
 """
 
@@ -27,7 +27,7 @@ class ActiveWindow:
     """La ventana que tiene el foco en este instante.
 
     Todo lo de aqui es **observado**, nunca inferido: sale de las APIs de
-    Windows, no de un modelo. Ver CLAUDE.md seccion 3.4.
+    Windows, no de un modelo.
     """
 
     hwnd: int
@@ -44,14 +44,14 @@ class ActiveWindow:
     #:
     #: Se marca en vez de descartar la ventana entera porque el sistema
     #: necesita saber que el usuario esta en una aplicacion protegida para
-    #: NO interrumpirle (CLAUDE.md seccion 21), sin saber que hace alli.
+    #: NO interrumpirle, sin saber que hace alli.
     redacted: bool = False
 
     timestamp: datetime = field(default_factory=_now)
 
 
 class EventType(StrEnum):
-    """Tipos de evento de percepcion (subconjunto de CLAUDE.md seccion 10).
+    """Tipos de evento de percepcion.
 
     Deliberadamente descriptivos. Nada de `productive` o `distracted`: el
     sistema registra lo observable, no juzga.
@@ -71,7 +71,7 @@ class WindowEvent:
     timestamp: datetime = field(default_factory=_now)
 
     def to_dict(self) -> dict[str, Any]:
-        """Forma serializable del evento, como en CLAUDE.md seccion 8.
+        """Forma serializable del evento.
 
         No incluye el titulo de la ventana: puede contener nombres de
         documentos, URLs o datos personales, y este diccionario esta pensado

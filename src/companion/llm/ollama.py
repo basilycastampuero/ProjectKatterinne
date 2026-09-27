@@ -119,7 +119,7 @@ class OllamaProvider(LLMProvider):
 
         Se consulta antes de mandar el campo `think`: enviarselo a un modelo
         que no lo soporta puede hacer fallar la peticion, y el objetivo es
-        que cambiar de modelo no rompa nada (CLAUDE.md seccion 37).
+        que cambiar de modelo no rompa nada.
         """
         return "thinking" in self.capabilities()
 

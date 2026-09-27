@@ -28,8 +28,8 @@ Esto es lo que recuerdas:
 Decirle `Proyecto: ProjectKatterinne` a secas le invita a afirmarlo. Añadir
 `(inferido, puede estar mal)` le permite preguntar en vez de dar por hecho.
 
-Sin esto, la promesa de CLAUDE.md §7 —*"Never fabricate knowledge of what the
-user is doing"*— no se puede cumplir: el modelo no tendría forma de saber
+Sin esto, la promesa de no inventarse lo que hace la usuaria no se puede
+cumplir: el modelo no tendría forma de saber
 qué parte de lo que le contamos es una suposición nuestra.
 
 **Verificado con el modelo real.** Con el bloque de procedencia, `qwen3:8b`
@@ -60,7 +60,7 @@ un hilo de fondo.
 - No detecta cambios *mientras* se escribe un mensaje. Da igual: lo que
   importa es el contexto en el momento de responder.
 - Cuando PHASE 6 tenga que hablar sin que le pregunten, hará falta un bucle
-  de observación de verdad. Entonces se revisa esto, no antes (§48).
+  de observación de verdad. Entonces se revisa esto, no antes.
 
 `--watch` sí tiene su propio bucle, y es donde vive la observación continua.
 
