@@ -150,9 +150,9 @@ Motivos de rechazo, en este orden:
 | es una pregunta | contiene `?` |
 | alcance inválido | `scope` no es `session`, `project` ni `long_term` (`ephemeral` no merece la llamada al modelo) |
 | la cita no existe | `evidence` no aparece en ningún mensaje de la persona |
+| habla de la compañera | el sujeto es ella, o la cita va dirigida a ella (*"eres muy curiosa"*). Va antes que la siguiente porque casi siempre la dispara también, y este motivo es el útil |
 | añade cosas | menos del 60 % de las palabras con significado de `content` están en la cita o en su mensaje |
-| habla de la compañera | el sujeto es ella (*"le gusta que la llamen..."*) y no la persona ni su trabajo |
-| dato sensible | contraseñas, tokens, claves, números de tarjeta o de cuenta |
+| dato sensible | el **valor** de una contraseña, token o clave de acceso, y números de tarjeta, cuenta o IBAN. Hablar de tokens no es revelar uno |
 
 El umbral del 60 % es un punto de partida. Se ajusta con los rechazos
 reales del paso 8, no a ojo.
