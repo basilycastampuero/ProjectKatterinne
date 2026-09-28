@@ -3,6 +3,10 @@
 Todo lo que hace falta para entender este código y saber dónde tocar.
 Pensada para alguien que sabe Python pero no ha visto el proyecto.
 
+> Si empiezas de cero, sin experiencia en un proyecto así, lee antes el
+> [manual](manual/README.md): explica desde los conceptos básicos lo que
+> esta guía da por sabido.
+
 Si solo vas a leer una sección, que sea
 [Las tres reglas](#las-tres-reglas-que-explican-casi-todo): casi cada
 decisión del código sale de ahí.

@@ -156,7 +156,7 @@ class CuriosityEngine:
     def _blocked_by(
         self, context: CurrentContext, now: datetime, conversation_active: bool
     ) -> SilenceReason | None:
-        """Las barreras del apartado 21, en orden. La primera que salta manda."""
+        """Las barreras del silencio, en orden. La primera que salta manda."""
         if not self._policy.enabled:
             return SilenceReason.DISABLED
 

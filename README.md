@@ -10,7 +10,8 @@ servicios de visión ni de voz en la nube.
 > Estado actual: **MVP completo** (los once puntos de la definición de MVP).
 > Fases 0 a 4, 6 y 7 terminadas. Faltan visión, voz y avatar.
 >
-> **¿Nuevo en el proyecto?** Empieza por [`docs/GUIA.md`](docs/GUIA.md).
+> **¿Empiezas de cero?** Lee el [manual](docs/manual/README.md), en orden.
+> **¿Ya sabes Python y quieres ir al grano?** [`docs/GUIA.md`](docs/GUIA.md).
 > **¿Retomando?** [`docs/PENDIENTE.md`](docs/PENDIENTE.md).
 
 ---
@@ -366,9 +367,10 @@ módulo hermano y añadir una rama en `factory.py`.
 
 | Documento | Para qué |
 |---|---|
-| [`docs/GUIA.md`](docs/GUIA.md) | Cómo funciona, archivo por archivo, y el porqué de cada cosa |
+| [`docs/manual/`](docs/manual/README.md) | Para quien empieza de cero: conceptos, arquitectura, flujos, tests y cómo se trabaja |
+| [`docs/GUIA.md`](docs/GUIA.md) | La referencia rápida: cómo funciona, archivo por archivo, y el porqué de cada cosa |
 | [`docs/PENDIENTE.md`](docs/PENDIENTE.md) | Qué falta y con qué contexto retomarlo |
-| [`docs/architecture-decisions/`](docs/architecture-decisions/) | Nueve ADRs: las decisiones y por qué se tomaron |
+| [`docs/architecture-decisions/`](docs/architecture-decisions/) | Diez ADRs: las decisiones y por qué se tomaron |
 
 Si vas a cambiar algo que ya tiene un ADR, léelo antes: casi siempre la
 alternativa obvia ya se consideró y hay un motivo escrito para no haberla
