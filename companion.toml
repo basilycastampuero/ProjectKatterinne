@@ -76,6 +76,18 @@ min_confidence_to_store = 0.3
 # Cuantos recuerdos se le pasan al modelo en cada turno.
 recall_limit = 5
 
+# Aprende de lo que le cuentas. Con false la conversación se sigue guardando,
+# pero no se convierte en recuerdos. Lo aprendido se ve con /memory y se
+# borra con /forget <id>.
+extract_facts = true
+
+# Segundos sin escribir, tras un turno, antes de revisar lo que has contado.
+# También se revisa con /reset y al salir.
+extraction_idle_s = 30.0
+
+# Hechos como mucho por revisión. Empezar conservador.
+max_facts_per_extraction = 3
+
 [curiosity]
 # Cuando se le permite iniciar una conversacion. Estos numeros existen para
 # que se calle, no para que hable: se considera que una

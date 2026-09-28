@@ -62,15 +62,15 @@ def build_memory(settings: Settings) -> MemoryManager | None:
 
 
 def build_fact_extractor(
-    provider: LLMProvider, memory: MemoryManager | None
+    settings: Settings, provider: LLMProvider, memory: MemoryManager | None
 ) -> FactExtractor | None:
-    """El extractor de hechos, o `None` si no hay memoria donde guardarlos.
+    """El extractor de hechos, o `None` si no hay que aprender.
 
     Sin memoria, extraer sería gastar el modelo para tirar el resultado.
     """
-    if memory is None:
+    if memory is None or not settings.memory.extract_facts:
         return None
-    return FactExtractor(provider)
+    return FactExtractor(provider, max_facts=settings.memory.max_facts_per_extraction)
 
 
 def build_curiosity(

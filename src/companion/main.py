@@ -211,7 +211,7 @@ def main(argv: list[str] | None = None) -> int:
         max_history_messages=settings.conversation.max_history_messages,
         memory=memory,
         recall_limit=settings.memory.recall_limit,
-        fact_extractor=build_fact_extractor(provider, memory),
+        fact_extractor=build_fact_extractor(settings, provider, memory),
     )
     stream = not args.no_stream
 
@@ -232,6 +232,7 @@ def main(argv: list[str] | None = None) -> int:
         curiosity=curiosidad,
         questions=build_question_generator(settings, provider),
         interval_s=settings.perception.poll_interval_s,
+        extraction_idle_s=settings.memory.extraction_idle_s,
     )
 
 

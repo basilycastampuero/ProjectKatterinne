@@ -6,6 +6,7 @@ import pytest
 
 from companion.app.factory import (
     build_active_window_provider,
+    build_fact_extractor,
     build_memory,
     build_privacy_policy,
     build_provider,
@@ -15,6 +16,7 @@ from companion.llm.ollama import OllamaProvider
 from companion.main import apply_overrides, build_parser, main
 from companion.perception import _win32
 from companion.perception.privacy import PrivacyFilteredWindowProvider
+from tests.conftest import FakeProvider
 
 
 def test_la_factory_construye_el_proveedor_de_la_configuracion() -> None:
@@ -174,3 +176,38 @@ def test_version_no_revienta() -> None:
         main(["--version"])
 
     assert exc.value.code == 0
+
+
+def test_sin_memoria_o_con_la_extraccion_apagada_no_hay_extractor(tmp_path: Path) -> None:
+    from dataclasses import replace
+
+    settings = Settings(data_dir=tmp_path)
+    apagada = replace(settings, memory=replace(settings.memory, extract_facts=False))
+    memoria = build_memory(settings)
+
+    assert build_fact_extractor(settings, FakeProvider(), None) is None
+    assert build_fact_extractor(apagada, FakeProvider(), memoria) is None
+    assert build_fact_extractor(settings, FakeProvider(), memoria) is not None
+    memoria.repository.close()
+
+
+def test_el_maximo_de_hechos_llega_desde_la_configuracion(tmp_path: Path) -> None:
+    import json
+    from dataclasses import replace
+
+    from companion.conversation.facts import PendingTurn
+
+    settings = Settings(data_dir=tmp_path)
+    settings = replace(settings, memory=replace(settings.memory, max_facts_per_extraction=1))
+    memoria = build_memory(settings)
+    hechos = [
+        {"content": "Usa SQLite.", "evidence": "uso SQLite", "scope": "project"},
+        {"content": "Usa Django.", "evidence": "uso Django", "scope": "project"},
+    ]
+    provider = FakeProvider(replies=[json.dumps({"facts": hechos})])
+
+    extractor = build_fact_extractor(settings, provider, memoria)
+    extraidos = extractor.extract([PendingTurn("uso SQLite y uso Django")])
+
+    assert len(extraidos) == 1
+    memoria.repository.close()

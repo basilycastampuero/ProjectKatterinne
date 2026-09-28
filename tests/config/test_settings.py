@@ -172,6 +172,28 @@ def test_la_politica_de_memoria_se_configura(tmp_path: Path) -> None:
     assert settings.memory.recall_limit == 3
 
 
+def test_aprender_de_la_conversacion_se_configura(tmp_path: Path) -> None:
+    config = _write(
+        tmp_path,
+        "companion.toml",
+        "[memory]\nextraction_idle_s = 10.0\nmax_facts_per_extraction = 1\n",
+    )
+
+    settings = load_settings(config, env={"COMPANION_MEMORY_EXTRACT_FACTS": "false"})
+
+    assert settings.memory.extract_facts is False
+    assert settings.memory.extraction_idle_s == pytest.approx(10.0)
+    assert settings.memory.max_facts_per_extraction == 1
+
+
+def test_por_defecto_aprende_con_prudencia() -> None:
+    memoria = load_settings(env={}).memory
+
+    assert memoria.extract_facts is True
+    assert memoria.extraction_idle_s == pytest.approx(30.0)
+    assert memoria.max_facts_per_extraction == 3
+
+
 def test_los_settings_son_inmutables() -> None:
     settings = Settings()
 

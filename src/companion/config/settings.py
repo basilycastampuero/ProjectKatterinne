@@ -108,6 +108,19 @@ class MemorySettings:
     #: Cuantos recuerdos se le pasan al modelo por turno.
     recall_limit: int = 5
 
+    #: Aprende de lo que se le cuenta. Con `false` la conversación se sigue
+    #: guardando, pero no se convierte en recuerdos.
+    extract_facts: bool = True
+
+    #: Segundos sin escribir, tras un turno, antes de revisar lo dicho. Menos
+    #: partiría una explicación en dos lotes; y revisar cuesta una llamada al
+    #: modelo, que es mejor hacer cuando nadie espera respuesta.
+    extraction_idle_s: float = 30.0
+
+    #: Hechos como mucho por revisión. Conservador: es más fácil relajar un
+    #: límite que limpiar una memoria llena de basura.
+    max_facts_per_extraction: int = 3
+
 
 @dataclass(frozen=True, slots=True)
 class CuriositySettings:
