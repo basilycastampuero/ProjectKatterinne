@@ -22,12 +22,35 @@ def _textos_de_la_persona(ejemplo: dict) -> list[str]:
     return [texto for quien, texto in ejemplo["turns"] if quien == USER_SPEAKER]
 
 
+def _respaldo(ejemplo: dict) -> list[str]:
+    # El mismo que tendrá en uso real: lo que dijo la compañera y lo que percibe.
+    textos = [texto for quien, texto in ejemplo["turns"] if quien != USER_SPEAKER]
+    if "perceived" in ejemplo:
+        textos.append(ejemplo["perceived"])
+    return textos
+
+
 @pytest.mark.parametrize("ejemplo", FACT_EXTRACTION_EXAMPLES)
 def test_cada_ejemplo_del_prompt_pasa_el_validador(ejemplo: dict) -> None:
     # Un ejemplo que el validador rechazara le enseñaría al modelo a
     # proponer justo lo que luego se descarta.
     for hecho in ejemplo["facts"]:
-        assert validate_fact(hecho, _textos_de_la_persona(ejemplo)) is None, hecho
+        motivo = validate_fact(
+            hecho, _textos_de_la_persona(ejemplo), support=_respaldo(ejemplo)
+        )
+        assert motivo is None, (hecho, motivo)
+
+
+def test_hay_ejemplos_que_se_apoyan_en_el_contexto() -> None:
+    # Sin ellos, el modelo no sabría que puede usar la pregunta o el título
+    # para que "con SQLite" o "estos speedruns" se entiendan.
+    def necesita_respaldo(ejemplo: dict) -> bool:
+        return any(
+            validate_fact(h, _textos_de_la_persona(ejemplo)) is not None
+            for h in ejemplo["facts"]
+        )
+
+    assert sum(necesita_respaldo(e) for e in FACT_EXTRACTION_EXAMPLES) >= 2
 
 
 def test_hay_un_ejemplo_sin_hechos() -> None:

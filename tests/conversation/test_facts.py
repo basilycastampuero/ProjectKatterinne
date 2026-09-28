@@ -217,3 +217,57 @@ def test_hablar_de_tokens_o_de_claves_no_es_revelar_un_secreto(
     # Quien programa habla de tokens y claves todo el rato. Lo que no se
     # guarda es el valor, no la palabra. Y "estas", sin tilde, no es "estás".
     assert validate_fact(hecho(content=contenido, evidence=mensaje), [mensaje]) is None
+
+
+# ----------------------------------------------------------------------
+# Lo que respalda sin ser cita: la pregunta de la compañera y lo que percibe
+# ----------------------------------------------------------------------
+
+
+def test_la_pregunta_de_la_compañera_puede_respaldar_el_hecho() -> None:
+    # "con SQLite" no dice para qué. La pregunta sí, y el hecho puede usar
+    # esa palabra aunque no la dijera la persona.
+    candidato = hecho(content="La memoria va con SQLite.", evidence="con SQLite")
+
+    assert validate_fact(candidato, ["con SQLite"]) is not None
+    assert validate_fact(candidato, ["con SQLite"], support=["¿Cómo guardas la memoria?"]) is None
+
+
+def test_el_titulo_que_percibe_puede_respaldar_el_hecho() -> None:
+    candidato = hecho(
+        content="Le gustó el vídeo sobre cómo funciona SQLite.",
+        evidence="este vídeo me gustó mucho",
+        scope="long_term",
+    )
+
+    assert validate_fact(
+        candidato, ["este vídeo me gustó mucho"], support=["Cómo funciona SQLite"]
+    ) is None
+
+
+def test_el_respaldo_nunca_sirve_de_cita() -> None:
+    # Si la cita solo existe en la pregunta, es poner en su boca lo que no dijo.
+    motivo = validate_fact(
+        hecho(content="Usa SQLite para la memoria.", evidence="SQLite para la memoria"),
+        ["sí, claro"],
+        support=["¿Usas SQLite para la memoria?"],
+    )
+
+    assert motivo == "la cita no existe"
+
+
+@pytest.mark.parametrize("cita", ["sí", "sí, claro", "vale", "exacto, eso mismo"])
+def test_una_cita_que_no_comparte_nada_con_el_hecho_no_basta(cita: str) -> None:
+    """Un "sí" no confirma lo que preguntó la compañera.
+
+    Con el respaldo, "sí" a "¿usas Postgres?" daría "Usa Postgres": cita
+    real y hecho respaldado. Pero un sí puede ser ironía, cortesía o no
+    haber leído bien. La persona tiene que haber dicho algo con contenido.
+    """
+    motivo = validate_fact(
+        hecho(content="Usa Postgres.", evidence=cita),
+        [cita],
+        support=["¿Usas Postgres?"],
+    )
+
+    assert motivo == "la cita no respalda el hecho"

@@ -99,14 +99,20 @@ def validate_fact(
     candidate: Any,
     user_texts: Sequence[str],
     *,
+    support: Sequence[str] = (),
     max_words: int = MAX_FACT_WORDS,
     min_overlap: float = MIN_OVERLAP,
 ) -> str | None:
     """Comprueba un hecho propuesto. Devuelve el motivo del rechazo o None.
 
-    `user_texts` son **solo** los mensajes de la persona. Los de la
-    compañera se le enseñan al modelo para que entienda las respuestas
-    cortas, pero no pueden servir de evidencia.
+    `user_texts` son **solo** los mensajes de la persona: la cita tiene que
+    salir de ahí.
+
+    `support` es lo que rodea a esos mensajes: las preguntas de la
+    compañera y lo que percibe (el título de la página, el proyecto). Puede
+    **respaldar** las palabras del hecho, porque sin ello "con SQLite" o
+    "este vídeo me gustó" no dicen de qué hablan. Nunca puede ser la cita:
+    lo que se recuerda tiene que haberlo dicho la persona.
 
     Como en `validate_question`, devolver el motivo y no un booleano es lo
     que permite contar por qué se rechaza y ajustar el prompt después.
@@ -136,6 +142,15 @@ def validate_fact(
     if not citados:
         return "la cita no existe"
 
+    # Con respaldo, un "sí" a "¿usas Postgres?" daría "Usa Postgres" con
+    # cita real. Pero un sí puede ser ironía o cortesía: la cita tiene que
+    # decir algo del hecho, no solo existir. Compartir una palabra con él es
+    # la forma de exigirlo sin una lista de muletillas que nunca estaría
+    # completa ("vale", "claro", "exacto"...).
+    del_hecho = meaningful_words(content)
+    if not del_hecho & meaningful_words(evidence):
+        return "la cita no respalda el hecho"
+
     # Antes que "añade cosas": si habla de la compañera, casi seguro que
     # también añade palabras, y el motivo útil para ajustar es este.
     contenido = normalize(content)
@@ -144,9 +159,10 @@ def validate_fact(
     ):
         return "habla de la compañera"
 
-    del_hecho = meaningful_words(content)
     if del_hecho:
-        respaldo = meaningful_words(evidence).union(*(meaningful_words(t) for t in citados))
+        respaldo = meaningful_words(evidence).union(
+            *(meaningful_words(t) for t in (*citados, *support))
+        )
         cubiertas = len(del_hecho & respaldo) / len(del_hecho)
         if cubiertas < min_overlap:
             return f"añade cosas que no dijo ({cubiertas:.0%} respaldado)"
@@ -183,6 +199,25 @@ class ExtractedFact:
     content: str
     evidence: str
     scope: MemoryScope
+
+
+def _support_texts(
+    turns: Sequence[PendingTurn], context: CurrentContext | None
+) -> list[str]:
+    """Lo que puede respaldar un hecho sin servir de cita.
+
+    Las preguntas de la compañera y lo que percibe ahora: la aplicación, el
+    proyecto y el documento, que en un navegador es el título de la página.
+    Es lo mismo que ya ve el modelo, ni más ni menos.
+    """
+    textos = [t.companion_text for t in turns if t.companion_text]
+    if context is not None and not context.redacted:
+        # En una app de la lista negra no se percibe nada de esto (ADR-005);
+        # el `redacted` se comprueba igualmente por si el contexto lo trajera.
+        for senal in (context.application, context.project, context.document):
+            if senal is not None and isinstance(senal.value, str):
+                textos.append(senal.value)
+    return textos
 
 
 def _reason_key(motivo: str) -> str:
@@ -227,10 +262,13 @@ class FactExtractor:
         if candidatos is None:
             return []
 
+        respaldo = _support_texts(turns, context)
         aceptados: list[ExtractedFact] = []
         rechazos: Counter[str] = Counter()
         for candidato in candidatos:
-            motivo = validate_fact(candidato, user_texts, max_words=self._max_words)
+            motivo = validate_fact(
+                candidato, user_texts, support=respaldo, max_words=self._max_words
+            )
             if motivo is not None:
                 rechazos[_reason_key(motivo)] += 1
                 continue

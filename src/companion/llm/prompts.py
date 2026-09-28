@@ -187,6 +187,30 @@ FACT_EXTRACTION_EXAMPLES: tuple[dict[str, Any], ...] = (
             },
         ),
     },
+    {
+        "turns": (
+            (COMPANION_SPEAKER, "¿Qué stack usa StudyFlow?"),
+            (USER_SPEAKER, "Django en el backend y Angular en el front"),
+        ),
+        "facts": (
+            {
+                "content": "StudyFlow va con Django y Angular.",
+                "evidence": "Django en el backend y Angular en el front",
+                "scope": "project",
+            },
+        ),
+    },
+    {
+        "perceived": "Speedrun de Hollow Knight en 40 minutos",
+        "turns": ((USER_SPEAKER, "me encantan estos speedruns, podría verlos todo el día"),),
+        "facts": (
+            {
+                "content": "Le encantan los speedruns de Hollow Knight.",
+                "evidence": "me encantan estos speedruns",
+                "scope": "long_term",
+            },
+        ),
+    },
 )
 
 
@@ -194,7 +218,14 @@ def _render_examples() -> str:
     bloques = []
     for ejemplo in FACT_EXTRACTION_EXAMPLES:
         salida = json.dumps({"facts": list(ejemplo["facts"])}, ensure_ascii=False)
-        bloques.append(f"{format_transcript(ejemplo['turns'])}\n→ {salida}")
+        # Mismo formato que el bloque de contexto real (`describe_context`).
+        percibido = (
+            "Esto es lo que percibes en este momento:\n"
+            f"- Documento: {ejemplo['perceived']} (inferido, puede estar mal)\n"
+            if "perceived" in ejemplo
+            else ""
+        )
+        bloques.append(f"{percibido}{format_transcript(ejemplo['turns'])}\n→ {salida}")
     return "\n\n".join(bloques)
 
 
@@ -227,13 +258,20 @@ Cada hecho tiene tres campos:
 - "content": una frase en tercera persona, sin sujeto, de 25 palabras como
   mucho. Usa las mismas palabras de la persona siempre que puedas, y no
   añadas nada que no dijo: si no dijo por qué, no pongas por qué.
+  Puedes usar palabras de la pregunta de la compañera o de lo que percibes
+  (el título de la página, el proyecto) para que se entienda de qué habla:
+  "con SQLite" no dice para qué, la pregunta sí.
 - "evidence": COPIA LITERAL de un trozo de una línea [{USER_SPEAKER}], palabra por
-  palabra. No resumas, no corrijas, no cambies la persona gramatical. Si no
-  puedes copiar las palabras que lo apoyan, ese hecho no va.
+  palabra, que diga algo del hecho. No resumas, no corrijas, no cambies la
+  persona gramatical. Un "sí" o un "vale" no bastan. Si no puedes copiar las
+  palabras que lo apoyan, ese hecho no va.
 - "scope", uno de:
   - "session": solo vale para hoy. ("hoy estoy probando el parser")
-  - "project": sobre el trabajo de un proyecto. ("el backend va en Django")
-  - "long_term": sobre la persona, en cualquier proyecto. ("prefiero modelos locales")
+  - "project": sobre el trabajo de un proyecto concreto. ("el backend va en Django")
+  - "long_term": sobre la persona, fuera de cualquier proyecto: qué prefiere,
+    qué le interesa, qué le gusta de lo que ve o escucha. ("prefiero modelos
+    locales", "me encantan estos vídeos")
+  No todo es trabajo: lo que comenta de un vídeo o una canción es "long_term".
 
 Pocos: como mucho tres. Mejor uno bueno que tres dudosos.
 

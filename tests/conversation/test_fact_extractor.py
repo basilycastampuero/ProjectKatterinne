@@ -13,7 +13,7 @@ from typing import Any
 
 import pytest
 
-from companion.context.models import Provenance
+from companion.context.models import CurrentContext, Provenance, Signal
 from companion.conversation.facts import ExtractedFact, FactExtractor, PendingTurn
 from companion.llm.errors import GenerationError
 from companion.llm.prompts import FACT_EXTRACTION_SYSTEM_PROMPT
@@ -177,3 +177,63 @@ def test_el_contenido_de_los_hechos_no_llega_al_log(caplog) -> None:
     assert "propuestos=3" in caplog.text
     assert "aceptados=1" in caplog.text
     assert "la cita no existe" in caplog.text
+
+
+# ----------------------------------------------------------------------
+# Respaldo: lo que rodea a lo que dijo
+# ----------------------------------------------------------------------
+
+
+def test_la_pregunta_de_la_compañera_respalda_la_respuesta_corta() -> None:
+    turnos = [PendingTurn(user_text="con SQLite", companion_text="¿Cómo guardas la memoria?")]
+    provider = FakeProvider(
+        replies=[
+            respuesta(
+                {"content": "La memoria va con SQLite.", "evidence": "con SQLite", "scope": "project"}
+            )
+        ]
+    )
+
+    hechos = FactExtractor(provider).extract(turnos)
+
+    assert [h.content for h in hechos] == ["La memoria va con SQLite."]
+
+
+def _viendo(titulo: str, *, redacted: bool = False) -> CurrentContext:
+    return CurrentContext(
+        application=Signal(value="Brave", provenance=Provenance.OBSERVED, confidence=1.0),
+        document=Signal(value=titulo, provenance=Provenance.INFERRED, confidence=0.8),
+        redacted=redacted,
+    )
+
+
+VIDEO = {
+    "content": "Le gustó el vídeo sobre cómo funciona SQLite.",
+    "evidence": "este vídeo me gustó mucho",
+    "scope": "long_term",
+}
+
+
+def test_lo_que_percibe_respalda_lo_que_comenta() -> None:
+    # "este vídeo" no dice cuál. El título sí.
+    provider = FakeProvider(replies=[respuesta(VIDEO)])
+
+    hechos = FactExtractor(provider).extract(
+        [PendingTurn(user_text="este vídeo me gustó mucho")],
+        _viendo("Cómo funciona SQLite"),
+    )
+
+    assert [h.content for h in hechos] == [VIDEO["content"]]
+
+
+def test_en_una_app_censurada_no_hay_titulo_que_respalde() -> None:
+    # Si está en la lista negra no se percibe el título (ADR-005), y un
+    # contexto marcado así no puede colarlo por aquí.
+    provider = FakeProvider(replies=[respuesta(VIDEO)])
+
+    hechos = FactExtractor(provider).extract(
+        [PendingTurn(user_text="este vídeo me gustó mucho")],
+        _viendo("Cómo funciona SQLite", redacted=True),
+    )
+
+    assert hechos == []
