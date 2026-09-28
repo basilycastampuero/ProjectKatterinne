@@ -134,6 +134,29 @@ QuestionGenerator.generate()
 **El motor de curiosidad no llama al modelo.** Decidir callarse no cuesta
 ni un token, y eso es lo que permite evaluarlo cada segundo.
 
+### Y cuando le cuentas algo
+
+```
+Tú: "con SQLite"   (respondiendo a "¿Cómo guardas la memoria?")
+         ↓
+ConversationManager.send()     → responde, y deja el turno en la cola de
+                                  pendientes con la pregunta que lo precede
+         ↓   30 s sin escribir, /reset o al salir
+extract_pending()
+  ├── FactExtractor            → el modelo propone hechos con cita literal
+  ├── validate_fact()          → ¿la cita es tuya? ¿el hecho no añade nada?
+  ├── proyecto                 → el de la ventana, o el que dejaste hace < 15 min
+  └── remember_once()          → guarda, salvo que ya lo supiera
+         ↓
+Fact("La memoria se guarda con SQLite.", USER_CONFIRMED, project=ProjectKatterinne)
+```
+
+**El modelo propone, el código decide.** Cada hecho trae la cita exacta que
+lo prueba, y `validate_fact()` comprueba sin modelo que salió de tus
+mensajes. Lo que pregunta la compañera o lo que ve en pantalla puede ayudar
+a entender de qué hablabas, pero nunca cuenta como algo que dijiste. Ver
+[ADR-010](architecture-decisions/ADR-010-facts-need-a-literal-quote.md).
+
 ---
 
 ## Las tres reglas que explican casi todo
@@ -151,8 +174,10 @@ Windows *sabe* qué ventana tiene el foco. Preguntárselo a un modelo sería
 lento, caro y además podría mentir.
 
 Por eso hay tanto código "aburrido": tablas de procesos, parseo de títulos,
-expresiones regulares. **El LLM se usa solo para lenguaje**: conversar y
-redactar preguntas. Los hechos los pone el sistema.
+expresiones regulares. **El LLM se usa solo para lenguaje**: conversar,
+redactar preguntas y proponer qué recordar de lo que le cuentas. Lo que se
+da por cierto lo decide siempre el sistema: una pregunta o un recuerdo del
+modelo no llegan a ningún sitio sin pasar un validador.
 
 ### 2. Cada dato lleva de dónde salió
 
@@ -288,12 +313,24 @@ continuidad la construimos nosotros.
 | `models.py` | Entidades inmutables: `Project`, `Session`, `Activity`, `Fact`… |
 | `repository.py` | **El único archivo que escribe SQL** |
 | `manager.py` | Decide *qué merece guardarse* y cuánto dura |
+| `similarity.py` | Cuándo dos textos dicen lo mismo. Lógica pura |
 | `rendering.py` | Resume la actividad y los recuerdos para el modelo |
 | `errors.py` | `MemoryStoreError`. Se llama así para no tapar el `MemoryError` de Python |
 
 **Repositorio y manager son cosas distintas.** El repositorio sabe *cómo*
 guardar; el manager decide *si*. Sin esa separación, la política de
 "no guardar todo" acabaría repartida por todas partes.
+
+**`remember_once()` no guarda dos veces lo mismo**: si ya hay un hecho
+parecido del mismo proyecto y alcance, lo marca como usado y lo devuelve.
+El parecido es Jaccard sobre las raíces de las palabras (`similarity.py`).
+Reconoce el mismo hecho con otras mayúsculas u otro orden, pero no las
+paráfrasis: eso queda para los embeddings de PHASE 9.
+
+**`recent_project()` mira cuándo saliste, no cuándo entraste.** Cada
+actividad marca un comienzo, y un proyecto sigue delante hasta la
+actividad siguiente. Lo usa la extracción, porque se habla con ella desde
+el terminal y casi nunca hay un proyecto en la ventana.
 
 **Dos trampas de SQLite que están resueltas ahí:**
 
@@ -356,7 +393,12 @@ palabra por palabra una frase de ejemplo, duración inventada incluida.
 
 ### `conversation/` — el hilo con la persona
 
-Un solo archivo, `manager.py`. Construye lo que se le envía al modelo:
+| Archivo | Qué hace |
+|---|---|
+| `manager.py` | El hilo, el payload y la cola de turnos por revisar |
+| `facts.py` | Extrae los hechos de lo que cuentas **y los valida** |
+
+`manager.py` construye lo que se le envía al modelo:
 
 ```
 prompt del sistema          quién es
@@ -371,6 +413,17 @@ entera. Eso explica el recorte del historial, el `num_ctx` de la
 configuración y el presupuesto de VRAM: una sola propiedad del modelo
 explica media arquitectura.
 
+**`facts.py` es, como `questions.py`, casi todo validación.** El extractor
+nunca lanza: si el modelo falla o devuelve algo raro, no se guarda nada,
+que es lo mismo que pasaba antes de que existiera. Y el log cuenta cuántos
+hechos se proponen y por qué se rechazan, **nunca su contenido**: es texto
+tuyo.
+
+**Las reglas del validador salen de casos reales.** Están en
+`tests/conversation/test_facts_real_cases.py`: hechos fieles que deben
+pasar y hechos inventados que el modelo propuso de verdad. Si hay que
+ajustar el umbral o la raíz, se añade primero el caso ahí.
+
 ---
 
 ### `app/` — montar las piezas
@@ -380,7 +433,7 @@ explica media arquitectura.
 | `factory.py` | **El único sitio que elige implementaciones concretas** |
 | `cli.py` | Los bucles: `run_watch`, `run_repl`, `run_once` |
 
-`cli.py` es el archivo más grande (653 líneas) y el más "sucio": formato de
+`cli.py` es el archivo más grande (unas 700 líneas) y el más "sucio": formato de
 salida, comandos, manejo del terminal. Es normal y es sano — la suciedad
 está concentrada aquí en vez de repartida.
 
@@ -458,6 +511,10 @@ hueco.
 | `PROJECT` | Mientras viva el proyecto | "Usa Django y Angular" |
 | `LONG_TERM` | Siempre | "Prefiero modelos locales" |
 
+Lo que aprende de la conversación nunca es `EPHEMERAL`: no merece una
+llamada al modelo algo que muere en media hora. Y no todo es `PROJECT`: lo
+que comentas de un vídeo o de lo que te gusta es `LONG_TERM`.
+
 ---
 
 ## Cómo se prueba
@@ -466,7 +523,7 @@ hueco.
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-**491 tests. Solo 7 necesitan Windows de verdad**, y están marcados para
+**633 tests. Solo 7 necesitan Windows de verdad**, y están marcados para
 saltarse en otras plataformas. El resto corre con dobles:
 
 | Se sustituye | Por | Dónde |
@@ -544,6 +601,8 @@ desactivó a propósito.
 | Que pregunte más o menos | `[curiosity]` en `companion.toml` |
 | Cambiar el tono o la personalidad | `llm/prompts.py` |
 | Añadir un filtro a las preguntas | `curiosity/questions.py`, `validate_question()` |
+| Que aprenda más o menos de lo que le cuentas | Primero un caso en `tests/conversation/test_facts_real_cases.py`; luego `validate_fact()` o el prompt |
+| Borrar lo que ha aprendido | `/memory` para ver el id, `/forget <id>` |
 | Guardar un tipo de dato nuevo | `memory/schema.py` + `models.py` + `repository.py` |
 | Usar llama.cpp en vez de Ollama | Un módulo hermano de `llm/ollama.py` + una rama en `app/factory.py` |
 | Sacarlo del terminal | `app/cli.py` — y ojo, ahí está casi toda la interfaz |
@@ -591,6 +650,28 @@ Ahora dice "1 h 24 min" y la lista se recorta a seis aplicaciones.
 Al cambiar `input()` por una cola se perdió el `except KeyboardInterrupt`
 y salir con Ctrl+C escupía un traceback. **Cuando muevas una espera,
 llévate su manejo de errores.**
+
+Volvió a hacer falta con la extracción de hechos: cerrar la conversación
+pasó a llamar al modelo, así que un Ctrl+C podía caer justo ahí, dentro del
+`finally` del REPL. `close()` y `reset()` lo capturan, abandonan el lote y
+dejan terminar el resto.
+
+### Hablar desde el terminal deja los hechos sin proyecto
+
+Consecuencia de la trampa anterior del terminal: como se ignora, el
+contexto es la última ventana que no lo es, y suele ser el navegador. En la
+primera prueba real, dos hechos sobre ProjectKatterinne se guardaron sin
+proyecto, en la sesión, y se borraron al cerrarla. Por eso existe
+`recent_project_s`: lo que cuentas va al proyecto que dejaste hace menos de
+15 minutos.
+
+### Un hecho fiel no se parece a lo que dijiste
+
+Al pasar lo que dices a tercera persona cambia la conjugación: *prefiero*
+se vuelve *prefiere*. Sin reducir las palabras a su raíz, el validador
+rechazaba 4 hechos buenos de 8. Y con la raíz y el umbral bajo pasaba un
+motivo que el modelo se había inventado. El ajuste está en ADR-010, y los
+casos que lo sostienen, en `test_facts_real_cases.py`.
 
 ### El pipe se traga el código de salida
 

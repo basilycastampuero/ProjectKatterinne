@@ -3,7 +3,8 @@
 Qué falta, por qué importa y con qué contexto retomarlo.
 
 Estado: el MVP está completo — los once puntos. Fases 0 a
-4, 6 y 7 terminadas; faltan visión, voz y avatar.
+4, 6 y 7 terminadas, y ya aprende de lo que se le cuenta
+(ADR-010). Faltan visión, voz y avatar.
 
 Antes de empezar, `pytest` en verde es la línea base. Para el resto del
 estado, `git log --oneline`: un hash escrito aquí envejecería al siguiente
@@ -13,46 +14,40 @@ Lo que sigue es, por orden, lo que más valor daría.
 
 ---
 
-## 1. Extraer hechos de la conversación
+## 1. Interesarse por lo que ves en el navegador
 
-**El hueco más visible.** La base de datos tiene 1.017 actividades y
-**cero hechos**.
+**Lo pidió la persona al probar la extracción de hechos.** No todo es un
+proyecto: si pasa un buen rato con un vídeo o una página, la compañera
+podría tener curiosidad por ello, igual que la tiene por un proyecto nuevo.
 
-Ahora mismo la memoria solo crece si alguien llama a `MemoryManager.confirm()`
-desde código. Si le cuentas *"estoy montando la memoria con SQLite"*, se
-guarda como mensaje de conversación pero **no se convierte en un recuerdo**.
-En la sesión siguiente no lo sabrá.
+La percepción ya da lo necesario: en un navegador, el título de la página
+llega al contexto como `document` y el modelo lo ve. Lo que falta es que la
+**curiosidad** lo use. Hoy la puntuación premia sobre todo los proyectos
+nuevos, y veinte minutos en el mismo vídeo probablemente no le dan motivo
+para preguntar.
 
-Eso rompe el ciclo previsto, que termina con la compañera guardando lo
-relevante de lo que le cuentas.
+Y la memoria ya está preparada para lo que salga de ahí: si la persona
+comenta lo que ve, el título respalda el hecho y se guarda como
+`long_term` (ADR-010).
 
 ### Por dónde empezar
 
-**Hay un plan detallado paso a paso en
-[`PLAN-extraccion-de-hechos.md`](PLAN-extraccion-de-hechos.md).** Lo que
-sigue es el resumen.
-
-El patrón ya existe y funciona: es exactamente lo que hace
-`curiosity/questions.py`. Cópialo.
-
-1. Tras cada turno, pedirle al modelo que extraiga hechos candidatos con
-   `json_mode=True`.
-2. Validar igual de duro que en `validate_question()`: sin inventar, con
-   procedencia declarada, acotado en longitud.
-3. Guardar con `provenance=USER_CONFIRMED` **solo** si viene de algo que
-   dijo la persona. Lo que deduzca el modelo es `INFERRED`, y hay un
-   umbral de confianza para eso.
+`curiosity/scorer.py` y `curiosity/engine.py`. Decidir qué cuenta como
+"suficiente tiempo" en una página y si un documento nuevo puntúa como algo
+nuevo. Con tests del mismo estilo que los de novedad de proyecto.
 
 ### Cuidado con
 
-- **No guardar todo.** Cada turno no es un hecho. Empieza
-  conservador: es mucho más fácil relajar un umbral que limpiar una base
-  de datos llena de basura.
-- **La deduplicación no existe.** Si le cuentas lo mismo tres veces,
-  tendrás tres filas. Estaba prevista para más adelante, pero si la
-  extracción es automática llegará antes de lo previsto.
-- **Coste.** Una llamada extra al modelo por turno duplica la latencia
-  percibida. Quizá solo al cerrar la conversación, o cada N turnos.
+- **Lo que suena de fondo no existe.** Solo se ve la ventana con el foco:
+  si Spotify suena mientras programa, no lo sabe. Su prompt ya lo dice, y
+  no hay que prometer lo contrario.
+- **Un título de página puede ser cualquier cosa.** No se registra en el
+  log por eso (ADR-005). Preguntar por él en voz alta es otra cosa que
+  guardarlo: pensar en cómo sonaría con una página privada que no está en
+  la lista negra.
+- **No convertirlo en vigilancia.** Una pregunta por un vídeo cada mucho
+  tiempo es curiosidad; comentar cada página, no. El enfriamiento de
+  veinte minutos sigue valiendo.
 
 ---
 
@@ -77,7 +72,11 @@ latencia y VRAM.
 
 Este proyecto tiene una ventaja para medir: **ya hay validadores
 automáticos**. `validate_question()` cuenta cuántas preguntas rechaza cada
-modelo, y con `allow_template_fallback = false` esa cifra sale limpia.
+modelo, y con `allow_template_fallback = false` esa cifra sale limpia. Y
+`validate_fact()` hace lo mismo con los hechos: el log de extracción da
+propuestos, aceptados y rechazos por motivo. Con `qwen3:8b`, sobre un
+conjunto fijo de 15 conversaciones, aceptó 8 hechos de 10 y calló en los 9
+casos donde no había nada (ADR-010). Es una cifra para comparar.
 
 Candidatos razonables: `llama3.1:8b`, `qwen2.5:7b`, `gemma3:4b` (este
 último además es multimodal, útil si algún día llega PHASE 5).
@@ -142,7 +141,11 @@ Ninguna urgente. Buenas para entrar en calor.
 | Reglas de título sin verificar | `perception/project_detector.py` | Las de JetBrains y Visual Studio declaran confianza 0.7 porque **no se han comprobado en una máquina real**. Si tienes uno, verifícalas y sube la confianza |
 | Sesiones huérfanas | `memory/manager.py` | `start_session(resume=True)` las retoma, pero si nadie las cierra se acumulan. Hay 20 sesiones en la base de datos actual |
 | `min_seconds_in_context` | `companion.toml` | Diseñado a 120. Si lo bajas para probar, acuérdate de subirlo |
-| Deduplicación de memoria | `memory/manager.py` | Prevista para más adelante. Se vuelve urgente en cuanto exista el punto 1 |
+| Los id de los recuerdos se reutilizan | `memory/schema.py` | SQLite reutiliza el id de una fila borrada si era el último. Un id apuntado antes puede señalar otro recuerdo, y `/forget` borraría el equivocado. Se arregla con `AUTOINCREMENT`, con migración |
+| Paráfrasis duplicadas | `memory/similarity.py` | *"La memoria va integrada en SQLite"* y *"La memoria que conecta a la compañera está integrada en SQLite"* no se reconocen como el mismo hecho (Jaccard 0,6). Es trabajo de embeddings, PHASE 9 |
+| ¿Avisar al guardar? | `conversation/manager.py` | Hoy aprende en silencio y lo aprendido está en `/memory`. La alternativa es una línea discreta tipo `(lo recordaré)`: más transparente, pero rompe el silencio en cada revisión |
+| Recuerdos que dejan de ser ciertos | `memory/` | *"Estoy aprendiendo Rust"* se guarda como `long_term` y no caduca. Si se acumulan, habrá que decidir cómo se actualizan. Probablemente PHASE 9 |
+| Emojis a pesar del prompt | `llm/prompts.py` | En la prueba real respondió con 😊 aunque el prompt lo prohíbe. Puede que haga falta un ejemplo en vez de solo la regla |
 | Tildes en los comentarios | `src/` | Toda la prosa lleva tildes. Los módulos escritos primero (`llm/`, `perception/`) las tienen a medias, de una convención anterior. Se corrigen al tocar cada archivo, no de golpe |
 
 ---
@@ -150,16 +153,18 @@ Ninguna urgente. Buenas para entrar en calor.
 ## Cómo retomar esto
 
 1. Lee [`GUIA.md`](GUIA.md) si no tienes el proyecto fresco.
-2. `pytest` antes de tocar nada: 491 en verde es la línea base.
+2. `pytest` antes de tocar nada: 633 en verde es la línea base.
 3. Mira si hay un ADR sobre lo que vas a cambiar. Casi siempre la
    alternativa obvia ya se consideró y hay un motivo escrito.
 4. **Ejecuta la aplicación de verdad antes de dar algo por terminado.**
 
-Ese último punto no es retórico. En el desarrollo hasta aquí, **cinco de
+Ese último punto no es retórico. En el desarrollo hasta aquí, **siete de
 los fallos importantes aparecieron usándola, y ninguno lo detectaron los
 tests**: la fuga de privacidad en DEBUG, el parser que confundía carpeta
 con archivo, el orden que anulaba la señal de novedad, la actividad que
-nunca llegaba al modelo y el Ctrl+C sin capturar.
+nunca llegaba al modelo, el Ctrl+C sin capturar, el validador que
+rechazaba casi todo hecho pasado a tercera persona y los recuerdos que se
+borraban al cerrar la sesión porque se hablaba desde el terminal.
 
 Todos tienen ahora su test de regresión y no volverán. Pero conviene
 recordar por qué se encontraron: **los tests protegen lo que ya pensaste.**

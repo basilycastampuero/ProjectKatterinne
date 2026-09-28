@@ -30,20 +30,20 @@ servicios de visión ni de voz en la nube.
   conversaciones, con continuidad entre ejecuciones.
 - **La conversación usa contexto y memoria**, y sabe distinguir lo que
   observa de lo que supone.
+- **Aprende de lo que le cuentas**: convierte lo que dices en recuerdos,
+  siempre con la cita literal que lo prueba, y los ves y borras con
+  `/memory` y `/forget`.
 - **Decide cuándo merecería la pena hablar** — y casi siempre decide que no.
 - **Redacta la pregunta** cuando decide hablar, con salida estructurada y
   validada: nunca afirma ver algo que no ve.
 - Configuración por TOML, variables de entorno y flags.
 - Diagnóstico del runtime local (`--check`).
 - **Habla por iniciativa propia** cuando hay motivo, sin que le preguntes.
-- 491 tests, de los que solo 7 necesitan Windows.
+- 633 tests, de los que solo 7 necesitan Windows.
 
 ## Qué todavía NO existe
 
 Capturas de pantalla, visión, voz y avatar. Son PHASE 5, 8 y 10.
-
-Tampoco extrae hechos de lo que le cuentas: las conversaciones se guardan,
-pero convertir lo dicho en un recuerdo estructurado sigue pendiente.
 
 La compañera **sabe dónde están sus límites**: su prompt de sistema le dice
 qué percibe y qué no, así que responde "no oigo nada" en vez de inventarse
@@ -174,6 +174,32 @@ No guarda todo: los cambios de aplicación siempre, los cambios de
 archivo como mucho uno por minuto, y las inferencias flojas no entran. Lo
 que tú confirmes entra siempre.
 
+### Lo que aprende de ti
+
+```toml
+extract_facts = true
+extraction_idle_s = 30.0
+max_facts_per_extraction = 3
+recent_project_s = 900.0
+```
+
+Tras 30 segundos sin escribir, con `/reset` y al salir, revisa lo que le
+has contado y guarda lo que merece recordarse. Nunca en mitad de una
+respuesta: la llamada extra al modelo va cuando nadie espera.
+
+Solo guarda lo que **dijiste tú**, y lo demuestra: cada recuerdo sale de
+una cita literal de tus mensajes, comprobada sin modelo. Lo que ella pregunta
+o lo que ve en pantalla ayuda a entender de qué hablabas, pero no cuenta
+como algo que dijiste. Ver una página no crea recuerdos; comentarla, sí.
+
+Lo que cuentas de un proyecto se ata al que tienes delante o al que dejaste
+hace menos de 15 minutos. Lo demás (lo que prefieres, lo que te gusta) es
+tuyo y sirve en cualquier proyecto.
+
+`/memory` enseña lo que recuerda con un id, y `/forget <id>` lo borra. El
+porqué de cada decisión está en
+[ADR-010](docs/architecture-decisions/ADR-010-facts-need-a-literal-quote.md).
+
 Para una ejecución sin escribir nada en disco:
 
 ```powershell
@@ -296,7 +322,8 @@ src/companion/
 ├── config/
 │   └── settings.py      dataclasses congelados + TOML + entorno
 ├── conversation/
-│   └── manager.py       historial corto y construcción del payload
+│   ├── manager.py       historial corto, payload y turnos por revisar
+│   └── facts.py         ← extrae y VALIDA los hechos: cita literal
 ├── llm/
 │   ├── provider.py      ← interfaz LLMProvider. De esto depende todo
 │   ├── ollama.py        ← lo único que sabe de la API de Ollama
@@ -321,6 +348,7 @@ src/companion/
 │   ├── models.py        entidades inmutables
 │   ├── repository.py    ← lo único que escribe SQL
 │   ├── rendering.py     resumen de actividad y recuerdos
+│   ├── similarity.py    cuándo dos textos dicen lo mismo (lógica pura)
 │   └── manager.py       qué merece guardarse y cuánto dura
 └── curiosity/
     ├── models.py        CuriosityDecision y los motivos del silencio
