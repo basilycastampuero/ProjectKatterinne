@@ -353,25 +353,36 @@ def run_repl(
 
     ultimo_turno: float | None = None
 
-    def percibir() -> CurrentContext | None:
+    def mirar() -> tuple[CurrentContext | None, WindowEvent | None]:
         if window_provider is None:
-            return None
-        contexto, evento = engine.observe(window_provider.get_active_window())
-        if memoria is not None:
+            return None, None
+        return engine.observe(window_provider.get_active_window())
+
+    def guardar(contexto: CurrentContext | None, evento: WindowEvent | None) -> None:
+        if memoria is not None and contexto is not None:
             memoria.observe(contexto, evento)
+
+    def percibir() -> CurrentContext | None:
+        contexto, evento = mirar()
+        guardar(contexto, evento)
         return contexto
 
     def quizas_hablar() -> bool:
         """Observa y, si hay motivo, dice algo. True si llegó a hablar."""
-        contexto = percibir()
+        contexto, evento = mirar()
         if contexto is None or curiosity is None or questions is None:
+            guardar(contexto, evento)
             return False
 
         viva = (
             ultimo_turno is not None
             and (time.monotonic() - ultimo_turno) < CONVERSACION_VIVA_S
         )
+        # La curiosidad mira ANTES de que la memoria guarde, igual que en
+        # `run_watch()`: pregunta "¿esto es nuevo para mí?" a la memoria, y
+        # si se guardara primero nada sería nunca nuevo (ADR-008).
         decision = curiosity.evaluate(contexto, conversation_active=viva)
+        guardar(contexto, evento)
         if not decision.should_speak:
             return False
 

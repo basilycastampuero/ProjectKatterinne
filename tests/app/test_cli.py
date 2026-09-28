@@ -10,6 +10,7 @@ from companion.context.engine import ContextEngine
 from companion.conversation.facts import FactExtractor
 from companion.conversation.manager import ConversationManager
 from companion.curiosity.engine import CuriosityEngine, CuriosityPolicy
+from companion.curiosity.models import CuriosityDecision
 from companion.curiosity.questions import QuestionGenerator
 from companion.llm.errors import ModelNotFoundError, ProviderUnavailableError
 from companion.memory.manager import MemoryManager
@@ -857,3 +858,47 @@ def test_memory_enseña_todos_los_recuerdos_no_solo_los_del_prompt(
     run_repl(ConversationManager(fake_provider, memory=memoria))
 
     assert "Recuerdo número 0." in capsys.readouterr().out
+
+
+class _CuriosidadQueApunta(CuriosityEngine):
+    """Guarda cada decisión para poder mirar sus señales, no solo si habla."""
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.decisiones: list[CuriosityDecision] = []
+
+    def evaluate(self, context, **kwargs) -> CuriosityDecision:
+        decision = super().evaluate(context, **kwargs)
+        self.decisiones.append(decision)
+        return decision
+
+
+def test_en_la_conversacion_un_proyecto_nunca_visto_cuenta_como_nuevo(
+    fake_provider: FakeProvider, memoria: MemoryManager
+) -> None:
+    """Regresión: en el REPL la memoria guardaba antes de que mirase la curiosidad.
+
+    `percibir()` registraba el proyecto en la memoria y después
+    `quizas_hablar()` preguntaba "¿es nuevo?": ya no lo era. Es el orden
+    que prohíbe ADR-008, y `run_watch()` ya lo respetaba. No lo vio ningún
+    test porque todos miraban si hablaba, y con "conocido sin nada
+    confirmado" (3) en vez de "nuevo" (4) la suma seguía llegando justo al
+    umbral. Se encontró leyendo el código para documentarlo.
+    """
+    curiosidad = _CuriosidadQueApunta(
+        policy=CuriosityPolicy(min_seconds_in_context=0.0), memory=memoria
+    )
+
+    run_repl(
+        ConversationManager(fake_provider, memory=memoria),
+        window_provider=FakeActiveWindowProvider(
+            [make_window("Code.exe", title="engine.py - ProyectoNuevo - Visual Studio Code")]
+        ),
+        curiosity=curiosidad,
+        questions=_generador(),
+        reader=_LectorFalso([SIN_ENTRADA, None]),
+    )
+
+    assert "proyecto nuevo" in curiosidad.decisiones[0].signals
+    # Y se guarda igualmente, solo que después de mirar.
+    assert memoria.repository.get_project("ProyectoNuevo") is not None

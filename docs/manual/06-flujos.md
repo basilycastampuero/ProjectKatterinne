@@ -118,16 +118,12 @@ cambiado nada, `observe()` devuelve `(contexto, None)`. Es el caso normal.
 **El orden de los pasos 12 y 13 importa.** La curiosidad pregunta *"¿este
 proyecto es nuevo para mí?"* consultando la memoria. Si la memoria guardara
 el proyecto antes, ya existiría y nada sería nunca nuevo. Este fallo
-existió de verdad y está en el [ADR-008](../architecture-decisions/ADR-008-silence-by-construction.md).
-En `run_watch()` verás el comentario que lo advierte.
-
-> ⚠️ **Fallo abierto en el REPL.** En `run_repl()`, la función interna
-> `percibir()` guarda en la memoria **antes** de que `quizas_hablar()`
-> evalúe la curiosidad: exactamente el orden que el ADR-008 prohíbe. En la
-> conversación, un proyecto nunca visto se puntúa como "conocido sin nada
-> confirmado" (3 puntos) en vez de "nuevo" (4). Los tests no lo detectan
-> porque la suma sigue llegando justo al umbral. Está anotado en
-> `PENDIENTE.md`; si lo arreglas, quita este aviso.
+existió de verdad, y **dos veces**: primero en `--watch`, donde se
+documentó en el [ADR-008](../architecture-decisions/ADR-008-silence-by-construction.md),
+y después en la conversación, donde se encontró leyendo el código para
+escribir este manual. Los dos bucles llevan ahora un comentario que lo
+advierte. Si escribes un bucle nuevo, respeta el orden: **mirar, decidir
+y, solo después, guardar**.
 
 Otra diferencia entre los dos bucles: `run_watch()` solo evalúa la
 curiosidad cuando **hay evento** (cambió algo); `run_repl()` la evalúa en
