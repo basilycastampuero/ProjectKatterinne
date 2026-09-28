@@ -14,12 +14,33 @@ vuelve a cada prompt, uno mal rechazado solo se pierde.
 
 from __future__ import annotations
 
+import json
+import logging
 import re
 import unicodedata
+from collections import Counter
 from collections.abc import Iterable, Sequence
+from dataclasses import dataclass
 from typing import Any
 
-from companion.memory.models import MemoryScope
+from companion.context.models import CurrentContext
+from companion.context.rendering import describe_context
+from companion.llm.errors import LLMError
+from companion.llm.prompts import (
+    COMPANION_SPEAKER,
+    FACT_EXTRACTION_SYSTEM_PROMPT,
+    USER_SPEAKER,
+    format_transcript,
+)
+from companion.llm.provider import LLMProvider, Message
+from companion.memory.models import Fact, MemoryScope
+from companion.memory.rendering import describe_facts
+
+log = logging.getLogger("companion.conversation")
+
+#: Hechos como mucho por revisión. Conservador: es más fácil relajar un
+#: límite que limpiar una memoria llena de basura.
+MAX_FACTS_PER_EXTRACTION = 3
 
 #: Palabras como mucho. Un hecho largo suele ser varios hechos juntos, o un
 #: resumen con relleno del modelo.
@@ -159,3 +180,152 @@ def validate_fact(
             return "dato sensible"
 
     return None
+
+
+# ----------------------------------------------------------------------
+# Extracción
+# ----------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class PendingTurn:
+    """Un mensaje de la persona que todavía no se ha revisado.
+
+    Lleva el mensaje de la compañera que lo precede porque sin él las
+    respuestas cortas no se entienden: "con SQLite" no dice nada si no se
+    sabe que la pregunta era cómo guarda la memoria.
+    """
+
+    user_text: str
+    companion_text: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ExtractedFact:
+    """Un hecho que ha pasado el validador y se puede guardar."""
+
+    content: str
+    evidence: str
+    scope: MemoryScope
+
+
+def _reason_key(motivo: str) -> str:
+    # Los motivos llevan a veces un detalle entre paréntesis sacado de la
+    # respuesta del modelo, que puede repetir texto de la persona. Al log
+    # solo va la categoría.
+    return motivo.split(" (", 1)[0]
+
+
+class FactExtractor:
+    """Pide al modelo los hechos de un lote de turnos y se queda con los válidos.
+
+    Nunca lanza una excepción: extraer es un extra, y un fallo aquí no
+    puede tumbar la conversación. Ante cualquier problema, no se guarda
+    nada, que es exactamente lo mismo que pasaba antes de que existiera.
+    """
+
+    def __init__(
+        self,
+        provider: LLMProvider,
+        *,
+        max_facts: int = MAX_FACTS_PER_EXTRACTION,
+        max_words: int = MAX_FACT_WORDS,
+    ) -> None:
+        self._provider = provider
+        self._max_facts = max_facts
+        self._max_words = max_words
+
+    def extract(
+        self,
+        turns: Sequence[PendingTurn],
+        context: CurrentContext | None = None,
+        known: Sequence[Fact] = (),
+    ) -> list[ExtractedFact]:
+        user_texts = [t.user_text for t in turns if t.user_text.strip()]
+        if not user_texts:
+            # Sin nada que haya dicho la persona no puede haber evidencia:
+            # la llamada sería trabajo tirado.
+            return []
+
+        candidatos = self._ask_model(turns, context, known)
+        if candidatos is None:
+            return []
+
+        aceptados: list[ExtractedFact] = []
+        rechazos: Counter[str] = Counter()
+        for candidato in candidatos:
+            motivo = validate_fact(candidato, user_texts, max_words=self._max_words)
+            if motivo is not None:
+                rechazos[_reason_key(motivo)] += 1
+                continue
+            if len(aceptados) >= self._max_facts:
+                rechazos["excede el máximo por lote"] += 1
+                continue
+            aceptados.append(
+                ExtractedFact(
+                    content=candidato["content"].strip(),
+                    evidence=candidato["evidence"].strip(),
+                    scope=MemoryScope(candidato["scope"].strip().lower()),
+                )
+            )
+
+        # Cuántos y por qué, nunca qué: es texto de la persona, y los logs
+        # no están pensados para guardarlo.
+        log.info(
+            "extracción de hechos turnos=%d propuestos=%d aceptados=%d rechazos=%s",
+            len(user_texts),
+            len(candidatos),
+            len(aceptados),
+            dict(rechazos) or "-",
+        )
+        return aceptados
+
+    def _ask_model(
+        self,
+        turns: Sequence[PendingTurn],
+        context: CurrentContext | None,
+        known: Sequence[Fact],
+    ) -> list[Any] | None:
+        """Los candidatos tal cual los propone el modelo, o `None` si falla."""
+        try:
+            resultado = self._provider.generate(
+                self._build_messages(turns, context, known), json_mode=True
+            )
+        except LLMError as exc:
+            log.warning("el modelo no pudo extraer hechos: %s", exc)
+            return None
+
+        try:
+            datos = json.loads(resultado.text)
+        except json.JSONDecodeError:
+            log.info("extracción de hechos: el modelo no devolvió JSON válido")
+            return None
+
+        candidatos = datos.get("facts") if isinstance(datos, dict) else None
+        if not isinstance(candidatos, list):
+            log.info("extracción de hechos: el JSON no tiene una lista 'facts'")
+            return None
+        return candidatos
+
+    @staticmethod
+    def _build_messages(
+        turns: Sequence[PendingTurn],
+        context: CurrentContext | None,
+        known: Sequence[Fact],
+    ) -> list[Message]:
+        lineas: list[tuple[str, str]] = []
+        for turno in turns:
+            if turno.companion_text and turno.companion_text.strip():
+                lineas.append((COMPANION_SPEAKER, turno.companion_text))
+            if turno.user_text.strip():
+                lineas.append((USER_SPEAKER, turno.user_text))
+
+        bloques = [
+            describe_context(context),
+            describe_facts(known),
+            "Conversación:\n" + format_transcript(lineas),
+        ]
+        return [
+            Message(role="system", content=FACT_EXTRACTION_SYSTEM_PROMPT),
+            Message(role="user", content="\n\n".join(b for b in bloques if b)),
+        ]
