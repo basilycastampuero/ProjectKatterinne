@@ -22,7 +22,7 @@ Esto es lo que percibes en este momento:
 - Actividad: coding (inferido, puede estar mal)
 
 Esto es lo que recuerdas:
-- Está construyendo un companion local con Ollama y SQLite. (ella lo confirmó)
+- Está construyendo un companion local con Ollama y SQLite. (tu persona lo confirmó)
 ```
 
 Decirle `Proyecto: ProjectKatterinne` a secas le invita a afirmarlo. Añadir

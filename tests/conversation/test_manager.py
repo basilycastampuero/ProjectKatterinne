@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from companion.context.models import CurrentContext, Provenance, Signal
-from companion.context.rendering import describe_context
+from companion.context.rendering import PROVENANCE_WORDS, describe_context
 from companion.conversation.manager import ConversationManager
 from companion.llm.errors import GenerationError
 from companion.llm.provider import Message
@@ -148,7 +148,7 @@ def test_lo_confirmado_se_nombra_como_confirmado() -> None:
     )
 
     assert texto is not None
-    assert "ella lo confirmó" in texto
+    assert f"StudyFlow ({PROVENANCE_WORDS[Provenance.USER_CONFIRMED]})" in texto
 
 
 def test_una_aplicacion_privada_no_se_nombra() -> None:
@@ -261,7 +261,7 @@ def test_los_recuerdos_del_proyecto_llegan_al_modelo(
 
     bloque = payload[1].content
     assert "Usa SQLite para la memoria." in bloque
-    assert "ella lo confirmó" in bloque
+    assert f"({PROVENANCE_WORDS[Provenance.USER_CONFIRMED]})" in bloque
 
 
 def test_no_se_mezclan_los_recuerdos_de_otros_proyectos(

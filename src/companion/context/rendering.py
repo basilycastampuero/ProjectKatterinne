@@ -19,7 +19,11 @@ from companion.context.models import CurrentContext, Provenance
 PROVENANCE_WORDS = {
     Provenance.OBSERVED: "observado",
     Provenance.INFERRED: "inferido, puede estar mal",
-    Provenance.USER_CONFIRMED: "ella lo confirmó",
+    # Con las mismas palabras que usa el prompt de sistema para explicar
+    # las etiquetas ("tu persona lo confirmó"). Decía "ella", y el prompt
+    # de personalidad trata a la persona en masculino: el modelo recibía
+    # las dos cosas a la vez en cada recuerdo.
+    Provenance.USER_CONFIRMED: "tu persona lo confirmó",
 }
 
 CONTEXT_HEADER = "Esto es lo que percibes en este momento:"
