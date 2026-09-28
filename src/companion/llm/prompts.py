@@ -10,6 +10,10 @@ el modelo negara cosas que sabe, y al reves se las inventara.
 
 from __future__ import annotations
 
+import json
+from collections.abc import Sequence
+from typing import Any
+
 # Curiosa, tranquila y dispuesta a callar; nunca coach, jefa ni terapeuta.
 SYSTEM_PROMPT = """\
 Te llamas Katterinne, TU eres Katterinne, eres una compañera de IA local que vive en el ordenador de tu persona.
@@ -116,4 +120,128 @@ Responde SOLO con un objeto JSON, sin texto alrededor:
 
 En "based_on" pon exactamente el campo en el que te apoyas, uno de:
 application, project, document, activity, memory.
+"""
+
+# ----------------------------------------------------------------------
+# Extracción de hechos
+# ----------------------------------------------------------------------
+
+#: Etiquetas de quién habla en el trozo de conversación que se le pasa al
+#: modelo. La evidencia solo puede salir de las líneas de la persona.
+USER_SPEAKER = "persona"
+COMPANION_SPEAKER = "compañera"
+
+
+def format_transcript(turns: Sequence[tuple[str, str]]) -> str:
+    """Una línea por mensaje: `[persona] texto`.
+
+    Los saltos de línea de cada mensaje se aplanan. Si no, un mensaje que
+    contuviera "\n[persona] ..." fabricaría una línea que la persona no
+    escribió, y el modelo la tomaría como evidencia.
+    """
+    return "\n".join(f"[{quien}] {' '.join(texto.split())}" for quien, texto in turns)
+
+
+#: Ejemplos del prompt, como datos y no como texto: así un test comprueba
+#: que cada uno pasa el validador. Un ejemplo que el validador rechazara le
+#: enseñaría al modelo a fallar.
+FACT_EXTRACTION_EXAMPLES: tuple[dict[str, Any], ...] = (
+    {
+        "turns": (
+            (COMPANION_SPEAKER, "¿Qué estás montando en manager.py?"),
+            (USER_SPEAKER, "la memoria, con SQLite. nada de embeddings por ahora"),
+        ),
+        "facts": (
+            {
+                "content": "La memoria va con SQLite, sin embeddings por ahora.",
+                "evidence": "la memoria, con SQLite. nada de embeddings por ahora",
+                "scope": "project",
+            },
+        ),
+    },
+    {
+        "turns": (
+            (COMPANION_SPEAKER, "¿Al final funcionó el parser?"),
+            (USER_SPEAKER, "jaja sí, por fin"),
+            (COMPANION_SPEAKER, "¿Qué fallaba?"),
+            (USER_SPEAKER, "nada, una tontería. me voy a comer"),
+        ),
+        "facts": (),
+    },
+    {
+        "turns": (
+            (USER_SPEAKER, "uff qué sueño. hoy solo voy a revisar los tests"),
+            (COMPANION_SPEAKER, "¿Algún motivo para no tocar el código?"),
+            (USER_SPEAKER, "prefiero no programar cansado, luego lo pago"),
+        ),
+        "facts": (
+            {
+                "content": "Hoy solo va a revisar los tests.",
+                "evidence": "hoy solo voy a revisar los tests",
+                "scope": "session",
+            },
+            {
+                "content": "Prefiere no programar cansado.",
+                "evidence": "prefiero no programar cansado",
+                "scope": "long_term",
+            },
+        ),
+    },
+)
+
+
+def _render_examples() -> str:
+    bloques = []
+    for ejemplo in FACT_EXTRACTION_EXAMPLES:
+        salida = json.dumps({"facts": list(ejemplo["facts"])}, ensure_ascii=False)
+        bloques.append(f"{format_transcript(ejemplo['turns'])}\n→ {salida}")
+    return "\n\n".join(bloques)
+
+
+# El modelo aquí no conversa: propone candidatos que luego se validan uno a
+# uno. Todo lo que el prompt deje claro es un rechazo menos.
+FACT_EXTRACTION_SYSTEM_PROMPT = f"""\
+Eres el módulo de memoria de una compañera de IA local. No conversas: lees
+un trozo de conversación entre la compañera y su persona y decides si la
+persona ha contado algo que merezca recordarse en otra sesión.
+
+Lo normal es que NO haya nada. Saludos, risas, "vale", "gracias" o una
+pregunta no se recuerdan. Una lista vacía es la respuesta correcta casi
+siempre.
+
+Qué merece recordarse:
+- Qué está haciendo o construyendo, y con qué herramientas.
+- Por qué tomó una decisión.
+- Qué prefiere o qué evita, de forma estable.
+
+Qué NO:
+- Cómo se siente ahora mismo ("qué sueño", "estoy harto").
+- Saludos, bromas, cortesías.
+- Lo que dice la compañera. Sus líneas [{COMPANION_SPEAKER}] están para que
+  entiendas las respuestas cortas, pero nada de lo que ella dice es un hecho.
+- Lo que la persona opina de la compañera ("eres muy curiosa").
+- Contraseñas, tokens, claves o números de tarjeta o de cuenta. Nunca.
+- Lo que ya recuerdas, si te lo doy.
+
+Cada hecho tiene tres campos:
+- "content": una frase en tercera persona, sin sujeto, de 25 palabras como
+  mucho. Usa las mismas palabras de la persona siempre que puedas, y no
+  añadas nada que no dijo: si no dijo por qué, no pongas por qué.
+- "evidence": COPIA LITERAL de un trozo de una línea [{USER_SPEAKER}], palabra por
+  palabra. No resumas, no corrijas, no cambies la persona gramatical. Si no
+  puedes copiar las palabras que lo apoyan, ese hecho no va.
+- "scope", uno de:
+  - "session": solo vale para hoy. ("hoy estoy probando el parser")
+  - "project": sobre el trabajo de un proyecto. ("el backend va en Django")
+  - "long_term": sobre la persona, en cualquier proyecto. ("prefiero modelos locales")
+
+Pocos: como mucho tres. Mejor uno bueno que tres dudosos.
+
+Responde SOLO con un objeto JSON, sin texto alrededor:
+
+{{"facts": [{{"content": "...", "evidence": "...", "scope": "..."}}]}}
+
+Ejemplos:
+
+{_render_examples()}
 """
