@@ -46,7 +46,8 @@ Comandos disponibles:
   /help      muestra esta ayuda
   /info      modelo, cuantización y ventana de contexto
   /context   qué percibe ahora mismo y con qué procedencia
-  /memory    qué tiene guardado en la memoria local
+  /memory    qué tiene guardado en la memoria local, con su id
+  /forget N  olvida el recuerdo con id N
   /record    turnos que se están enviando al modelo
   /reset     vacía la conversación
   /exit      cierra el companion (también Ctrl+C o Ctrl+Z+Enter)
@@ -134,17 +135,43 @@ def _print_context(context: CurrentContext | None) -> None:
     _out(f"  confianza: {context.confidence:.2f}")
 
 
+#: Recuerdos como mucho en /memory. La memoria crece despacio: en la
+#: práctica, todos.
+_MEMORY_LIST_LIMIT = 500
+
+
 def _print_memories(conversation: ConversationManager) -> None:
     memoria = conversation.memory
     if memoria is None:
         _out("  (memoria desactivada)")
         return
-    hechos = memoria.recall(limit=20)
+    # Directo al repositorio y no con `recall`: mirar la lista no es usar
+    # un recuerdo, y `recall` lo marcaría como usado. Y sin el límite corto
+    # del prompt, porque lo que no se ve no se puede olvidar.
+    hechos = memoria.repository.list_facts(limit=_MEMORY_LIST_LIMIT)
     if not hechos:
         _out("  (todavía no recuerda nada)")
         return
     for hecho in hechos:
-        _out(f"  · {hecho.content}  [{hecho.provenance}, {hecho.scope}]")
+        _out(f"  [{hecho.id}] {hecho.content}  ({hecho.provenance}, {hecho.scope})")
+
+
+def _forget(conversation: ConversationManager, argumento: str) -> None:
+    memoria = conversation.memory
+    if memoria is None:
+        _out("  (memoria desactivada)")
+        return
+    try:
+        fact_id = int(argumento)
+    except ValueError:
+        _out("  Uso: /forget <id>. Los id salen en /memory.")
+        return
+    if not memoria.repository.delete_fact(fact_id):
+        _out(f"  No hay ningún recuerdo con id {fact_id}. Míralo en /memory.")
+        return
+    # El id sí, el contenido no: es texto de la persona.
+    log.info("recuerdo olvidado hecho=%d", fact_id)
+    _out(f"  Olvidado el recuerdo {fact_id}.")
 
 
 def _handle_command(
@@ -153,7 +180,8 @@ def _handle_command(
     context: CurrentContext | None = None,
 ) -> bool:
     """Procesa un comando `/...`. Devuelve False si hay que salir."""
-    match command.lower():
+    nombre, _, argumento = command.strip().partition(" ")
+    match nombre.lower():
         case "/exit" | "/quit":
             return False
         case "/help":
@@ -169,6 +197,8 @@ def _handle_command(
             _print_memories(conversation)
         case "/record":
             _print_history(conversation)
+        case "/forget":
+            _forget(conversation, argumento.strip())
         case _:
             _out(f"Comando desconocido: {command}. Prueba /help.")
     return True

@@ -759,3 +759,101 @@ def test_ctrl_c_durante_la_extraccion_final_sale_sin_traceback(
     assert codigo == 0
     assert "Hasta luego" in capsys.readouterr().out
     assert not memoria.repository.list_sessions()[0].is_open
+
+
+# ----------------------------------------------------------------------
+# Corregir lo que recuerda
+# ----------------------------------------------------------------------
+
+
+def test_memory_enseña_el_id_de_cada_recuerdo(
+    fake_provider: FakeProvider, memoria: MemoryManager, monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    # Sin el id no hay forma de decirle a /forget cuál borrar.
+    memoria.start_session()
+    hecho = memoria.confirm("Prefiere modelos locales.")
+    _inputs(monkeypatch, ["/memory", "/exit"])
+
+    run_repl(ConversationManager(fake_provider, memory=memoria))
+
+    assert f"[{hecho.id}]" in capsys.readouterr().out
+
+
+def test_forget_borra_un_recuerdo(
+    fake_provider: FakeProvider, memoria: MemoryManager, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Lo que aprende solo, la persona tiene que poder corregirlo.
+
+    Una compañera que recuerda cosas que no se pueden borrar deja de ser
+    una presencia y pasa a sentirse como vigilancia.
+    """
+    memoria.start_session()
+    olvidar = memoria.confirm("Prefiere modelos locales.")
+    quedar = memoria.confirm("Usa SQLite.", project="StudyFlow")
+    _inputs(monkeypatch, [f"/forget {olvidar.id}", "/exit"])
+
+    run_repl(ConversationManager(fake_provider, memory=memoria))
+
+    assert [h.id for h in memoria.repository.list_facts()] == [quedar.id]
+
+
+@pytest.mark.parametrize("comando", ["/forget", "/forget abc", "/forget 999"])
+def test_forget_mal_usado_no_borra_nada_y_lo_dice(
+    comando: str,
+    fake_provider: FakeProvider,
+    memoria: MemoryManager,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys,
+) -> None:
+    memoria.start_session()
+    memoria.confirm("Prefiere modelos locales.")
+    _inputs(monkeypatch, [comando, "/exit"])
+
+    run_repl(ConversationManager(fake_provider, memory=memoria))
+
+    assert len(memoria.repository.list_facts()) == 1
+    assert "/memory" in capsys.readouterr().out  # le dice dónde mirar el id
+
+
+def test_forget_no_escribe_el_recuerdo_en_el_log(
+    fake_provider: FakeProvider,
+    memoria: MemoryManager,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog,
+) -> None:
+    memoria.start_session()
+    hecho = memoria.confirm("Prefiere modelos locales.")
+    _inputs(monkeypatch, [f"/forget {hecho.id}", "/exit"])
+
+    with caplog.at_level("DEBUG", logger="companion"):
+        run_repl(ConversationManager(fake_provider, memory=memoria))
+
+    assert "modelos locales" not in caplog.text
+
+
+def test_mirar_la_memoria_no_cuenta_como_usarla(
+    fake_provider: FakeProvider, memoria: MemoryManager, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # `last_accessed_at` dice qué recuerdos siguen vivos. Si /memory lo
+    # tocara, revisar la lista los mantendría todos vivos para siempre.
+    memoria.start_session()
+    hecho = memoria.confirm("Prefiere modelos locales.")
+    _inputs(monkeypatch, ["/memory", "/exit"])
+
+    run_repl(ConversationManager(fake_provider, memory=memoria))
+
+    assert memoria.repository.get_fact(hecho.id).last_accessed_at is None
+
+
+def test_memory_enseña_todos_los_recuerdos_no_solo_los_del_prompt(
+    fake_provider: FakeProvider, memoria: MemoryManager, monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    # Lo que no se ve no se puede olvidar.
+    memoria.start_session()
+    for n in range(25):
+        memoria.confirm(f"Recuerdo número {n}.")
+    _inputs(monkeypatch, ["/memory", "/exit"])
+
+    run_repl(ConversationManager(fake_provider, memory=memoria))
+
+    assert "Recuerdo número 0." in capsys.readouterr().out

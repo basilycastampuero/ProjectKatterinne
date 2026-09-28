@@ -137,7 +137,8 @@ Dentro del REPL:
 | `/help` | lista los comandos |
 | `/info` | modelo, cuantización, ventana de contexto |
 | `/context` | qué percibe ahora y con qué procedencia |
-| `/memory` | qué tiene guardado en la memoria local |
+| `/memory` | qué tiene guardado en la memoria local, con el id de cada recuerdo |
+| `/forget <id>` | olvida ese recuerdo |
 | `/record` | turnos que se están enviando al modelo |
 | `/reset` | vacía la conversación |
 | `/exit` | cierra y libera la VRAM |
