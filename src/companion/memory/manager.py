@@ -379,6 +379,33 @@ class MemoryManager:
             return []
         return summarize_activity(actividades, now=momento)
 
+    def recent_project(self, *, within_s: float, now: datetime | None = None) -> Project | None:
+        """El último proyecto en el que estuvo, si lo dejó hace menos de `within_s`.
+
+        Se habla con ella desde el terminal, que no es un proyecto, y a
+        menudo después de pasar por el navegador. Sin esto, lo que se cuenta
+        de un proyecto cinco minutos después de dejarlo no tendría a qué
+        atarse.
+
+        Lo que cuenta es cuándo **se salió**, no cuándo se entró: cada
+        actividad marca un comienzo, y un proyecto sigue delante hasta la
+        actividad siguiente.
+        """
+        if self._session is None:
+            return None
+        momento = now or utcnow()
+        limite = momento - timedelta(seconds=within_s)
+
+        hasta = momento
+        # Más recientes primero: `hasta` es cuándo empezó la siguiente.
+        for actividad in self._repo.list_activities(session_id=self._session.id, limit=200):
+            if hasta < limite:
+                return None
+            if actividad.project_id is not None:
+                return self._repo.get_project_by_id(actividad.project_id)
+            hasta = actividad.occurred_at
+        return None
+
     def recall(
         self,
         *,

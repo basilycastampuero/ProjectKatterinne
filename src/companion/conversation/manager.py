@@ -15,6 +15,8 @@ un prompt gigante, sino cuatro cosas:
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
+from datetime import datetime
 
 from companion.context.models import CurrentContext, Provenance
 from companion.context.rendering import describe_context
@@ -29,6 +31,15 @@ from companion.memory.rendering import ActivitySpan, describe_activity, describe
 log = logging.getLogger("companion.conversation")
 
 
+@dataclass(frozen=True, slots=True)
+class _ProjectTarget:
+    """Proyecto al que se ata un hecho, con la procedencia de **ese** dato."""
+
+    name: str
+    provenance: Provenance
+    confidence: float
+
+
 class ConversationManager:
     """Mantiene el hilo de conversacion con el modelo local."""
 
@@ -41,6 +52,7 @@ class ConversationManager:
         memory: MemoryManager | None = None,
         recall_limit: int = 5,
         fact_extractor: FactExtractor | None = None,
+        recent_project_s: float = 900.0,
     ) -> None:
         if max_history_messages < 2:
             raise ValueError("max_history_messages debe ser al menos 2 (un turno completo).")
@@ -54,6 +66,7 @@ class ConversationManager:
         # Sin memoria no hay dónde guardar: extraer sería gastar el modelo
         # para tirar el resultado.
         self._extractor = fact_extractor if memory is not None else None
+        self._recent_project_s = recent_project_s
         #: Lo que ha dicho la persona y todavía no se ha revisado.
         self._pending: list[PendingTurn] = []
         #: Lo último que dijo la compañera, para acompañar al siguiente turno.
@@ -265,7 +278,9 @@ class ConversationManager:
     # Aprender de lo que cuenta
     # ------------------------------------------------------------------
 
-    def extract_pending(self, context: CurrentContext | None = None) -> list[Fact]:
+    def extract_pending(
+        self, context: CurrentContext | None = None, *, now: datetime | None = None
+    ) -> list[Fact]:
         """Revisa lo pendiente y guarda lo que merezca recordarse.
 
         El lote se retira **antes** de llamar al modelo: si la extracción
@@ -280,17 +295,19 @@ class ConversationManager:
 
         lote, self._pending = self._pending, []
         contexto = context or self._last_context
-        proyecto = self._usable_project(contexto)
+        proyecto = self._project_for_facts(contexto, now)
 
         try:
-            conocidos = self._memory.recall(project=proyecto, limit=20)
+            conocidos = self._memory.recall(
+                project=proyecto.name if proyecto else None, limit=20
+            )
         except Exception as exc:  # noqa: BLE001 - aprender es un extra
             log.warning("no se pudieron leer los recuerdos para extraer: %s", exc)
             conocidos = []
 
         guardados: list[Fact] = []
         for extraido in self._extractor.extract(lote, contexto, conocidos):
-            if (hecho := self._store(extraido, contexto, proyecto)) is not None:
+            if (hecho := self._store(extraido, contexto, proyecto, now)) is not None:
                 guardados.append(hecho)
 
         log.info("hechos guardados=%d de turnos=%d", len(guardados), len(lote))
@@ -307,32 +324,52 @@ class ConversationManager:
             self._pending.clear()
             log.info("extracción abandonada por interrupción")
 
-    @staticmethod
-    def _usable_project(context: CurrentContext | None) -> str | None:
+    def _project_for_facts(
+        self, context: CurrentContext | None, now: datetime | None
+    ) -> _ProjectTarget | None:
         """El proyecto al que atar los hechos, si se puede.
 
+        El de la ventana si lo tiene. Si no, el que se dejó hace menos de
+        `recent_project_s`: se habla con ella desde el terminal, a menudo
+        después de pasar por el navegador, y lo que se cuenta cinco minutos
+        después de dejar un proyecto sigue siendo de ese proyecto.
+
         En una aplicación de la lista negra no se registra en qué proyecto se
-        estaba (ADR-005), y un hecho no puede ser la puerta de atrás.
+        estaba (ADR-005), y un hecho no puede ser la puerta de atrás: ni el
+        de la ventana ni el reciente.
         """
-        if context is None or context.redacted or context.project is None:
+        if context is not None and context.redacted:
             return None
-        return context.project.value
+        if context is not None and context.project is not None:
+            senal = context.project
+            return _ProjectTarget(senal.value, senal.provenance, senal.confidence)
+        try:
+            reciente = self._memory.recent_project(  # type: ignore[union-attr]
+                within_s=self._recent_project_s, now=now
+            )
+        except Exception as exc:  # noqa: BLE001 - aprender es un extra
+            log.warning("no se pudo buscar el proyecto reciente: %s", exc)
+            return None
+        if reciente is None:
+            return None
+        return _ProjectTarget(reciente.name, reciente.provenance, reciente.confidence)
 
     def _store(
         self,
         extraido: ExtractedFact,
         context: CurrentContext | None,
-        proyecto: str | None,
+        proyecto: _ProjectTarget | None,
+        now: datetime | None,
     ) -> Fact | None:
         alcance = extraido.scope
         if alcance is MemoryScope.PROJECT and proyecto is None:
-            # Un hecho de proyecto sin proyecto al que atarlo. Pasarlo a
-            # `long_term` lo sacaría en todos los prompts como si fuera
-            # algo de la persona; en la sesión, al menos, caduca solo.
-            alcance = MemoryScope.SESSION
+            # Sin proyecto cerca, lo más probable es que sea algo de la
+            # persona: no todo lo que cuenta es trabajo. Salvo en una app de
+            # la lista negra, donde lo dicho no se vuelve permanente solo.
+            privada = context is not None and context.redacted
+            alcance = MemoryScope.SESSION if privada else MemoryScope.LONG_TERM
 
-        de_proyecto = alcance is MemoryScope.PROJECT
-        senal = context.project if de_proyecto and context is not None else None
+        destino = proyecto if alcance is MemoryScope.PROJECT else None
         try:
             return self._memory.remember_once(  # type: ignore[union-attr]
                 extraido.content,
@@ -340,11 +377,12 @@ class ConversationManager:
                 confidence=1.0,
                 source="conversation",
                 scope=alcance,
-                project=proyecto if de_proyecto else None,
+                project=destino.name if destino else None,
                 # El hecho lo dijo la persona; el proyecto, casi siempre, solo
                 # se dedujo del título. Cada uno con su procedencia.
-                project_provenance=senal.provenance if senal else None,
-                project_confidence=senal.confidence if senal else None,
+                project_provenance=destino.provenance if destino else None,
+                project_confidence=destino.confidence if destino else None,
+                at=now,
             )
         except Exception as exc:  # noqa: BLE001 - aprender es un extra
             log.warning("no se pudo guardar un hecho: %s", exc)

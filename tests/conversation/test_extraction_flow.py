@@ -19,6 +19,7 @@ from companion.memory.manager import MemoryManager
 from companion.memory.models import MemoryScope
 from companion.memory.repository import MemoryRepository
 from tests.conftest import FakeProvider
+from tests.memory.conftest import T0, minutos
 
 SQLITE = {
     "content": "La memoria va con SQLite.",
@@ -229,3 +230,85 @@ def test_ctrl_c_durante_la_extraccion_del_cierre_no_impide_cerrar(
 
     assert memoria.repository.get_conversation(conversacion_id).ended_at is not None
     assert not conversacion.has_pending
+
+
+# ----------------------------------------------------------------------
+# A qué proyecto se ata lo que se cuenta
+# ----------------------------------------------------------------------
+
+
+def _en_el_navegador() -> CurrentContext:
+    return CurrentContext(
+        application=Signal(value="Brave", provenance=Provenance.OBSERVED, confidence=1.0)
+    )
+
+
+def _estuvo_en_studyflow(memoria: MemoryManager, *, hasta) -> None:
+    """VS Code con StudyFlow desde el principio y salto a Brave en `hasta`."""
+    repo = memoria.repository
+    proyecto = repo.upsert_project("StudyFlow", provenance=Provenance.INFERRED, confidence=0.7)
+    repo.record_activity(
+        memoria.session.id, "application_changed", occurred_at=T0, project_id=proyecto.id
+    )
+    repo.record_activity(memoria.session.id, "application_changed", occurred_at=hasta)
+
+
+def test_lo_que_cuenta_desde_el_navegador_va_al_proyecto_que_acaba_de_dejar(
+    memoria: MemoryManager,
+) -> None:
+    # Se habla con ella desde el terminal, a menudo tras pasar por el
+    # navegador. El proyecto de hace cinco minutos sigue siendo del que habla.
+    _estuvo_en_studyflow(memoria, hasta=minutos(30))
+    conversacion, _ = _conversacion(memoria, _respuesta(SQLITE))
+    conversacion.send("la memoria va con SQLite", context=_en_el_navegador())
+
+    conversacion.extract_pending(now=minutos(35))
+
+    hecho = memoria.repository.list_facts()[0]
+    proyecto = memoria.repository.get_project("StudyFlow")
+    assert hecho.scope is MemoryScope.PROJECT
+    assert hecho.project_id == proyecto.id
+    # Y sigue siendo lo que era: una deducción del título, no algo confirmado.
+    assert proyecto.provenance is Provenance.INFERRED
+
+
+def test_un_proyecto_de_hace_rato_ya_no_cuenta(memoria: MemoryManager) -> None:
+    _estuvo_en_studyflow(memoria, hasta=minutos(30))
+    conversacion = ConversationManager(
+        FakeProvider(),
+        memory=memoria,
+        fact_extractor=FactExtractor(FakeProvider(replies=[_respuesta(SQLITE)])),
+        recent_project_s=900,
+    )
+    conversacion.send("la memoria va con SQLite", context=_en_el_navegador())
+
+    conversacion.extract_pending(now=minutos(50))
+
+    assert memoria.repository.list_facts()[0].project_id is None
+
+
+def test_sin_proyecto_al_que_atarlo_es_algo_de_la_persona(memoria: MemoryManager) -> None:
+    # No todo lo que se cuenta es de un proyecto. Si no hay ninguno cerca,
+    # lo más probable es que sea algo suyo: se queda, no caduca con la sesión.
+    conversacion, _ = _conversacion(memoria, _respuesta(SQLITE))
+    conversacion.send("la memoria va con SQLite", context=_en_el_navegador())
+
+    conversacion.extract_pending()
+
+    hecho = memoria.repository.list_facts()[0]
+    assert hecho.scope is MemoryScope.LONG_TERM
+    assert hecho.project_id is None
+
+
+def test_en_una_app_censurada_no_se_busca_el_proyecto_reciente(memoria: MemoryManager) -> None:
+    # Atar lo dicho en una app de la lista negra a lo último que se vio
+    # fuera de ella sería otra puerta de atrás.
+    _estuvo_en_studyflow(memoria, hasta=minutos(30))
+    conversacion, _ = _conversacion(memoria, _respuesta(SQLITE))
+    conversacion.send("la memoria va con SQLite", context=_contexto(redacted=True))
+
+    conversacion.extract_pending(now=minutos(31))
+
+    hecho = memoria.repository.list_facts()[0]
+    assert hecho.project_id is None
+    assert hecho.scope is MemoryScope.SESSION

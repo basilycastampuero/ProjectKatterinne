@@ -505,3 +505,77 @@ def test_recordar_algo_deja_constancia_de_que_se_uso(
     manager.recall()
 
     assert repo.get_fact(hecho.id).last_accessed_at is not None
+
+
+# ----------------------------------------------------------------------
+# Proyecto reciente
+# ----------------------------------------------------------------------
+
+
+def _estar_en(
+    manager: MemoryManager, repo: MemoryRepository, momento, *, proyecto: str | None = None
+) -> None:
+    project_id = repo.upsert_project(proyecto, at=momento).id if proyecto else None
+    repo.record_activity(
+        manager.session.id,
+        "application_changed",
+        occurred_at=momento,
+        application="VS Code" if proyecto else "Brave",
+        project_id=project_id,
+    )
+
+
+def test_el_proyecto_reciente_es_el_que_se_dejo_hace_poco(
+    manager: MemoryManager, repo: MemoryRepository
+) -> None:
+    """Cuenta cuándo se salió del proyecto, no cuándo se entró.
+
+    Una actividad marca el momento en que algo empieza. Cuarenta minutos en
+    VS Code y un salto al navegador dejan la actividad del proyecto con la
+    hora de entrada, de hace cuarenta minutos, aunque se saliera hace uno.
+    """
+    manager.start_session(at=T0)
+    _estar_en(manager, repo, T0, proyecto="StudyFlow")
+    _estar_en(manager, repo, minutos(40))
+
+    reciente = manager.recent_project(within_s=900, now=minutos(41))
+
+    assert reciente is not None
+    assert reciente.name == "StudyFlow"
+
+
+def test_un_proyecto_que_se_dejo_hace_rato_ya_no_cuenta(
+    manager: MemoryManager, repo: MemoryRepository
+) -> None:
+    manager.start_session(at=T0)
+    _estar_en(manager, repo, T0, proyecto="StudyFlow")
+    _estar_en(manager, repo, minutos(10))
+
+    assert manager.recent_project(within_s=900, now=minutos(26)) is None
+
+
+def test_si_sigue_en_el_proyecto_es_el_reciente(
+    manager: MemoryManager, repo: MemoryRepository
+) -> None:
+    manager.start_session(at=T0)
+    _estar_en(manager, repo, T0, proyecto="StudyFlow")
+
+    reciente = manager.recent_project(within_s=900, now=minutos(120))
+
+    assert reciente is not None
+    assert reciente.name == "StudyFlow"
+
+
+def test_el_proyecto_reciente_es_el_ultimo_de_varios(
+    manager: MemoryManager, repo: MemoryRepository
+) -> None:
+    manager.start_session(at=T0)
+    _estar_en(manager, repo, T0, proyecto="StudyFlow")
+    _estar_en(manager, repo, minutos(5), proyecto="ProjectKatterinne")
+    _estar_en(manager, repo, minutos(8))
+
+    assert manager.recent_project(within_s=900, now=minutos(9)).name == "ProjectKatterinne"
+
+
+def test_sin_sesion_no_hay_proyecto_reciente(manager: MemoryManager) -> None:
+    assert manager.recent_project(within_s=900, now=T0) is None

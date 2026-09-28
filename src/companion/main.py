@@ -212,6 +212,7 @@ def main(argv: list[str] | None = None) -> int:
         memory=memory,
         recall_limit=settings.memory.recall_limit,
         fact_extractor=build_fact_extractor(settings, provider, memory),
+        recent_project_s=settings.memory.recent_project_s,
     )
     stream = not args.no_stream
 

@@ -121,6 +121,11 @@ class MemorySettings:
     #: límite que limpiar una memoria llena de basura.
     max_facts_per_extraction: int = 3
 
+    #: Cuánto después de dejar un proyecto se sigue atando a él lo que se
+    #: cuenta. Se habla con ella desde el terminal, a menudo tras pasar por
+    #: el navegador: sin margen, casi nada llegaría a su proyecto.
+    recent_project_s: float = 900.0
+
 
 @dataclass(frozen=True, slots=True)
 class CuriositySettings:

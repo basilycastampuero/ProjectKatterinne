@@ -192,6 +192,7 @@ def test_por_defecto_aprende_con_prudencia() -> None:
     assert memoria.extract_facts is True
     assert memoria.extraction_idle_s == pytest.approx(30.0)
     assert memoria.max_facts_per_extraction == 3
+    assert memoria.recent_project_s == pytest.approx(900.0)
 
 
 def test_los_settings_son_inmutables() -> None:

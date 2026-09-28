@@ -88,6 +88,11 @@ extraction_idle_s = 30.0
 # Hechos como mucho por revisión. Empezar conservador.
 max_facts_per_extraction = 3
 
+# Cuánto después de dejar un proyecto (15 minutos) se sigue atando a él lo
+# que le cuentas. Si no hay ninguno tan reciente, lo que cuentes se guarda
+# como algo tuyo, no de un proyecto.
+recent_project_s = 900.0
+
 [curiosity]
 # Cuando se le permite iniciar una conversacion. Estos numeros existen para
 # que se calle, no para que hable: se considera que una
