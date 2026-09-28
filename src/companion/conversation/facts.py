@@ -47,9 +47,10 @@ MAX_FACTS_PER_EXTRACTION = 3
 MAX_FACT_WORDS = 25
 
 #: Fracción mínima de palabras con significado del hecho que tienen que
-#: aparecer en la cita o en su mensaje. Es un punto de partida: se ajusta
-#: con los rechazos reales, no a ojo.
-MIN_OVERLAP = 0.6
+#: aparecer en la cita o en su mensaje. En los casos reales, el hecho fiel
+#: más bajo cubre 0,75 y la invención más alta 0,60: el umbral va en medio,
+#: con margen a los dos lados (ver `test_facts_real_cases.py`).
+MIN_OVERLAP = 0.7
 
 #: `ephemeral` no está: lo que muere en minutos no justifica una llamada al
 #: modelo, y la memoria tiene que crecer despacio.

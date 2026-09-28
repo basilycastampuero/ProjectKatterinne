@@ -5,8 +5,10 @@ validador de hechos para comprobar citas, y la memoria para no guardar
 lo mismo dos veces. La dependencia va de la conversación a la memoria,
 nunca al revés.
 
-Todo es deliberadamente simple: sin stemming ni embeddings. Si se queda
-corto, los rechazos y duplicados reales lo dirán antes de complicarlo.
+Todo es deliberadamente simple: sin embeddings, y la única "raíz" es cortar
+cada palabra a sus primeras letras. Las reglas se eligieron contra casos
+reales, que están en `tests/conversation/test_facts_real_cases.py`: si se
+tocan, es ahí donde se ve qué se rompe.
 """
 
 from __future__ import annotations
@@ -17,6 +19,17 @@ import unicodedata
 #: Longitud mínima de una "palabra con significado". Deja fuera artículos,
 #: preposiciones y la mayoría de pronombres sin necesitar una lista.
 MIN_WORD_LEN = 4
+
+#: Letras que se conservan de cada palabra. Al pasar lo que dice la persona
+#: a tercera persona cambia la conjugación ("prefiero" → "prefiere"), y sin
+#: esto cada verbo contaba como una palabra añadida. Cinco y no cuatro
+#: porque con cuatro "programa" y "progreso" serían la misma palabra.
+STEM_LEN = 5
+
+#: Palabras largas que no aportan contenido. Lista corta a propósito:
+#: "porque" o "para" **no** están, porque un motivo o una finalidad
+#: inventados son justo lo que hay que detectar.
+_STOPWORDS = frozenset({"persona", "esta", "estaba", "lugar"})
 
 #: Parecido a partir del cual dos hechos cuentan como el mismo.
 DUPLICATE_THRESHOLD = 0.8
@@ -31,11 +44,16 @@ def normalize(text: str) -> str:
 
 
 def meaningful_words(text: str) -> set[str]:
-    """Palabras de cuatro letras o más, normalizadas.
+    """Raíces de las palabras de cuatro letras o más, normalizadas.
 
-    Sin stemming a propósito: "montando" y "monta" cuentan como distintas.
+    "Prefiero" y "prefiere" dan la misma raíz, "prefi". Es una aproximación
+    burda, pero determinista y sin dependencias.
     """
-    return {p for p in normalize(text).split() if len(p) >= MIN_WORD_LEN}
+    return {
+        p[:STEM_LEN]
+        for p in normalize(text).split()
+        if len(p) >= MIN_WORD_LEN and p not in _STOPWORDS
+    }
 
 
 def similarity(a: str, b: str) -> float:

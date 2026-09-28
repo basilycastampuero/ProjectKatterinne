@@ -151,15 +151,19 @@ Motivos de rechazo, en este orden:
 | alcance inválido | `scope` no es `session`, `project` ni `long_term` (`ephemeral` no merece la llamada al modelo) |
 | la cita no existe | `evidence` no aparece en ningún mensaje de la persona |
 | habla de la compañera | el sujeto es ella, o la cita va dirigida a ella (*"eres muy curiosa"*). Va antes que la siguiente porque casi siempre la dispara también, y este motivo es el útil |
-| añade cosas | menos del 60 % de las palabras con significado de `content` están en la cita o en su mensaje |
+| añade cosas | menos del 70 % de las palabras con significado de `content` están en la cita o en su mensaje |
 | dato sensible | el **valor** de una contraseña, token o clave de acceso, y números de tarjeta, cuenta o IBAN. Hablar de tokens no es revelar uno |
 
-El umbral del 60 % es un punto de partida. Se ajusta con los rechazos
-reales del paso 8, no a ojo.
-
 "Palabras con significado" es algo simple y determinista: palabras de
-cuatro letras o más, en minúsculas, sin tildes. Nada de stemming: si
-rechaza de más, se verá en los números.
+cuatro letras o más, en minúsculas, sin tildes, cortadas a sus cinco
+primeras letras.
+
+Empezó con un 60 % y sin cortar las palabras. La medición del paso 8
+demostró que así se rechazaba casi cualquier hecho pasado a tercera
+persona ("prefiero" → "prefiere"), y que cortar las palabras con un umbral
+bajo dejaba pasar motivos inventados. El 70 % y la raíz de cinco letras
+salen de probar combinaciones contra los casos reales de
+`tests/conversation/test_facts_real_cases.py`.
 
 Tests (parametrizados donde se pueda):
 
