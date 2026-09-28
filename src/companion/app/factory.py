@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from companion.config.settings import Settings
 from companion.context.engine import ContextEngine
+from companion.conversation.facts import FactExtractor
 from companion.curiosity.engine import CuriosityEngine, CuriosityPolicy
 from companion.curiosity.questions import QuestionGenerator
 from companion.llm.ollama import OllamaProvider
@@ -58,6 +59,18 @@ def build_memory(settings: Settings) -> MemoryManager | None:
         min_confidence_to_store=settings.memory.min_confidence_to_store,
     )
     return MemoryManager(repository, policy=policy)
+
+
+def build_fact_extractor(
+    provider: LLMProvider, memory: MemoryManager | None
+) -> FactExtractor | None:
+    """El extractor de hechos, o `None` si no hay memoria donde guardarlos.
+
+    Sin memoria, extraer sería gastar el modelo para tirar el resultado.
+    """
+    if memory is None:
+        return None
+    return FactExtractor(provider)
 
 
 def build_curiosity(

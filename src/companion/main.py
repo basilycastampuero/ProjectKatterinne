@@ -13,6 +13,7 @@ from companion.app.factory import (
     build_active_window_provider,
     build_context_engine,
     build_curiosity,
+    build_fact_extractor,
     build_memory,
     build_provider,
     build_question_generator,
@@ -210,6 +211,7 @@ def main(argv: list[str] | None = None) -> int:
         max_history_messages=settings.conversation.max_history_messages,
         memory=memory,
         recall_limit=settings.memory.recall_limit,
+        fact_extractor=build_fact_extractor(provider, memory),
     )
     stream = not args.no_stream
 

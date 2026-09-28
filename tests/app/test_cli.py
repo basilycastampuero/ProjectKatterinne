@@ -7,6 +7,7 @@ import pytest
 
 from companion.app.cli import SIN_ENTRADA, preflight, run_repl, run_watch
 from companion.context.engine import ContextEngine
+from companion.conversation.facts import FactExtractor
 from companion.conversation.manager import ConversationManager
 from companion.curiosity.engine import CuriosityEngine, CuriosityPolicy
 from companion.curiosity.questions import QuestionGenerator
@@ -675,3 +676,86 @@ def test_ctrl_c_detiene_la_observacion_limpiamente(capsys) -> None:
 
     assert codigo == 0
     assert "Observación detenida" in capsys.readouterr().out
+
+
+# ----------------------------------------------------------------------
+# Aprender de lo que se cuenta
+# ----------------------------------------------------------------------
+
+_HECHO_SQLITE = json.dumps(
+    {
+        "facts": [
+            {
+                "content": "La memoria va con SQLite.",
+                "evidence": "la memoria va con SQLite",
+                "scope": "long_term",
+            }
+        ]
+    }
+)
+
+
+class _LectorQueMiraAlSalir:
+    """Como `_LectorFalso`, pero anota cuántos hechos había justo antes de salir.
+
+    Así se distingue lo que se extrajo en un hueco de lo que se extrae al
+    cerrar, que pasa después.
+    """
+
+    def __init__(self, guion, memoria: MemoryManager) -> None:
+        self._guion = iter(guion)
+        self._memoria = memoria
+        self.hechos_antes_de_salir: int | None = None
+
+    def esperar(self, timeout: float):
+        try:
+            return next(self._guion)
+        except StopIteration:
+            self.hechos_antes_de_salir = len(self._memoria.repository.list_facts())
+            return None
+
+
+def _conversacion_que_aprende(
+    memoria: MemoryManager, extractor_provider: FakeProvider
+) -> ConversationManager:
+    return ConversationManager(
+        FakeProvider(), memory=memoria, fact_extractor=FactExtractor(extractor_provider)
+    )
+
+
+def test_en_un_hueco_revisa_lo_que_le_han_contado(memoria: MemoryManager) -> None:
+    conversation = _conversacion_que_aprende(memoria, FakeProvider(replies=[_HECHO_SQLITE]))
+    lector = _LectorQueMiraAlSalir(["la memoria va con SQLite", SIN_ENTRADA], memoria)
+
+    run_repl(conversation, stream=False, reader=lector, extraction_idle_s=0.0)
+
+    assert lector.hechos_antes_de_salir == 1
+
+
+def test_no_revisa_mientras_la_conversacion_sigue_caliente(memoria: MemoryManager) -> None:
+    # Antes de `extraction_idle_s` puede que siga contando: revisar a medias
+    # partiría una explicación en dos lotes.
+    extractor = FakeProvider(replies=[_HECHO_SQLITE])
+    conversation = _conversacion_que_aprende(memoria, extractor)
+    lector = _LectorQueMiraAlSalir(["la memoria va con SQLite", SIN_ENTRADA], memoria)
+
+    run_repl(conversation, stream=False, reader=lector, extraction_idle_s=3600.0)
+
+    assert lector.hechos_antes_de_salir == 0
+    # Pero al salir se revisa igual: es la última oportunidad.
+    assert len(memoria.repository.list_facts()) == 1
+    assert len(extractor.calls) == 1
+
+
+def test_ctrl_c_durante_la_extraccion_final_sale_sin_traceback(
+    memoria: MemoryManager, capsys
+) -> None:
+    conversation = _conversacion_que_aprende(memoria, FakeProvider(raises=KeyboardInterrupt()))
+
+    codigo = run_repl(
+        conversation, stream=False, reader=_LectorFalso(["la memoria va con SQLite", None])
+    )
+
+    assert codigo == 0
+    assert "Hasta luego" in capsys.readouterr().out
+    assert not memoria.repository.list_sessions()[0].is_open

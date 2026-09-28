@@ -291,12 +291,17 @@ def run_repl(
     interval_s: float = 1.0,
     reader: Any | None = None,
     max_polls: int | None = None,
+    extraction_idle_s: float = 30.0,
 ) -> int:
     """Bucle principal de conversacion. Devuelve el codigo de salida.
 
     Con `window_provider` mira qué ventana está activa antes de responder.
     Si además recibe `curiosity` y `questions`, observa mientras espera y
     puede hablar por iniciativa propia.
+
+    En esos mismos huecos, pasados `extraction_idle_s` desde el último
+    turno, revisa lo que le han contado. Sin huecos, porque nadie puede
+    interrumpir, se revisa solo con /reset y al salir.
     """
     engine = engine or ContextEngine()
     memoria = conversation.memory
@@ -368,7 +373,16 @@ def run_repl(
             entrada = reader.esperar(interval_s)
 
             if entrada is SIN_ENTRADA:
-                # Nadie está escribiendo: es el momento de mirar.
+                # Nadie está escribiendo: es el momento de mirar. Primero se
+                # revisa lo dicho, para que una pregunta pueda apoyarse en lo
+                # recién aprendido. Aquí nadie espera respuesta, así que la
+                # llamada extra al modelo no retrasa nada que se vea.
+                if (
+                    conversation.has_pending
+                    and ultimo_turno is not None
+                    and time.monotonic() - ultimo_turno >= extraction_idle_s
+                ):
+                    conversation.extract_pending()
                 if quizas_hablar():
                     pedir_linea = True
                 continue

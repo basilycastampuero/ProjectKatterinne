@@ -16,13 +16,14 @@ from __future__ import annotations
 
 import logging
 
-from companion.context.models import CurrentContext
+from companion.context.models import CurrentContext, Provenance
 from companion.context.rendering import describe_context
+from companion.conversation.facts import ExtractedFact, FactExtractor, PendingTurn
 from companion.llm.errors import LLMError
 from companion.llm.prompts import SYSTEM_PROMPT
 from companion.llm.provider import GenerationResult, LLMProvider, Message, TokenCallback
 from companion.memory.manager import MemoryManager
-from companion.memory.models import Fact
+from companion.memory.models import Fact, MemoryScope
 from companion.memory.rendering import ActivitySpan, describe_activity, describe_facts
 
 log = logging.getLogger("companion.conversation")
@@ -39,6 +40,7 @@ class ConversationManager:
         max_history_messages: int = 20,
         memory: MemoryManager | None = None,
         recall_limit: int = 5,
+        fact_extractor: FactExtractor | None = None,
     ) -> None:
         if max_history_messages < 2:
             raise ValueError("max_history_messages debe ser al menos 2 (un turno completo).")
@@ -49,6 +51,16 @@ class ConversationManager:
         self._recall_limit = recall_limit
         self._history: list[Message] = []
         self._conversation_id: int | None = None
+        # Sin memoria no hay dónde guardar: extraer sería gastar el modelo
+        # para tirar el resultado.
+        self._extractor = fact_extractor if memory is not None else None
+        #: Lo que ha dicho la persona y todavía no se ha revisado.
+        self._pending: list[PendingTurn] = []
+        #: Lo último que dijo la compañera, para acompañar al siguiente turno.
+        self._last_assistant: str | None = None
+        #: El contexto del último turno. Al cerrar no hay contexto nuevo, y
+        #: el que importa es el de cuando se dijo, no el de ahora.
+        self._last_context: CurrentContext | None = None
 
     @property
     def history(self) -> tuple[Message, ...]:
@@ -63,9 +75,20 @@ class ConversationManager:
     def memory(self) -> MemoryManager | None:
         return self._memory
 
+    @property
+    def has_pending(self) -> bool:
+        """Si hay algo dicho por la persona sin revisar todavía."""
+        return bool(self._pending)
+
     def reset(self) -> None:
-        """Vacia el historial en memoria. Lo ya guardado no se toca."""
+        """Vacia el historial en memoria. Lo ya guardado no se toca.
+
+        Antes se revisa lo pendiente: lo que se vacía tiene que haberse
+        mirado, o se perdería sin llegar a la memoria.
+        """
+        self._extract_abandoning_on_interrupt()
         self._history.clear()
+        self._last_assistant = None
         self._close_conversation()
         log.info("conversacion reiniciada")
 
@@ -161,6 +184,11 @@ class ConversationManager:
 
         self._history.append(Message(role="assistant", content=result.text))
         self._persist(text, result.text)
+        if self._extractor is not None:
+            self._pending.append(PendingTurn(user_text=text, companion_text=self._last_assistant))
+            if context is not None:
+                self._last_context = context
+        self._last_assistant = result.text
         log.info("turno completado turnos=%d", len(self._history))
         return result
 
@@ -176,6 +204,7 @@ class ConversationManager:
         if not limpio:
             return
         self._history.append(Message(role="assistant", content=limpio))
+        self._last_assistant = limpio
         if self._memory is None:
             return
         try:
@@ -224,5 +253,99 @@ class ConversationManager:
         self._conversation_id = None
 
     def close(self) -> None:
-        """Cierra la conversacion en la memoria, si hay alguna abierta."""
+        """Cierra la conversacion en la memoria, si hay alguna abierta.
+
+        Es la última oportunidad de revisar lo pendiente, así que se hace
+        antes de cerrar.
+        """
+        self._extract_abandoning_on_interrupt()
         self._close_conversation()
+
+    # ------------------------------------------------------------------
+    # Aprender de lo que cuenta
+    # ------------------------------------------------------------------
+
+    def extract_pending(self, context: CurrentContext | None = None) -> list[Fact]:
+        """Revisa lo pendiente y guarda lo que merezca recordarse.
+
+        El lote se retira **antes** de llamar al modelo: si la extracción
+        falla o se interrumpe, esos turnos no se vuelven a enviar. Perder un
+        lote es aceptable; revisar lo mismo en bucle, no.
+
+        Nunca lanza, salvo `KeyboardInterrupt`: pulsar Ctrl+C mientras revisa
+        es pedir salir, y decidir qué hacer con eso le toca a quien llama.
+        """
+        if self._extractor is None or self._memory is None or not self._pending:
+            return []
+
+        lote, self._pending = self._pending, []
+        contexto = context or self._last_context
+        proyecto = self._usable_project(contexto)
+
+        try:
+            conocidos = self._memory.recall(project=proyecto, limit=20)
+        except Exception as exc:  # noqa: BLE001 - aprender es un extra
+            log.warning("no se pudieron leer los recuerdos para extraer: %s", exc)
+            conocidos = []
+
+        guardados: list[Fact] = []
+        for extraido in self._extractor.extract(lote, contexto, conocidos):
+            if (hecho := self._store(extraido, contexto, proyecto)) is not None:
+                guardados.append(hecho)
+
+        log.info("hechos guardados=%d de turnos=%d", len(guardados), len(lote))
+        return guardados
+
+    def _extract_abandoning_on_interrupt(self) -> None:
+        # Al cerrar o reiniciar, un Ctrl+C durante la revisión abandona el
+        # lote y deja terminar lo demás. Si se escapara, la conversación
+        # quedaría abierta para siempre y el Ctrl+C del cierre escupiría un
+        # traceback: cuando se mueve una espera, se mueve su manejo.
+        try:
+            self.extract_pending()
+        except KeyboardInterrupt:
+            self._pending.clear()
+            log.info("extracción abandonada por interrupción")
+
+    @staticmethod
+    def _usable_project(context: CurrentContext | None) -> str | None:
+        """El proyecto al que atar los hechos, si se puede.
+
+        En una aplicación de la lista negra no se registra en qué proyecto se
+        estaba (ADR-005), y un hecho no puede ser la puerta de atrás.
+        """
+        if context is None or context.redacted or context.project is None:
+            return None
+        return context.project.value
+
+    def _store(
+        self,
+        extraido: ExtractedFact,
+        context: CurrentContext | None,
+        proyecto: str | None,
+    ) -> Fact | None:
+        alcance = extraido.scope
+        if alcance is MemoryScope.PROJECT and proyecto is None:
+            # Un hecho de proyecto sin proyecto al que atarlo. Pasarlo a
+            # `long_term` lo sacaría en todos los prompts como si fuera
+            # algo de la persona; en la sesión, al menos, caduca solo.
+            alcance = MemoryScope.SESSION
+
+        de_proyecto = alcance is MemoryScope.PROJECT
+        senal = context.project if de_proyecto and context is not None else None
+        try:
+            return self._memory.remember_once(  # type: ignore[union-attr]
+                extraido.content,
+                provenance=Provenance.USER_CONFIRMED,
+                confidence=1.0,
+                source="conversation",
+                scope=alcance,
+                project=proyecto if de_proyecto else None,
+                # El hecho lo dijo la persona; el proyecto, casi siempre, solo
+                # se dedujo del título. Cada uno con su procedencia.
+                project_provenance=senal.provenance if senal else None,
+                project_confidence=senal.confidence if senal else None,
+            )
+        except Exception as exc:  # noqa: BLE001 - aprender es un extra
+            log.warning("no se pudo guardar un hecho: %s", exc)
+            return None
