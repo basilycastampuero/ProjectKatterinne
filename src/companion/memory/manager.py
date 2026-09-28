@@ -19,9 +19,14 @@ from companion.memory.errors import MemoryStoreError
 from companion.memory.models import Activity, Fact, MemoryScope, Project, Session, utcnow
 from companion.memory.rendering import ActivitySpan, summarize_activity
 from companion.memory.repository import MemoryRepository
+from companion.memory.similarity import is_duplicate
 from companion.perception.models import EventType, WindowEvent
 
 log = logging.getLogger("companion.memory")
+
+#: Cuántos hechos recientes se revisan buscando duplicados. La memoria
+#: crece despacio, así que en la práctica son todos.
+_DUPLICATE_SEARCH_LIMIT = 500
 
 
 @dataclass(frozen=True, slots=True)
@@ -253,6 +258,76 @@ class MemoryManager:
             created_at=momento,
             expires_at=expira,
         )
+
+    def remember_once(
+        self,
+        content: str,
+        *,
+        provenance: Provenance,
+        confidence: float,
+        source: str,
+        scope: MemoryScope = MemoryScope.SESSION,
+        project: str | None = None,
+        project_provenance: Provenance | None = None,
+        project_confidence: float | None = None,
+        at: datetime | None = None,
+    ) -> Fact | None:
+        """Como `remember`, pero no guarda lo que ya sabe.
+
+        Si ya hay un hecho casi igual, del mismo proyecto y alcance y con
+        al menos la misma autoridad, se marca como usado y se devuelve ese.
+        Contar algo otra vez no es información nueva, pero sí dice que el
+        recuerdo sigue vigente.
+        """
+        existente = self._find_duplicate(content, provenance, scope=scope, project=project)
+        if existente is not None:
+            self._repo.touch_fact(existente.id, at=at)
+            log.debug("hecho repetido: se reutiliza hecho=%d", existente.id)
+            # Releído para que quien lo recibe vea el `touch`, no la foto de antes.
+            return self._repo.get_fact(existente.id)
+
+        return self.remember(
+            content,
+            provenance=provenance,
+            confidence=confidence,
+            source=source,
+            scope=scope,
+            project=project,
+            project_provenance=project_provenance,
+            project_confidence=project_confidence,
+            at=at,
+        )
+
+    def _find_duplicate(
+        self,
+        content: str,
+        provenance: Provenance,
+        *,
+        scope: MemoryScope,
+        project: str | None,
+    ) -> Fact | None:
+        project_id = None
+        if project:
+            encontrado = self._repo.get_project(project)
+            if encontrado is None:
+                # Proyecto nuevo: no puede tener nada que se repita.
+                return None
+            project_id = encontrado.id
+
+        candidatos = self._repo.list_facts(
+            project_id=project_id, scope=scope, limit=_DUPLICATE_SEARCH_LIMIT
+        )
+        for hecho in candidatos:
+            # `list_facts` sin proyecto no filtra por proyecto nulo.
+            if hecho.project_id != project_id:
+                continue
+            # Una inferencia no puede tragarse una confirmación: se perdería
+            # que la persona lo dijo.
+            if hecho.provenance.authority < provenance.authority:
+                continue
+            if is_duplicate(hecho.content, content):
+                return hecho
+        return None
 
     def confirm(
         self,

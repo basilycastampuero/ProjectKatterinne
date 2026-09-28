@@ -8,7 +8,7 @@ from companion.context.engine import ContextEngine
 from companion.context.models import Provenance
 from companion.memory.errors import MemoryStoreError
 from companion.memory.manager import MemoryManager, MemoryPolicy
-from companion.memory.models import MemoryScope
+from companion.memory.models import Fact, MemoryScope
 from companion.memory.repository import MemoryRepository
 from companion.perception.models import EventType
 from tests.conftest import make_window
@@ -336,6 +336,86 @@ def test_un_hecho_confirmado_no_asciende_un_proyecto_inferido(
     proyecto = repo.get_project("StudyFlow")
     assert proyecto.provenance is Provenance.INFERRED
     assert proyecto.confidence == pytest.approx(0.6)
+
+
+def _recordar(manager: MemoryManager, texto: str, **kwargs) -> Fact | None:
+    datos = {
+        "provenance": Provenance.USER_CONFIRMED,
+        "confidence": 1.0,
+        "source": "conversation",
+        "scope": MemoryScope.PROJECT,
+        "project": "StudyFlow",
+        "at": T0,
+    } | kwargs
+    return manager.remember_once(texto, **datos)
+
+
+def test_contar_lo_mismo_tres_veces_deja_un_solo_hecho(
+    manager: MemoryManager, repo: MemoryRepository
+) -> None:
+    manager.start_session(at=T0)
+
+    primero = _recordar(manager, "Usa SQLite para la memoria.")
+    segundo = _recordar(manager, "usa sqlite para la memoria")
+    tercero = _recordar(manager, "Para la memoria usa SQLite.")
+
+    assert primero is not None
+    assert segundo.id == tercero.id == primero.id
+    assert len(repo.list_facts()) == 1
+
+
+def test_repetir_algo_deja_constancia_de_que_sigue_vigente(
+    manager: MemoryManager, repo: MemoryRepository
+) -> None:
+    # Si lo vuelve a contar, el recuerdo está vivo: la consolidación
+    # futura lo necesita para no tratarlo como olvidado.
+    manager.start_session(at=T0)
+    hecho = _recordar(manager, "Usa SQLite para la memoria.")
+
+    _recordar(manager, "Usa SQLite para la memoria.")
+
+    assert repo.get_fact(hecho.id).last_accessed_at is not None
+
+
+def test_dos_hechos_parecidos_de_proyectos_distintos_no_son_duplicados(
+    manager: MemoryManager, repo: MemoryRepository
+) -> None:
+    manager.start_session(at=T0)
+
+    _recordar(manager, "Usa SQLite para la memoria.", project="StudyFlow")
+    _recordar(manager, "Usa SQLite para la memoria.", project="ProjectKatterinne")
+
+    assert len(repo.list_facts()) == 2
+
+
+def test_el_mismo_texto_con_otro_alcance_no_es_duplicado(
+    manager: MemoryManager, repo: MemoryRepository
+) -> None:
+    # "Hoy prueba el parser" de sesión muere al cerrarla: no puede tapar un
+    # hecho de proyecto que tiene que sobrevivir.
+    manager.start_session(at=T0)
+
+    _recordar(manager, "Prueba el parser.", scope=MemoryScope.SESSION)
+    _recordar(manager, "Prueba el parser.", scope=MemoryScope.PROJECT)
+
+    assert len(repo.list_facts()) == 2
+
+
+def test_una_inferencia_previa_no_se_traga_una_confirmacion(
+    manager: MemoryManager, repo: MemoryRepository
+) -> None:
+    # Si solo se tocara el hecho inferido, lo que la persona confirmó se
+    # perdería y el recuerdo seguiría siendo una suposición.
+    manager.start_session(at=T0)
+    _recordar(
+        manager, "Usa SQLite para la memoria.", provenance=Provenance.INFERRED, confidence=0.7
+    )
+
+    confirmado = _recordar(manager, "Usa SQLite para la memoria.")
+
+    assert confirmado is not None
+    assert confirmado.provenance is Provenance.USER_CONFIRMED
+    assert len(repo.list_facts()) == 2
 
 
 def test_cerrar_la_sesion_retira_lo_que_solo_valia_para_ella(

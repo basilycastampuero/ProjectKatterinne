@@ -17,7 +17,6 @@ from __future__ import annotations
 import json
 import logging
 import re
-import unicodedata
 from collections import Counter
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
@@ -35,6 +34,7 @@ from companion.llm.prompts import (
 from companion.llm.provider import LLMProvider, Message
 from companion.memory.models import Fact, MemoryScope
 from companion.memory.rendering import describe_facts
+from companion.memory.similarity import meaningful_words, normalize
 
 log = logging.getLogger("companion.conversation")
 
@@ -50,10 +50,6 @@ MAX_FACT_WORDS = 25
 #: aparecer en la cita o en su mensaje. Es un punto de partida: se ajusta
 #: con los rechazos reales, no a ojo.
 MIN_OVERLAP = 0.6
-
-#: Longitud mínima de una "palabra con significado". Deja fuera artículos,
-#: preposiciones y la mayoría de pronombres sin necesitar una lista.
-_MIN_WORD_LEN = 4
 
 #: `ephemeral` no está: lo que muere en minutos no justifica una llamada al
 #: modelo, y la memoria tiene que crecer despacio.
@@ -89,27 +85,6 @@ _SENSITIVE_RE: tuple[re.Pattern[str], ...] = (
     # Tokens: tiras largas que mezclan letras y dígitos.
     re.compile(r"\b(?=[a-z0-9_-]*\d)(?=[a-z0-9_-]*[a-z])[a-z0-9_-]{20,}\b"),
 )
-
-
-def normalize(text: str) -> str:
-    """Minúsculas, sin tildes, sin puntuación y con los espacios colapsados.
-
-    El modelo reescribe mayúsculas y puntuación sin querer al citar. Lo que
-    importa es que las palabras sean las de la persona y en su orden.
-    """
-    sin_tildes = "".join(
-        c for c in unicodedata.normalize("NFKD", text) if not unicodedata.combining(c)
-    )
-    return " ".join(re.sub(r"[^\w]+", " ", sin_tildes.lower()).split())
-
-
-def meaningful_words(text: str) -> set[str]:
-    """Palabras de cuatro letras o más, normalizadas.
-
-    Sin stemming a propósito: "montando" y "monta" cuentan como distintas.
-    Si eso rechaza de más, se verá en los números antes de complicarlo.
-    """
-    return {p for p in normalize(text).split() if len(p) >= _MIN_WORD_LEN}
 
 
 def _messages_quoting(evidence: str, user_texts: Iterable[str]) -> list[str]:
