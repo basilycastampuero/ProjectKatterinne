@@ -37,6 +37,11 @@ _FILENAME_PATTERN = re.compile(r"\.[A-Za-z0-9_]{1,10}$")
 #: Penalizacion cuando el titulo es ambiguo y hay que decidir por heuristica.
 _AMBIGUITY_PENALTY = 0.85
 
+#: Contador de notificaciones que muchas webs anteponen: "(585) Vídeo".
+#: Solo al principio y solo números: "(2024)" en mitad del título o
+#: "(Borrador)" forman parte de lo que dice.
+_NOTIFICATION_COUNTER = re.compile(r"^\(\d+\)\s*")
+
 
 @dataclass(frozen=True, slots=True)
 class TitleParts:
@@ -142,6 +147,10 @@ def _parse_browser(title: str) -> TitleParts:
     trabajo. Solo se extrae el documento, y decir que no se sabe el proyecto
     es mas util que inventarse uno.
     """
+    # El contador cambia con cada notificación. Sin quitarlo, el mismo vídeo
+    # pasaba a ser otra página cada vez que llegaba una, y el cronómetro de
+    # "lleva un rato en esta página" no llegaba nunca a contar.
+    title = _NOTIFICATION_COUNTER.sub("", title)
     for separator in (" - ", " — "):
         if separator in title:
             page = title.rsplit(separator, 1)[0].strip()

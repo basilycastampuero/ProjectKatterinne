@@ -135,6 +135,40 @@ def test_las_reglas_no_verificadas_declaran_menos_confianza() -> None:
 # ----------------------------------------------------------------------
 
 
+@pytest.mark.parametrize(
+    ("titulo", "documento"),
+    [
+        ("(585) Cómo cocinar para uno - YouTube - Brave", "Cómo cocinar para uno - YouTube"),
+        ("(586) Cómo cocinar para uno - YouTube - Brave", "Cómo cocinar para uno - YouTube"),
+        ("(3) Inicio / X - Google Chrome", "Inicio / X"),
+        ("(12)Bandeja de entrada - Google Chrome", "Bandeja de entrada"),
+    ],
+)
+def test_el_contador_de_notificaciones_no_cambia_el_documento(titulo: str, documento: str) -> None:
+    """El mismo vídeo es el mismo documento aunque lleguen notificaciones.
+
+    YouTube y otras webs anteponen un contador: "(585) Vídeo - YouTube".
+    Al llegar una notificación pasa a "(586)", y para el cronómetro de
+    "lleva un rato en esta página" era otra página: nunca llegaba a los
+    cinco minutos. Se vio en títulos reales del equipo de la persona.
+    """
+    assert detect(make_window("brave.exe", title=titulo)).document == documento
+
+
+@pytest.mark.parametrize(
+    "titulo",
+    [
+        "Sesión 09 - Arquitectura de entornos - Google Chrome",
+        "Python 3 (2024) - Documentación - Google Chrome",
+        "(Borrador) Notas de la reunión - Google Chrome",
+    ],
+)
+def test_un_parentesis_que_no_es_un_contador_se_queda(titulo: str) -> None:
+    # Solo se quita un número entre paréntesis AL PRINCIPIO: "(2024)" en
+    # mitad del título o "(Borrador)" son parte de lo que dice.
+    assert detect(make_window("chrome.exe", title=titulo)).document == titulo.rsplit(" - ", 1)[0]
+
+
 def test_un_navegador_tiene_pagina_pero_nunca_proyecto() -> None:
     # Una página web no es una carpeta de trabajo. Decir que no se sabe el
     # proyecto es más útil que inventarse uno.
