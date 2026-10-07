@@ -187,6 +187,11 @@ class CuriositySettings:
     #: Tiempo sin ver un proyecto tras el cual se considera que vuelve a el.
     absence_seconds: float = 21600.0
 
+    #: Cuánto tiene que quedarse en la misma página o el mismo vídeo para
+    #: que pueda interesarse por ello. Al navegar todas las páginas son
+    #: nuevas: lo que las hace interesantes es quedarse.
+    min_seconds_on_document: float = 300.0
+
     #: Palabras como mucho por pregunta. Una pregunta larga casi siempre son
     #: dos preguntas disfrazadas.
     max_question_words: int = 25

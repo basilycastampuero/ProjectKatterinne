@@ -121,6 +121,12 @@ max_questions_per_session = 4
 # Seis horas sin ver un proyecto: al volver, cuenta como novedad.
 absence_seconds = 21600.0
 
+# Cuánto tiempo en la misma página o el mismo vídeo (5 minutos) antes de que
+# pueda interesarse por ello. Al navegar todas las páginas son nuevas: lo
+# que hace interesante una es quedarse. Nunca pregunta por las páginas con
+# palabras sensibles en el título (ver [privacy]).
+min_seconds_on_document = 300.0
+
 # Palabras como mucho por pregunta. Una pregunta larga casi siempre son dos
 # preguntas disfrazadas.
 max_question_words = 25

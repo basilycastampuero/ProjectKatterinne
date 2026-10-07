@@ -224,3 +224,16 @@ def test_las_palabras_sensibles_llegan_a_la_curiosidad() -> None:
     )
 
     assert build_curiosity(settings).policy.sensitive_title_words == ("terapia",)
+
+
+def test_el_tiempo_en_una_pagina_llega_a_la_curiosidad() -> None:
+    from dataclasses import replace
+
+    from companion.app.factory import build_curiosity
+
+    settings = Settings()
+    settings = replace(
+        settings, curiosity=replace(settings.curiosity, min_seconds_on_document=60.0)
+    )
+
+    assert build_curiosity(settings).policy.min_seconds_on_document == 60.0
