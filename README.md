@@ -40,7 +40,11 @@ servicios de visión ni de voz en la nube.
 - Configuración por TOML, variables de entorno y flags.
 - Diagnóstico del runtime local (`--check`).
 - **Habla por iniciativa propia** cuando hay motivo, sin que le preguntes.
-- 633 tests, de los que solo 7 necesitan Windows.
+- **Puede interesarse por la página o el vídeo** en el que te quedas cinco
+  minutos en el navegador. Solo conoce el título, nunca el contenido, y
+  nunca pregunta por páginas con palabras sensibles en el título (banco,
+  pago, contraseña, médico…).
+- 695 tests, de los que solo 7 necesitan Windows.
 
 ## Qué todavía NO existe
 
@@ -215,6 +219,8 @@ threshold = 6
 min_seconds_between_questions = 1200.0
 min_seconds_in_context = 120.0
 max_questions_per_session = 4
+# Segundos en la misma página o vídeo antes de que pueda interesarse por ella.
+min_seconds_on_document = 300.0
 ```
 
 Estos números existen **para que se calle**, no para que hable. Una sesión de dos horas con *una* pregunta es buena, y con cuarenta y
@@ -227,10 +233,31 @@ algo más — por ejemplo, que lleves un rato ahí.
 Medido en simulación: dos horas en un mismo proyecto producen **una**
 pregunta. Si el proyecto ya es conocido, **ninguna**.
 
+**Quedarse en una página.** En un navegador no hay proyecto, y sin él el
+máximo eran 5 puntos: nunca llegaba al umbral. Como al navegar todas las
+páginas son nuevas, la señal no es la novedad sino **quedarse**: tras
+`min_seconds_on_document` en la misma página suma 2 puntos más (7 en total)
+y puede preguntar por ella: con los valores por defecto, desde los cinco
+minutos. El cronómetro vive solo en RAM y solo guarda la página actual: no
+hay historial de navegación, y el título de la página no llega al log.
+
+La lista negra va por aplicación y no protege el banco abierto en el mismo
+navegador que un vídeo. Para eso está, en `[privacy]`:
+
+```toml
+sensitive_title_words = ["banco", "pago", "contraseña", ...]
+```
+
+Si el título de la página contiene alguna (sin mayúsculas ni tildes, y al
+principio de palabra: "pago" cubre "pagos", "banco" no salta con
+"Trabanco"), nunca pregunta por ella. La lista completa está en
+`companion.toml`; si la cambias, sustitúyela entera.
+
 El motor decide *si* preguntaría y de qué tipo, **sin llamar al modelo**.
 Decidir callarse no cuesta ni un token.
 
-Ver [ADR-008](docs/architecture-decisions/ADR-008-silence-by-construction.md).
+Ver [ADR-008](docs/architecture-decisions/ADR-008-silence-by-construction.md)
+y [ADR-011](docs/architecture-decisions/ADR-011-asking-about-a-title-is-not-seeing-it.md).
 
 ## Preguntas
 
@@ -257,7 +284,9 @@ coach de productividad o si afirma ver la pantalla. Cuando algo falla, entra
 una plantilla determinista, que no puede inventarse nada porque no genera
 nada.
 
-`--watch` a secas no carga el modelo: observar no debe costar VRAM.
+`--watch` a secas no carga el modelo: observar no debe costar VRAM. Evalúa
+la curiosidad en cada sondeo, pero solo actúa cuando la decisión cambia, para
+no repetir "HABLARÍA" cada segundo.
 
 Ver [ADR-009](docs/architecture-decisions/ADR-009-validate-what-the-model-says.md).
 
@@ -370,7 +399,7 @@ módulo hermano y añadir una rama en `factory.py`.
 | [`docs/manual/`](docs/manual/README.md) | Para quien empieza de cero: conceptos, arquitectura, flujos, tests y cómo se trabaja |
 | [`docs/GUIA.md`](docs/GUIA.md) | La referencia rápida: cómo funciona, archivo por archivo, y el porqué de cada cosa |
 | [`docs/PENDIENTE.md`](docs/PENDIENTE.md) | Qué falta y con qué contexto retomarlo |
-| [`docs/architecture-decisions/`](docs/architecture-decisions/) | Diez ADRs: las decisiones y por qué se tomaron |
+| [`docs/architecture-decisions/`](docs/architecture-decisions/) | Once ADRs: las decisiones y por qué se tomaron |
 
 Si vas a cambiar algo que ya tiene un ADR, léelo antes: casi siempre la
 alternativa obvia ya se consideró y hay un motivo escrito para no haberla

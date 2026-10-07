@@ -125,10 +125,20 @@ escribir este manual. Los dos bucles llevan ahora un comentario que lo
 advierte. Si escribes un bucle nuevo, respeta el orden: **mirar, decidir
 y, solo después, guardar**.
 
-Otra diferencia entre los dos bucles: `run_watch()` solo evalúa la
-curiosidad cuando **hay evento** (cambió algo); `run_repl()` la evalúa en
-**cada segundo sin entrada**. Por eso en la conversación puede preguntar
-tras dos minutos quieto en el mismo sitio, sin que cambie nada.
+Los dos bucles evalúan la curiosidad **en cada sondeo**, no solo cuando hay
+evento. Es necesario: quedarse en una página no cambia nada en pantalla y
+no produce ningún evento, pero es justo lo que la hace interesante (6.3).
+Hay una diferencia: `run_repl()` pregunta en cuanto la decisión es hablar,
+mientras que `run_watch()` **solo actúa cuando la decisión cambia**
+(guarda la última en `ultima_decision`). Sin eso, un `--watch` sin `--ask`
+repetiría "HABLARÍA" cada segundo, porque sin pregunta no empieza el
+enfriamiento y la decisión no varía; y con `--ask`, si la redacción
+fallara, llamaría al modelo una vez por segundo. El REPL conserva un riesgo
+parecido cuando la plantilla está desactivada y la pregunta no sale; está
+anotado en `docs/PENDIENTE.md`.
+
+Antes `run_watch()` solo evaluaba con eventos, y por eso con
+`--watch --ask` nunca habría preguntado por una página.
 
 ---
 
@@ -173,6 +183,45 @@ en otro caso                                → ¡HABLA!
 
 El resultado es una `CuriosityDecision`. Si dice que sí, se pasa a redactar.
 
+#### Quedarse en una página
+
+Sin proyecto, un navegador solo sumaba 5 (actividad reconocible 3, lleva un
+rato 2): una página no pasaba nunca del umbral de 6. Ahora hay una señal más,
+`lingering_on_document`, que vale 2 puntos. `CuriosityEngine` lleva un
+**segundo cronómetro**, por (aplicación, documento), que se reinicia al
+cambiar de página (`_track_document()`). Cuando la persona lleva al menos
+`min_seconds_on_document` (300 segundos) en la misma página, y el
+documento es utilizable, `scorer.score()` suma 3 + 2 + 2 = **7 ≥ 6**.
+
+En ese caso el **tema** es la página y no el navegador, y el tipo de
+pregunta es `CONTENT_CURIOSITY`. Si el tema fuera "Brave", una sola pregunta
+(`ALREADY_ASKED` mira el par tema-tipo) bloquearía las de todas las páginas
+de la sesión.
+
+El cronómetro tiene dos reglas de privacidad:
+
+- **Solo vive en RAM y solo guarda la página actual.** No hay lista de
+  páginas visitadas, ni en la base de datos ni en el log: un historial de
+  navegación convertiría una presencia en vigilancia.
+- **Una página sensible no cuenta.** `_usable_document()` descarta el
+  documento si la ventana está censurada o si `is_sensitive_title()`
+  (`curiosity/sensitive.py`) encuentra en el título alguna de las palabras de
+  `[privacy] sensitive_title_words` (banco, pago, contraseña, médico…). La
+  lista negra va por proceso y no protege una página de banco abierta en el
+  mismo navegador que YouTube; las palabras del título sí. Se compara sin
+  mayúsculas ni tildes y por **principio de palabra**: "pago" cubre "pagos",
+  pero "banco" no salta con "Trabanco". Una página sensible se puntúa como
+  si no tuviera documento: se queda en 5 y calla.
+
+Medido con la simulación: un vídeo sin proyecto puede hacerla hablar desde
+el minuto 5, con 7 puntos; una página de banco no hace hablar nunca. Un proyecto en la
+ventana sigue teniendo prioridad sobre el documento, y los juegos o Discord
+no cambian porque no tienen documento.
+
+Además, el tema de una página **no llega al log**: `CuriosityDecision`
+lleva `topic_kind` y `record_question()` escribe `(documento)` en vez del
+título.
+
 **Importante:** decidir no es comprometerse. El enfriamiento de 20 minutos
 **solo empieza** cuando la pregunta llega a salir, con
 `record_question()`. Si la redacción falla, no tiene sentido callarse 20
@@ -199,6 +248,13 @@ Cuando la decisión es hablar, `QuestionGenerator.generate()`
    ¿No?    → plantilla determinista: "¿Qué estás montando en {tema}?"
 ```
 
+Cuando el tema es una página (`CONTENT_CURIOSITY`), la pista le recuerda al
+modelo que solo conoce el título, y el validador rechaza, además de "veo
+que" o "puedo ver", las frases que fingen haberla visto: "vi que" y "he
+visto". "Has visto" o "habías visto" sí valen, porque son preguntas a la
+persona. La plantilla de ese tipo es "¿De qué va «{tema}»?", o "¿Qué estás
+viendo?" si no hay tema.
+
 La clave está en `based_on`: el modelo tiene que **decir en qué dato se
 apoya**, y ese dato tiene que ser uno de los que se le dieron. Si dice
 apoyarse en el documento y no había documento abierto, se lo ha inventado,
@@ -206,6 +262,12 @@ y la pregunta se descarta. Lo explica el [ADR-009](../architecture-decisions/ADR
 
 La **plantilla** es peor que una buena pregunta del modelo, pero mucho mejor
 que una mala: no puede inventarse nada porque no genera nada.
+
+Una trampa de las plantillas: un título de página puede ser larguísimo. Con
+un tema de treinta palabras, "¿De qué va «…»?" salía con 32, por encima del
+límite de 25 que el validador exige al modelo. Ahora, si la plantilla con
+tema supera `max_words`, se usa la que no lleva tema. Vale para todos los
+tipos.
 
 Después, en el REPL, la pregunta se imprime, entra en el hilo de la
 conversación con `note_assistant_message()` (para que si respondes, tu

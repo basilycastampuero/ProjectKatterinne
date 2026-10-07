@@ -84,7 +84,7 @@ deciden los argumentos:
 |---|---|---|
 | `--check` | Diagnóstico: ¿responde Ollama?, ¿está el modelo? Y sale | No |
 | `--watch` | Observa qué ventana tienes delante y lo va mostrando | **No** |
-| `--watch --ask` | Además, cuando decide hablar, redacta la pregunta | Sí |
+| `--watch --ask` | Además, cuando decide hablar, redacta la pregunta. Evalúa en cada sondeo, no solo cuando cambia algo, pero solo actúa cuando la decisión cambia: así puede preguntar tras un rato en la misma página sin repetirse cada segundo | Sí |
 | *(sin argumentos)* | La conversación por terminal (el REPL). Observa y puede preguntar sola | Sí |
 | `--prompt "hola"` | Manda un solo mensaje, imprime la respuesta y sale | Sí |
 
@@ -208,8 +208,8 @@ Está dividido en secciones:
 | `[conversation]` | Cuántos turnos de conversación se le mandan al modelo |
 | `[perception]` | Cada cuánto se mira la ventana, qué procesos se ignoran |
 | `[memory]` | Si hay memoria, dónde, y cómo aprende de lo que le cuentas |
-| `[curiosity]` | Cuándo se le permite hablar: umbral, tiempos, límites |
-| `[privacy]` | Modo privacidad y lista negra de aplicaciones |
+| `[curiosity]` | Cuándo se le permite hablar: umbral, tiempos, límites. Incluye `min_seconds_on_document` (300 s): lo que tiene que quedarse en la misma página o vídeo para que pueda interesarse por ella |
+| `[privacy]` | Modo privacidad, lista negra de aplicaciones y `sensitive_title_words`: palabras que, si aparecen en el título de una página, hacen que nunca pregunte por ella |
 | `[logging]` | Nivel y archivo del log |
 
 ### De dónde sale cada valor (precedencia)

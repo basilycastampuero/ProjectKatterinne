@@ -1,6 +1,6 @@
 # 8. Los tests
 
-Este proyecto tiene más de 600 tests y **ninguno necesita Ollama, la GPU ni
+Este proyecto tiene más de 690 tests y **ninguno necesita Ollama, la GPU ni
 una base de datos en disco**. La suite entera tarda unos dos segundos. Este
 capítulo explica cómo es eso posible, cómo se ejecutan y cómo escribir el
 tuyo.
@@ -30,7 +30,7 @@ Salida normal:
 
 ```
 .........................................................                [100%]
-633 passed in 2.50s
+695 passed in 1.48s
 ```
 
 Cada punto es un test que pasa. Una `F` es uno que falla, y al final verás

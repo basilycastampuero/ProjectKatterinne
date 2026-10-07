@@ -350,12 +350,13 @@ el terminal y casi nunca hay un proyecto en la ventana.
 
 | Archivo | Qué hace |
 |---|---|
-| `models.py` | `CuriosityDecision`, `QuestionType`, `SilenceReason` |
+| `models.py` | `CuriosityDecision` (con `topic_kind` y `loggable_topic`), `QuestionType`, `SilenceReason` |
 | `scorer.py` | Puntuación determinista. Lógica pura, sin reloj ni base de datos |
-| `engine.py` | Las barreras del silencio en orden, y luego la puntuación |
+| `sensitive.py` | `is_sensitive_title()`: páginas por las que nunca pregunta |
+| `engine.py` | Las barreras del silencio en orden, y luego la puntuación. Lleva dos cronómetros |
 | `questions.py` | Redacta la pregunta con el modelo **y la valida** |
 
-**`SilenceReason` tiene nueve valores; `QuestionType`, seis.** Hay más
+**`SilenceReason` tiene nueve valores; `QuestionType`, siete.** Hay más
 formas de callarse que de hablar, y cada una se nombra. No es cosmético: si
 el motor solo dijera sí o no, el único síntoma de que algo falle sería que
 deja de hablar — y eso es indistinguible de que funcione bien.
@@ -365,11 +366,33 @@ enfriamiento solo empieza si la pregunta llegó a salir: si falla la
 generación, no tiene sentido callarse veinte minutos por algo que nunca se
 dijo.
 
+**Quedarse en una página es la señal, no que sea nueva.** Al navegar todas
+las páginas son nuevas. Sin proyecto, un navegador sumaba 5 (actividad 3 +
+lleva un rato 2) y el umbral es 6, así que nunca hablaba. Ahora
+`lingering_on_document` suma 2 más cuando lleva `min_seconds_on_document`
+(300 s) en el mismo documento: 3 + 2 + 2 = 7. El tema pasa a ser la página,
+con tipo `CONTENT_CURIOSITY`, y `topic_kind` vale `"document"`.
+
+**Un título no llega nunca al log.** `loggable_topic` devuelve
+`"(documento)"` si el tema es una página, y `to_dict()` omite el título.
+Además, `is_sensitive_title()` descarta las páginas con una palabra de
+`[privacy] sensitive_title_words` (banco, pago, contraseña, médico…):
+comparación sin mayúsculas ni tildes y por principio de palabra ("pago"
+cubre "pagos", "banco" no salta con "Trabanco"). La lista por defecto
+(`DEFAULT_SENSITIVE_TITLE_WORDS`) vive en `config/settings.py` porque
+`config` no puede importar hacia arriba, y un test comprueba que la de
+`companion.toml` es la misma. El cronómetro por página vive solo en RAM y
+solo guarda la actual: no hay historial de navegación. Ver
+[ADR-011](architecture-decisions/ADR-011-asking-about-a-title-is-not-seeing-it.md).
+
 **`questions.py` es casi todo validación.** Un modelo puede devolver JSON
 perfectamente válido y aun así inventarse lo que hay en pantalla o soltar un
 "¡sigue así!". El truco central: el modelo debe **declarar en qué dato se
 apoya**, y ese campo tiene que ser uno de los que se le dieron de verdad.
 Ver [ADR-009](architecture-decisions/ADR-009-validate-what-the-model-says.md).
+También rechaza lo que finge haber visto una página: "vi que" y "he visto"
+("has visto" vale, es una pregunta). Y si una plantilla con tema se pasa de
+`max_words`, usa la que no lo lleva.
 
 ---
 
@@ -527,7 +550,7 @@ que comentas de un vídeo o de lo que te gusta es `LONG_TERM`.
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-**633 tests. Solo 7 necesitan Windows de verdad**, y están marcados para
+**695 tests. Solo 7 necesitan Windows de verdad**, y están marcados para
 saltarse en otras plataformas. El resto corre con dobles:
 
 | Se sustituye | Por | Dónde |
@@ -603,6 +626,8 @@ desactivó a propósito.
 | Añadir un IDE o navegador que no reconoce | `perception/process.py` y `perception/project_detector.py` |
 | Que clasifique otro tipo de actividad | `context/activity.py` |
 | Que pregunte más o menos | `[curiosity]` en `companion.toml` |
+| Cambiar los cinco minutos que tiene que quedarse en una página | `min_seconds_on_document` en `[curiosity]` |
+| Proteger una página (que nunca pregunte por ella) | Añadir una palabra a `sensitive_title_words` en `[privacy]` (copia la lista entera y añade) |
 | Cambiar el tono o la personalidad | `llm/prompts.py` |
 | Añadir un filtro a las preguntas | `curiosity/questions.py`, `validate_question()` |
 | Que aprenda más o menos de lo que le cuentas | Primero un caso en `tests/conversation/test_facts_real_cases.py`; luego `validate_fact()` o el prompt |
@@ -633,6 +658,25 @@ ignore_processes = ["WindowsTerminal.exe"]
 
 Se intentó autodetectar con `GetConsoleWindow()` y devuelve `None` bajo
 consola virtual. Explícito y aburrido es mejor que mágico a medias.
+
+### El contador de notificaciones cambia la página
+
+YouTube y otras webs anteponen un contador al título: "(585) Vídeo". Al
+llegar un aviso pasa a "(586)", y para el cronómetro de "lleva un rato en
+esta página" era otra página: nunca llegaba a los cinco minutos. No lo
+vieron los tests, sino títulos reales del navegador. `_parse_browser()`
+quita un número entre paréntesis **al principio**; "(2024)" en mitad o
+"(Borrador)" se quedan.
+
+### `--watch` evalúa en cada sondeo, pero actúa al cambiar
+
+Quedarse en una página no produce eventos, así que evaluar solo con ellos
+nunca habría dejado preguntar. Se evalúa siempre, pero solo se actúa cuando
+cambia la decisión (`ultima_decision` en `run_watch()`). Sin pregunta no
+empieza el enfriamiento y cada segundo decidiría lo mismo: pantalla llena
+de "HABLARÍA" y, si la redacción fallara, una llamada al modelo por
+segundo. El REPL tiene un riesgo parecido con la plantilla desactivada
+(ver `PENDIENTE.md`).
 
 ### El título de VS Code es ambiguo
 

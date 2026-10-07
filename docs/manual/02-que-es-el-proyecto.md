@@ -184,6 +184,7 @@ cuando toques la parte correspondiente:
 | 008 | El silencio por construcción | Barreras que solo pueden decir que no, en orden |
 | 009 | Validar lo que dice el modelo | JSON válido no es JSON correcto |
 | 010 | Un recuerdo necesita una cita literal | Solo se recuerda lo que la persona dijo de verdad |
+| 011 | Preguntar por un título no es verlo | Se interesa por la página en la que te quedas, nunca por las sensibles, y sin guardar qué páginas visitas |
 
 ---
 

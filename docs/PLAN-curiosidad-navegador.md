@@ -3,6 +3,10 @@
 Plan paso a paso para el punto 1 de `PENDIENTE.md`. Cada paso es un commit,
 o dos como mucho, y deja los tests en verde.
 
+**Estado (2026-10-07):** pasos 1 a 7 hechos, con 695 tests en verde. El paso 8
+(la prueba real) lo hace la persona. El paso 9 está en curso con esta
+actualización.
+
 ## El objetivo, en una frase
 
 Si pasa un buen rato con la misma página o el mismo vídeo, la compañera
@@ -100,6 +104,8 @@ distinga "ya pregunté por esta página" de "ya pregunté por este proyecto".
 
 ### Paso 0 — Preparación
 
+**Estado:** Hecho.
+
 - Rama `feat/curiosidad-navegador` desde `main`. `pytest` en verde.
 - Anotar la cifra de partida: preguntas sobre páginas en una sesión de
   navegación normal. Hoy es **cero** por construcción (punto 1).
@@ -109,6 +115,8 @@ distinga "ya pregunté por esta página" de "ya pregunté por este proyecto".
   se inventan con la misma forma.
 
 ### Paso 1 — El tema nunca llega al log si es un documento
+
+**Estado:** Hecho.
 
 `fix(curiosity)`. Antes de que exista ninguna pregunta sobre páginas, que
 el agujero ya esté cerrado.
@@ -125,10 +133,14 @@ Tests:
 
 ### Paso 2 — Títulos estables
 
+**Estado:** Hecho.
+
 `fix(perception)`. En `_parse_browser()`:
 
 - Quitar el contador inicial: `^\(\d+\)\s+` (*"(3) Vídeo - YouTube"* →
   *"Vídeo - YouTube"*).
+  Hecho con `^\(\d+\)\s*` (`_NOTIFICATION_COUNTER`), que también cubre el
+  caso sin espacio tras el paréntesis.
 - Cualquier otra limpieza, solo si sale de los títulos reales del paso 0.
 
 Tests:
@@ -137,6 +149,8 @@ Tests:
 - `test_un_titulo_sin_contador_queda_igual`
 
 ### Paso 3 — Páginas de las que nunca se pregunta
+
+**Estado:** Hecho.
 
 `feat(privacy)`. Una página de banco, de pago o de inicio de sesión no puede
 convertirse en una pregunta, aunque se pase un rato en ella.
@@ -175,6 +189,8 @@ Tests:
 
 ### Paso 4 — El cronómetro por documento y la señal nueva
 
+**Estado:** Hecho.
+
 `feat(curiosity)`. El corazón del cambio.
 
 - `CuriosityEngine` lleva un segundo cronómetro, por documento, igual que
@@ -207,6 +223,8 @@ con tema no cabe, se usa la que no lo lleva.
 
 ### Paso 5 — Redactar la pregunta
 
+**Estado:** Hecho.
+
 `feat(curiosity)`.
 
 - ~~`TYPE_HINTS` y plantillas~~: hechas en el paso 4.
@@ -220,6 +238,8 @@ Tests:
 - `test_una_pregunta_que_afirma_haber_visto_el_video_se_rechaza`
 
 ### Paso 6 — `--watch` también evalúa sin eventos
+
+**Estado:** Hecho.
 
 `fix(cli)`. Que `--watch --ask` pueda preguntar tras un rato en la misma
 página, como el REPL.
@@ -242,6 +262,8 @@ plantilla desactivada, queda anotado en `PENDIENTE.md`.
 
 ### Paso 7 — Configuración
 
+**Estado:** Hecho.
+
 `feat(config)`:
 
 ```toml
@@ -258,6 +280,8 @@ sensitive_title_words = ["banco", "pago", "contraseña", "login", ...]
 
 ### Paso 8 — Probarlo de verdad y medir
 
+**Estado:** Pendiente: lo hace la persona con la aplicación real.
+
 Sin esto no está terminado.
 
 1. Una sesión de navegación normal de una hora: vídeos, documentación,
@@ -269,6 +293,8 @@ Sin esto no está terminado.
 4. Ajustar `min_seconds_on_document` y la lista de palabras con esos datos.
 
 ### Paso 9 — Documentar
+
+**Estado:** En curso: ADR-011, manual, GUIA, README y PENDIENTE están al día; queda quitar el punto 1 de PENDIENTE y borrar este plan cuando termine el paso 8.
 
 - `ADR-011`: preguntar en voz alta por un título es distinto de verlo. Qué
   se protege y cómo, qué se descartó (guardar el historial de páginas,

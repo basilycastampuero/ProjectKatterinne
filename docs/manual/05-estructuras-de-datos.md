@@ -306,6 +306,10 @@ falla sería que deja de hablar, y eso no se distingue de que funcione bien.
 | `LEARNING_QUESTION` | "¿Por qué decidiste hacerlo de esa forma?" |
 | `CONTEXTUAL_QUESTION` | "¿Qué estás intentando conseguir?" |
 | `MEMORY_FOLLOWUP` | "El otro día mencionaste X, ¿en qué quedó?" |
+| `CONTENT_CURIOSITY` | "¿De qué va «{título}»?" Sobre la página o el vídeo en el que te has quedado |
+
+`CONTENT_CURIOSITY` no es una pregunta visual: solo conoce el **título** de
+la página, nunca su contenido. Ver la pantalla es la fase 5.
 
 ### `ScoringInput`, `CuriosityWeights` y `ScoreResult` — `curiosity/scorer.py`
 
@@ -318,6 +322,7 @@ ScoringInput(
     project_has_confirmed_facts=False,
     returning_after_absence=False,    # ¿vuelve tras 6 horas o más?
     settled_in_context=True,          # ¿lleva 2 minutos o más ahí?
+    lingering_on_document=False,      # ¿5 minutos o más en la misma página?
 )
 ```
 
@@ -330,12 +335,39 @@ Los pesos (`CuriosityWeights`), con el umbral en 6:
 | Vuelve tras una ausencia larga | 3 |
 | Actividad reconocible sin proyecto (un juego, por ejemplo) | 3 |
 | Lleva un rato en lo mismo | 2 |
+| Se queda en la misma página o vídeo (`lingering_on_document`, sin proyecto) | 2 |
 | Se sabe bastante de la situación (`confidence ≥ 0.7`) | 1 |
 | Proyecto conocido y con cosas confirmadas | 1 |
 
 Ninguna señal sola llega a 6. Hacen falta **al menos dos a la vez**: algo
 interesante *y* que lleve un rato ahí. Ejemplo: proyecto nuevo (4) + lleva
 un rato (2) + se sabe bastante (1) = **7 ≥ 6 → habla**.
+
+La señal de la página merece explicación. Al navegar, **todas las páginas
+son nuevas**, así que la novedad no dice nada; lo que sí dice algo es que te
+quedes. Sin esa señal, un navegador sin proyecto se quedaba en 5 para
+siempre (actividad reconocible 3 + lleva un rato 2). Con ella, tras cinco
+minutos en la misma página: 3 + 2 + 2 = **7 ≥ 6 → puede hablar**. Una
+página de banco sigue en 5 y calla (ver el capítulo 6).
+
+### `CuriosityPolicy` — `curiosity/engine.py`
+
+Los **pesos** dicen cuánto vale cada señal; la **política** dice cuándo se
+le permite hablar. Todo es configurable en `[curiosity]`:
+
+| Campo | Por defecto | Qué controla |
+|---|---|---|
+| `threshold` | 6 | Puntos mínimos para que merezca la pena |
+| `min_seconds_between_questions` | 1200 | El enfriamiento: 20 minutos entre preguntas |
+| `min_seconds_in_context` | 120 | Cuánto tiene que llevar en el mismo sitio |
+| `min_seconds_on_document` | 300 | Cuánto tiene que quedarse en la misma página o vídeo |
+| `min_context_confidence` | 0.5 | Por debajo no sabe lo suficiente |
+| `max_questions_per_session` | 4 | Tope de preguntas por sesión |
+| `absence_seconds` | 21600 | Seis horas sin ver un proyecto = "vuelve" |
+| `sensitive_title_words` | (una lista) | Palabras que, en el título de una página, impiden preguntar por ella |
+
+`sensitive_title_words` se rellena desde `[privacy]` en `companion.toml`,
+no desde `[curiosity]`: es una decisión de privacidad.
 
 ### `CuriosityDecision` — `curiosity/models.py`
 
@@ -348,6 +380,7 @@ CuriosityDecision(
     score=7, threshold=6,
     question_type=QuestionType.CLARIFICATION,
     topic="ProjectKatterinne",
+    topic_kind="project",
     signals=("proyecto nuevo", "lleva un rato en lo mismo", "se sabe bastante de la situación"),
 )
 ```
@@ -356,6 +389,14 @@ Se crea con `CuriosityDecision.silence(motivo)` o
 `CuriosityDecision.speak(...)`. Lleva las señales para que la decisión se
 pueda **explicar**. Su `confidence` la calcula el sistema a partir de la
 puntuación: nunca es una confianza que diga el modelo.
+
+`topic_kind` dice **qué es** el tema: `"project"`, `"application"` o
+`"document"` (constantes `TOPIC_PROJECT`, `TOPIC_APPLICATION` y
+`TOPIC_DOCUMENT`). Importa por una razón de privacidad: el título de una
+página puede contener cualquier cosa y **nunca puede llegar al log**.
+Por eso `loggable_topic` devuelve `"(documento)"` cuando el tema es una
+página, y `to_dict()` tampoco incluye el título. El proyecto o la
+aplicación sí se registran, como siempre.
 
 ### `GeneratedQuestion` — `curiosity/questions.py`
 

@@ -16,28 +16,36 @@ Lo que sigue es, por orden, lo que más valor daría.
 
 ## 1. Interesarse por lo que ves en el navegador
 
+**Estado: implementado, falta la prueba real y cerrar la documentación.**
+Los pasos 1 a 7 del plan están hechos (695 tests en verde). Falta el paso 8,
+que tiene que hacer la persona: una hora de navegación normal con una página
+sensible de por medio, contar cuántas veces decide hablar y revisar a mano
+que no pregunta por nada sensible y que ningún título aparece en el log. Con
+eso se ajustan `min_seconds_on_document` y `sensitive_title_words`. Cuando
+eso esté, se quita este punto y se borra el plan. La decisión está en
+[ADR-011](architecture-decisions/ADR-011-asking-about-a-title-is-not-seeing-it.md).
+
 **Lo pidió la persona al probar la extracción de hechos.** No todo es un
 proyecto: si pasa un buen rato con un vídeo o una página, la compañera
 podría tener curiosidad por ello, igual que la tiene por un proyecto nuevo.
 
-La percepción ya da lo necesario: en un navegador, el título de la página
-llega al contexto como `document` y el modelo lo ve. Lo que falta es que la
-**curiosidad** lo use. Hoy la puntuación premia sobre todo los proyectos
-nuevos, y veinte minutos en el mismo vídeo probablemente no le dan motivo
-para preguntar.
+La percepción ya daba lo necesario: en un navegador, el título de la página
+llega al contexto como `document` y el modelo lo ve. Lo que faltaba era que
+la **curiosidad** lo usara: sin proyecto, el máximo eran 5 puntos y el umbral
+es 6. Ahora, tras cinco minutos en la misma página, suma 7 y puede
+preguntar; una página sensible sigue en 5.
 
 Y la memoria ya está preparada para lo que salga de ahí: si la persona
 comenta lo que ve, el título respalda el hecho y se guarda como
 `long_term` (ADR-010).
 
-### Por dónde empezar
+### Lo que queda
 
-**Hay un plan detallado paso a paso en
-[`PLAN-curiosidad-navegador.md`](PLAN-curiosidad-navegador.md).** En
-resumen: la señal no es que la página sea nueva, sino que **se quede en
-ella**; y antes de que pueda preguntar por páginas, cerrar el log al tema y
-proteger las páginas sensibles (el banco en el navegador no lo cubre la
-lista negra de procesos).
+El plan paso a paso, con el estado de cada paso, está en
+[`PLAN-curiosidad-navegador.md`](PLAN-curiosidad-navegador.md). Pendientes:
+la prueba real (paso 8) y las decisiones abiertas del final del plan
+(navegación privada, música en una aplicación propia, recordar entre
+sesiones de qué páginas ya preguntó).
 
 ### Cuidado con
 
@@ -157,7 +165,7 @@ Ninguna urgente. Buenas para entrar en calor.
 ## Cómo retomar esto
 
 1. Lee [`GUIA.md`](GUIA.md) si no tienes el proyecto fresco.
-2. `pytest` antes de tocar nada: 633 en verde es la línea base.
+2. `pytest` antes de tocar nada: 695 en verde es la línea base.
 3. Mira si hay un ADR sobre lo que vas a cambiar. Casi siempre la
    alternativa obvia ya se consideró y hay un motivo escrito.
 4. **Ejecuta la aplicación de verdad antes de dar algo por terminado.**

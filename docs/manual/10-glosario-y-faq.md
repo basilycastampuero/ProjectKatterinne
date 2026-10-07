@@ -38,6 +38,10 @@ mide *cuánto se sabe*, no *cuán seguro se está* (capítulo 5.2).
 **Contexto** (`CurrentContext`). Lo que el sistema cree entender de la
 situación actual: aplicación, proyecto, documento y actividad.
 
+**Contador de notificaciones**. El número entre paréntesis que muchas webs
+ponen al principio del título: "(3) Vídeo". Cambia con cada aviso, así que
+`project_detector.py` lo quita antes de comparar títulos (capítulo 7).
+
 **Cuantización**. Guardar los números del modelo con menos precisión para
 que ocupe menos. `Q4_K_M` es a 4 bits.
 
@@ -48,7 +52,11 @@ pregunta.
 `FakeProvider`, `FakeActiveWindowProvider`.
 
 **Documento**. En un editor, el archivo abierto. En un navegador, el título
-de la página.
+de la página. Solo el título: nunca su contenido.
+
+**Documento sensible**. Una página cuyo título contiene alguna de las
+`sensitive_title_words` (banco, pago, contraseña, médico…). La compañera no
+pregunta nunca por ella. Ver también *Palabra sensible*.
 
 **Enfriamiento** (*cooldown*). Tiempo mínimo entre dos preguntas: 20
 minutos.
@@ -84,6 +92,10 @@ respuesta según la genera.
 
 **Observado** (`OBSERVED`). Leído del sistema. No admite discusión.
 
+**Palabra sensible** (`sensitive_title_words`). Una palabra de la lista de
+`[privacy]` que, si el título de una página la contiene (al principio de una
+palabra: "pago" cubre "pagos"), impide preguntar por ella. Se compara sin mayúsculas ni tildes.
+
 **Persona**. Quien usa la compañera. Los prompts la llaman "tu persona".
 
 **Plantilla**. Pregunta de respaldo, determinista, que se usa cuando la del
@@ -114,6 +126,10 @@ cierras.
 **Señal** (`Signal`). Un dato envuelto con su procedencia, su confianza y su
 origen.
 
+**Quedarse en una página** (`lingering_on_document`). La señal de curiosidad
+que se activa cuando la persona lleva 5 minutos o más en la misma página o
+vídeo, sin proyecto de por medio. Vale 2 puntos.
+
 **Sondeo**. Cada vez que se pregunta a Windows qué ventana está activa: una
 por segundo.
 
@@ -142,6 +158,21 @@ entero.
 Porque está diseñada así. El silencio es la salida normal (capítulo 2.4).
 Para ver *por qué* se calla en cada momento, ejecuta `--watch`: cada evento
 muestra el motivo (`NO_ACTION · too_soon_in_context`…).
+
+**¿Por qué no pregunta nunca por la web de mi banco?**
+Porque el título de la página contiene una palabra de `sensitive_title_words`
+(`banco`, `pago`, `login`…) y esa página no cuenta como algo por lo que
+preguntar: se queda en 5 puntos, por debajo del umbral de 6, por mucho
+tiempo que pases en ella. La lista negra por procesos no sirve aquí, porque
+el banco y YouTube son el mismo navegador. Si una página sensible tuya no
+está cubierta, añade palabras a la lista en `[privacy]`.
+
+**¿Por qué tarda cinco minutos en interesarse por un vídeo?**
+Porque la señal es *quedarse*, no que la página sea nueva (al navegar todas
+lo son). Hasta que no lleva `min_seconds_on_document` (300 segundos) en la
+misma página, suma 5 y calla. Además cuenta el enfriamiento de 20 minutos
+y el máximo de 4 por sesión. Si cambias de vídeo, el cronómetro empieza de
+cero. Y recuerda: solo conoce el título, no lo que sale en él.
 
 **¿Por qué no hace capturas de pantalla para saber más?**
 Porque la información estructurada basta para casi todo, y es más barata,
