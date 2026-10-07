@@ -24,6 +24,9 @@ from tests.conftest import make_window
         # ninguna categoría existente.
         ("Discord.exe", ActivityType.COMMUNICATION),
         ("slack.exe", ActivityType.COMMUNICATION),
+        # Con "whatsapp" en la tabla no bastaba: el ejecutable actual es
+        # WhatsApp.Root.exe y quedaba como actividad desconocida.
+        ("WhatsApp.Root.exe", ActivityType.COMMUNICATION),
     ],
 )
 def test_los_procesos_conocidos_se_clasifican(proceso: str, esperado: ActivityType) -> None:

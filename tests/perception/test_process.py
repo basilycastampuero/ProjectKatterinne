@@ -13,6 +13,9 @@ from companion.perception.process import UNKNOWN_APPLICATION, application_name
         ("CODE.EXE", "Visual Studio Code"),
         ("chrome.exe", "Google Chrome"),
         ("explorer.exe", "Explorador de Windows"),
+        # La aplicación de escritorio actual. Se vio en uso real como
+        # "WhatsApp.Root".
+        ("WhatsApp.Root.exe", "WhatsApp"),
     ],
 )
 def test_los_ejecutables_conocidos_se_traducen(ejecutable: str, esperado: str) -> None:

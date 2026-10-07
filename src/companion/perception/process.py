@@ -29,6 +29,7 @@ KNOWN_APPLICATIONS: dict[str, str] = {
     "powershell.exe": "Windows PowerShell",
     "cmd.exe": "Simbolo del sistema",
     "notepad.exe": "Bloc de notas",
+    "whatsapp.root.exe": "WhatsApp",
 }
 
 #: Cuando ni siquiera se conoce el ejecutable (proceso protegido, por ejemplo).

@@ -52,6 +52,8 @@ ACTIVITY_BY_PROCESS: dict[str, ActivityType] = {
     "ms-teams": ActivityType.COMMUNICATION,
     "telegram": ActivityType.COMMUNICATION,
     "whatsapp": ActivityType.COMMUNICATION,
+    # El ejecutable de la aplicación de escritorio actual.
+    "whatsapp.root": ActivityType.COMMUNICATION,
 }
 
 #: Fragmentos de ruta que delatan un juego.

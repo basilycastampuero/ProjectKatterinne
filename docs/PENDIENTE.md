@@ -140,7 +140,7 @@ Ninguna urgente. Buenas para entrar en calor.
 
 | | Dónde | Notas |
 |---|---|---|
-| Nombres de aplicación feos | `perception/process.py` | `Steamwebhelper`, `Javaw`, `EpicGamesLauncher`. La tabla `KNOWN_APPLICATIONS` es corta a propósito, pero estos salen a menudo |
+| Nombres de aplicación feos | `perception/process.py` y `context/activity.py` | En la memoria real, los procesos que más salen sin actividad reconocida: `steamwebhelper.exe` (63 veces), `SearchHost.exe` (23), `Taskmgr.exe` (11), `ShellExperienceHost.exe` (10), `LockApp.exe` (8), `Minecraft.exe` y `javaw.exe`. Varios son del propio Windows (búsqueda, menú Inicio, bloqueo) y quizá deberían ignorarse en vez de nombrarse. `WhatsApp.Root.exe` ya está resuelto. Steam es el ejercicio guiado del manual (capítulos 8.7 y 9.8) |
 | Reglas de título sin verificar | `perception/project_detector.py` | Las de JetBrains y Visual Studio declaran confianza 0.7 porque **no se han comprobado en una máquina real**. Si tienes uno, verifícalas y sube la confianza |
 | Sesiones huérfanas | `memory/manager.py` | `start_session(resume=True)` las retoma, pero si nadie las cierra se acumulan. Hay 20 sesiones en la base de datos actual |
 | `min_seconds_in_context` | `companion.toml` | Diseñado a 120. Si lo bajas para probar, acuérdate de subirlo |
