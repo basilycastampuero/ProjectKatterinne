@@ -181,6 +181,13 @@ class CuriosityEngine:
         if context.redacted:
             return SilenceReason.APPLICATION_BLOCKED
 
+        if context.document is not None and is_sensitive_title(
+            context.document.value, self._policy.sensitive_title_words
+        ):
+            # La lista negra va por proceso, y el banco es el mismo navegador
+            # que un vídeo. Se trata igual que una aplicación bloqueada.
+            return SilenceReason.SENSITIVE_PAGE
+
         if self._questions_asked >= self._policy.max_questions_per_session:
             return SilenceReason.SESSION_QUOTA_REACHED
 
@@ -244,6 +251,10 @@ class CuriosityEngine:
 
         Nunca el de una ventana censurada, y nunca una página sensible: la
         lista negra va por proceso y no protege el banco en el navegador.
+
+        La barrera SENSITIVE_PAGE ya impide llegar aquí con una página
+        sensible. Se comprueba otra vez a propósito: si alguien reordena las
+        barreras, un título sensible sigue sin poder ser el tema.
         """
         if context.redacted or context.document is None:
             return None

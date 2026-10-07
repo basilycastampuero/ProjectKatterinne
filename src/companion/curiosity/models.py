@@ -63,6 +63,10 @@ class SilenceReason(StrEnum):
     SESSION_QUOTA_REACHED = "session_quota_reached"
     #: Aplicacion de la lista negra o modo privacidad.
     APPLICATION_BLOCKED = "application_blocked"
+    #: Página con una palabra sensible en el título: banco, pago, salud...
+    #: Es una barrera y no una penalización: si dependiera de la puntuación,
+    #: bajar el umbral la haría hablar con ese título delante del modelo.
+    SENSITIVE_PAGE = "sensitive_page"
     #: No se sabe lo suficiente para decir algo sensato.
     NOT_ENOUGH_CONTEXT = "not_enough_context"
     #: Acaba de llegar a este contexto. Dejarle empezar.

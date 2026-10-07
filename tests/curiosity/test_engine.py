@@ -527,3 +527,22 @@ def test_un_proyecto_sigue_mandando_sobre_el_documento() -> None:
 
     assert decision.topic_kind == "project"
     assert decision.question_type is not QuestionType.CONTENT_CURIOSITY
+
+
+@pytest.mark.parametrize("umbral", [6, 5, 1])
+def test_una_pagina_sensible_calla_aunque_se_baje_el_umbral(umbral: int) -> None:
+    """La protección no puede depender de que la puntuación se quede corta.
+
+    El filtro de palabras sensibles solo impedía que la página fuera el
+    tema. El banco callaba porque sumaba 5 y el umbral es 6: con el umbral
+    en 5 preguntaba "sobre Brave", y el contexto que recibe el modelo para
+    redactar incluye el título del banco. Lo encontró una revisión de
+    código; ningún test bajaba el umbral.
+    """
+    banco = _en("Banca por Internet - Mi banco")
+    motor = CuriosityEngine(policy=CuriosityPolicy(threshold=umbral))
+
+    decision = _evaluar_a_lo_largo(motor, {0: banco, 30: banco})
+
+    assert not decision.should_speak
+    assert decision.reason == SilenceReason.SENSITIVE_PAGE
