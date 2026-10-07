@@ -147,6 +147,7 @@ class CuriosityEngine:
             CuriosityDecision.speak(
                 question_type=resultado.question_type,
                 topic=resultado.topic,
+                topic_kind=resultado.topic_kind,
                 score=resultado.score,
                 threshold=self._policy.threshold,
                 signals=resultado.signals,
@@ -258,7 +259,7 @@ class CuriosityEngine:
         log.info(
             "pregunta registrada tipo=%s tema=%s total_sesion=%d",
             decision.question_type,
-            decision.topic or "-",
+            decision.loggable_topic,
             self._questions_asked,
         )
 

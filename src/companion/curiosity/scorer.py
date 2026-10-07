@@ -17,7 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from companion.context.models import ActivityType, CurrentContext
-from companion.curiosity.models import QuestionType
+from companion.curiosity.models import TOPIC_APPLICATION, TOPIC_PROJECT, QuestionType
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,6 +69,7 @@ class ScoreResult:
     question_type: QuestionType | None
     topic: str | None
     signals: tuple[str, ...]
+    topic_kind: str | None = None
 
 
 def score(inputs: ScoringInput, weights: CuriosityWeights | None = None) -> ScoreResult:
@@ -89,13 +90,13 @@ def score(inputs: ScoringInput, weights: CuriosityWeights | None = None) -> Scor
     señales: list[str] = []
 
     if context.project is not None:
-        tema = context.project.value
+        tema, tipo_de_tema = context.project.value, TOPIC_PROJECT
         puntos, tipo = _score_project(inputs, weights, señales)
     elif (
         context.activity is not None
         and context.activity.value is not ActivityType.UNKNOWN
     ):
-        tema = context.application.value
+        tema, tipo_de_tema = context.application.value, TOPIC_APPLICATION
         puntos += weights.activity_without_project
         señales.append("actividad reconocible sin proyecto")
         tipo = QuestionType.CONTEXTUAL_QUESTION
@@ -112,7 +113,7 @@ def score(inputs: ScoringInput, weights: CuriosityWeights | None = None) -> Scor
         puntos += weights.rich_context
         señales.append("se sabe bastante de la situación")
 
-    return ScoreResult(puntos, tipo, tema, tuple(señales))
+    return ScoreResult(puntos, tipo, tema, tuple(señales), tipo_de_tema)
 
 
 def _score_project(

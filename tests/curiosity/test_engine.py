@@ -11,7 +11,7 @@ import pytest
 
 from companion.context.models import ActivityType
 from companion.curiosity.engine import CuriosityEngine, CuriosityPolicy
-from companion.curiosity.models import QuestionType, SilenceReason
+from companion.curiosity.models import CuriosityDecision, QuestionType, SilenceReason
 from companion.memory.manager import MemoryManager
 from companion.memory.repository import MemoryRepository
 from tests.curiosity.conftest import T0, contexto, minutos
@@ -341,3 +341,71 @@ def test_la_decision_se_serializa_entera(engine: CuriosityEngine) -> None:
     assert serializada["question_type"] == "clarification"
     assert serializada["topic"] == "ProjectKatterinne"
     assert "score" in serializada and "threshold" in serializada
+
+
+# ----------------------------------------------------------------------
+# El tema, fuera del log cuando es un documento
+# ----------------------------------------------------------------------
+
+_TITULO = "Resultados de la analítica de sangre - Brave"
+
+
+def _decision_sobre(tema: str, tipo_de_tema: str) -> CuriosityDecision:
+    return CuriosityDecision.speak(
+        question_type=QuestionType.CONTEXTUAL_QUESTION,
+        topic=tema,
+        topic_kind=tipo_de_tema,
+        score=7,
+        threshold=6,
+    )
+
+
+def test_el_tema_de_un_documento_no_llega_al_log(caplog) -> None:
+    """Un título de página puede ser cualquier cosa: no se registra nunca.
+
+    `record_question()` escribía `tema=<tema>`. Mientras el tema era un
+    proyecto o una aplicación no importaba, porque esos sí se registran. En
+    cuanto la compañera pueda preguntar por una página, el tema será su
+    título, y ADR-005 prohíbe que un título llegue al log.
+    """
+    with caplog.at_level("DEBUG", logger="companion"):
+        CuriosityEngine().record_question(_decision_sobre(_TITULO, "document"), now=T0)
+
+    assert "analítica" not in caplog.text
+    assert "tema=(documento)" in caplog.text
+
+
+def test_el_tema_de_un_proyecto_se_sigue_registrando(caplog) -> None:
+    # El proyecto sí se registra (es la unidad de trabajo): quitarlo dejaría
+    # el log sin saber sobre qué se preguntó.
+    with caplog.at_level("DEBUG", logger="companion"):
+        CuriosityEngine().record_question(
+            _decision_sobre("ProjectKatterinne", "project"), now=T0
+        )
+
+    assert "tema=ProjectKatterinne" in caplog.text
+
+
+def test_la_forma_serializable_no_lleva_el_titulo_de_un_documento() -> None:
+    # Igual que WindowEvent.to_dict(), que nunca incluye el título: lo que
+    # se serializa es lo que acaba en logs o en disco.
+    datos = _decision_sobre(_TITULO, "document").to_dict()
+
+    assert datos["topic"] is None
+    assert datos["topic_kind"] == "document"
+
+
+def test_la_puntuacion_dice_de_que_tipo_es_el_tema() -> None:
+    # Umbral y barreras a cero: aquí solo importa qué tema elige.
+    def motor() -> CuriosityEngine:
+        return CuriosityEngine(
+            policy=CuriosityPolicy(
+                min_seconds_in_context=0.0, min_context_confidence=0.0, threshold=1
+            )
+        )
+
+    con_proyecto = motor().evaluate(contexto(), now=T0)
+    sin_proyecto = motor().evaluate(contexto(proyecto=None, documento=None), now=T0)
+
+    assert con_proyecto.should_speak and con_proyecto.topic_kind == "project"
+    assert sin_proyecto.should_speak and sin_proyecto.topic_kind == "application"

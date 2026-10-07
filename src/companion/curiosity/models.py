@@ -14,6 +14,12 @@ from enum import StrEnum
 from typing import Any
 
 
+#: Valores de `CuriosityDecision.topic_kind`.
+TOPIC_PROJECT = "project"
+TOPIC_APPLICATION = "application"
+TOPIC_DOCUMENT = "document"
+
+
 class QuestionType(StrEnum):
     """Qué clase de pregunta sería.
 
@@ -79,6 +85,9 @@ class CuriosityDecision:
     question_type: QuestionType | None = None
     #: Sobre que se preguntaria: el proyecto, o la aplicacion si no hay.
     topic: str | None = None
+    #: Qué es el tema: "project", "application" o "document". Un documento
+    #: puede ser el título de una página, y ese no se registra nunca.
+    topic_kind: str | None = None
     #: Que sumo puntos, en lenguaje llano.
     signals: tuple[str, ...] = ()
 
@@ -108,6 +117,7 @@ class CuriosityDecision:
         score: int,
         threshold: int,
         signals: tuple[str, ...] = (),
+        topic_kind: str | None = None,
     ) -> CuriosityDecision:
         return cls(
             should_speak=True,
@@ -116,6 +126,7 @@ class CuriosityDecision:
             threshold=threshold,
             question_type=question_type,
             topic=topic,
+            topic_kind=topic_kind,
             signals=signals,
         )
 
@@ -131,7 +142,17 @@ class CuriosityDecision:
             return 0.0
         return min(1.0, self.score / self.threshold)
 
+    @property
+    def loggable_topic(self) -> str:
+        """El tema tal como puede ir al log: nunca el título de un documento."""
+        if self.topic_kind == TOPIC_DOCUMENT:
+            return "(documento)"
+        return self.topic or "-"
+
     def to_dict(self) -> dict[str, Any]:
+        """Forma serializable. Sin el tema si es un documento, como
+        `WindowEvent.to_dict()` sin el título: esto es lo que acaba en
+        logs o en disco."""
         return {
             "should_speak": self.should_speak,
             "reason": self.reason,
@@ -139,5 +160,6 @@ class CuriosityDecision:
             "threshold": self.threshold,
             "confidence": round(self.confidence, 2),
             "question_type": str(self.question_type) if self.question_type else None,
-            "topic": self.topic,
+            "topic": None if self.topic_kind == TOPIC_DOCUMENT else self.topic,
+            "topic_kind": self.topic_kind,
         }
