@@ -356,7 +356,7 @@ el terminal y casi nunca hay un proyecto en la ventana.
 | `engine.py` | Las barreras del silencio en orden, y luego la puntuación. Lleva dos cronómetros |
 | `questions.py` | Redacta la pregunta con el modelo **y la valida** |
 
-**`SilenceReason` tiene nueve valores; `QuestionType`, siete.** Hay más
+**`SilenceReason` tiene diez valores; `QuestionType`, siete.** Hay más
 formas de callarse que de hablar, y cada una se nombra. No es cosmético: si
 el motor solo dijera sí o no, el único síntoma de que algo falle sería que
 deja de hablar — y eso es indistinguible de que funcione bien.

@@ -110,7 +110,11 @@ compañera no puede caerse porque cierres una ventana.
 **El paso 7 existe por el terminal.** Mientras escribes, la ventana activa es
 el terminal. Si contara, el contexto sería "Windows Terminal" y no aquello
 en lo que estabas. Al ignorarlo, el contexto se queda en la última ventana
-de verdad.
+de verdad, pero **marcado con `in_focus=False`**: sigues trabajando en lo
+mismo, pero ya no lo estás mirando. El cronómetro del proyecto sigue
+contando; el de la página se para, y al volver empieza de cero. Sin esa
+marca, dos minutos viendo un vídeo y tres hablando con ella bastaban para
+que preguntara por una página que ya no tenías delante.
 
 **El paso 8 casi nunca produce evento.** Si en el último segundo no ha
 cambiado nada, `observe()` devuelve `(contexto, None)`. Es el caso normal.
@@ -156,6 +160,7 @@ salta manda, y el motivo queda registrado:
 ¿curiosidad apagada?                    → DISABLED
 ¿estáis conversando (turno hace <2 min)?→ CONVERSATION_ACTIVE
 ¿aplicación de la lista negra?          → APPLICATION_BLOCKED
+¿página con palabra sensible?           → SENSITIVE_PAGE
 ¿ya ha preguntado 4 veces esta sesión?  → SESSION_QUOTA_REACHED
 ¿preguntó hace menos de 20 minutos?     → COOLDOWN_ACTIVE
 ¿sabe demasiado poco (confianza < 0,5)? → NOT_ENOUGH_CONTEXT

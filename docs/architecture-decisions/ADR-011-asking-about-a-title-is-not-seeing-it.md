@@ -118,6 +118,29 @@ palabras, la plantilla con tema se pasaba del límite que exige el validador
 (una pregunta de 32 palabras). Ahora, si no cabe, se usa la que no lleva
 tema, y esto vale para todos los tipos.
 
+## Ajustes tras una revisión de código
+
+Una revisión de la rama encontró tres huecos, los tres reproducidos antes
+de arreglarlos:
+
+- **La página sensible era una penalización, no una barrera.** El filtro
+  solo impedía que la página fuera el tema. El banco callaba porque sumaba
+  5 y el umbral es 6; con el umbral en 5 preguntaba "sobre Brave", con el
+  título del banco en el contexto del modelo. Ahora es una barrera,
+  `SilenceReason.SENSITIVE_PAGE`, igual que una aplicación de la lista
+  negra: no depende de ningún número.
+- **El tiempo en el terminal contaba como tiempo en la página.** Al pasar
+  al terminal se conserva el contexto anterior, y el cronómetro no se
+  enteraba. `CurrentContext.in_focus` lo marca: el cronómetro de la página
+  se para y vuelve a empezar al volver; el del proyecto sigue.
+- **La plantilla solo comprobaba la longitud.** Un título que es una
+  pregunta daba "¿De qué va «¿Por qué…?»?". Las reglas de forma salieron a
+  `_form_problem()`, y la plantilla pasa por las mismas que el modelo.
+
+Ningún test los veía: todos usaban la configuración por defecto, ninguno
+combinaba una página con un proceso ignorado y ningún título de prueba
+llevaba interrogaciones.
+
 ## Lo que se descartó
 
 - **Guardar el historial de páginas.** Es justo lo que convierte una

@@ -144,6 +144,7 @@ más usada: la consumen la curiosidad, la memoria y la conversación.
 | `document` | `Signal[str] \| None` | `"engine.py"`, inferido, 0,9 |
 | `activity` | `Signal[ActivityType] \| None` | `CODING`, inferido, 0,85 |
 | `redacted` | `bool` | `False` |
+| `in_focus` | `bool` | `True`. Es `False` cuando es lo último que tuviste delante y no lo que tienes ahora: estás en el terminal, que se ignora |
 | `recent_events` | `tuple[WindowEvent, ...]` | Los últimos 20 cambios |
 | `timestamp` | `datetime` | — |
 
@@ -285,6 +286,7 @@ responder *"¿en qué he estado?"*.
 | `DISABLED` | La curiosidad está apagada en la configuración |
 | `CONVERSATION_ACTIVE` | Estáis hablando. No se interrumpe |
 | `APPLICATION_BLOCKED` | Aplicación de la lista negra |
+| `SENSITIVE_PAGE` | Página con una palabra sensible en el título (banco, pago, salud…). Es una barrera y no una penalización: no depende de la puntuación, así que bajar el umbral no la hace hablar |
 | `SESSION_QUOTA_REACHED` | Ya ha preguntado 4 veces en esta sesión |
 | `COOLDOWN_ACTIVE` | Preguntó hace menos de 20 minutos |
 | `NOT_ENOUGH_CONTEXT` | Sabe demasiado poco (`confidence < 0.5`) |

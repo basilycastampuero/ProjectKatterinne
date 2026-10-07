@@ -110,8 +110,8 @@ que estás en X, ¿es así?" en vez de afirmarlo.
 
 Una buena sesión de dos horas puede tener 47 cambios de ventana y **una**
 pregunta. Eso es mejor que 47 preguntas. El motor de curiosidad está
-construido para **callarse por defecto**: hay nueve formas distintas de
-decidir no hablar y solo seis tipos de pregunta.
+construido para **callarse por defecto**: hay diez formas distintas de
+decidir no hablar y solo siete tipos de pregunta.
 
 ### Al modelo no se le cree: se le valida
 
