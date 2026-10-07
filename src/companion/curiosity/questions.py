@@ -66,6 +66,11 @@ BANNED_VISION: tuple[str, ...] = (
     r"estoy viendo",
     r"puedo ver",
     r"en (tu|la) pantalla",
+    # Con páginas y vídeos lo que tienta es el pasado: solo conoce el
+    # título, así que no puede haber visto nada. "Has visto" sí vale: es
+    # preguntarle a la persona.
+    r"\bvi\s+que",
+    r"\bhe\s+visto",
 )
 
 _COACHING_RE = tuple(re.compile(patron) for patron in BANNED_COACHING)

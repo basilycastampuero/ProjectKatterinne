@@ -348,3 +348,78 @@ def test_con_un_tema_largo_la_plantilla_no_se_pasa_del_limite() -> None:
     assert pregunta is not None
     assert validate_question(pregunta.text, "document", ("document",)) is None
     assert titulo not in pregunta.text
+
+
+# ----------------------------------------------------------------------
+# Preguntas sobre la página en la que se queda
+# ----------------------------------------------------------------------
+
+_PAGINA = "Cómo funciona SQLite por dentro - YouTube"
+
+
+def _sobre_la_pagina() -> CuriosityDecision:
+    return CuriosityDecision.speak(
+        question_type=QuestionType.CONTENT_CURIOSITY,
+        topic=_PAGINA,
+        topic_kind="document",
+        score=7,
+        threshold=6,
+    )
+
+
+def test_una_pregunta_sobre_una_pagina_se_apoya_en_el_documento() -> None:
+    respuesta = {"question": "¿Ese vídeo de SQLite lo ves por algo en concreto?", "based_on": "document"}
+    provider = FakeProvider(replies=[json.dumps(respuesta, ensure_ascii=False)])
+
+    pregunta = QuestionGenerator(provider).generate(
+        _sobre_la_pagina(), contexto(proyecto=None, documento=_PAGINA)
+    )
+
+    assert pregunta is not None
+    assert pregunta.from_model
+    assert pregunta.based_on == "document"
+
+
+def test_la_pista_del_tipo_nuevo_llega_al_modelo() -> None:
+    # Sin ella el modelo no sabe que solo conoce el título.
+    provider = FakeProvider(replies=["no es json"])
+
+    QuestionGenerator(provider).generate(
+        _sobre_la_pagina(), contexto(proyecto=None, documento=_PAGINA)
+    )
+
+    assert "Solo conoces el título" in provider.calls[0][-1].content
+
+
+@pytest.mark.parametrize(
+    "pregunta",
+    [
+        "¿Vi que explica los índices, te está sirviendo?",
+        "¿He visto que habla de SQLite, lo usas?",
+    ],
+)
+def test_una_pregunta_que_afirma_haber_visto_el_video_se_rechaza(pregunta: str) -> None:
+    """Solo conoce el título: no puede haber visto el vídeo.
+
+    "Veo que" y "estoy viendo" ya se rechazaban. Con páginas y vídeos, lo
+    que tentaría al modelo es el pasado: "vi que", "he visto".
+    """
+    motivo = validate_question(pregunta, "document", ("document",))
+
+    assert motivo is not None
+    assert "ver la pantalla" in motivo
+
+
+@pytest.mark.parametrize(
+    "pregunta",
+    [
+        "¿Qué te está pareciendo ese vídeo?",
+        "¿Ya habías visto este vídeo antes?",
+        "¿Lo estás viendo por algo del proyecto?",
+    ],
+)
+def test_preguntar_por_lo_que_ve_la_persona_no_es_afirmar_que_lo_ve_ella(
+    pregunta: str,
+) -> None:
+    # La prohibición es para lo que ve la compañera, no para lo que ve la persona.
+    assert validate_question(pregunta, "document", ("document",)) is None
