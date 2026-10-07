@@ -143,6 +143,26 @@ def validate_question(
     Devolver el motivo en vez de un booleano permite registrar **por que**
     se rechazo, que es lo unico que hace posible ajustar el prompt despues.
     """
+    if (motivo := _form_problem(text, max_words)) is not None:
+        return motivo
+
+    # La comprobacion que de verdad implementa "las preguntas deben derivar
+    # del contexto real": el modelo tiene que decir en que se apoya, y ese
+    # campo tiene que ser uno de los que se le dieron.
+    if not isinstance(based_on, str) or based_on.strip().lower() not in allowed_fields:
+        return f"se apoya en algo que no percibe ({based_on!r})"
+
+    return None
+
+
+def _form_problem(text: Any, max_words: int) -> str | None:
+    """Lo que tiene que cumplir cualquier pregunta, la diga el modelo o no.
+
+    Separado de `validate_question` para que la plantilla pase por las
+    mismas reglas: un título de vídeo puede ser una pregunta, o llevar un
+    "sigue así", y la plantilla no puede hacer lo que se le rechaza al
+    modelo.
+    """
     if not isinstance(text, str) or not text.strip():
         return "vacía"
 
@@ -165,12 +185,6 @@ def validate_question(
     for patron in _VISION_RE:
         if patron.search(minusculas):
             return f"afirma ver la pantalla ({patron.pattern!r})"
-
-    # La comprobacion que de verdad implementa "las preguntas deben derivar
-    # del contexto real": el modelo tiene que decir en que se apoya, y ese
-    # campo tiene que ser uno de los que se le dieron.
-    if not isinstance(based_on, str) or based_on.strip().lower() not in allowed_fields:
-        return f"se apoya en algo que no percibe ({based_on!r})"
 
     return None
 
@@ -289,9 +303,10 @@ class QuestionGenerator:
         texto = None
         if decision.topic and (plantilla := TEMPLATES_WITH_TOPIC.get(decision.question_type)):
             texto = plantilla.format(topic=decision.topic)
-            # Un título de página puede tener treinta palabras: la plantilla
-            # no puede pasarse del límite que el validador le exige al modelo.
-            if len(texto.split()) > self._max_words:
+            # El tema puede ser el título de una página: treinta palabras, una
+            # pregunta o un "sigue así". La plantilla cumple las mismas reglas
+            # de forma que el modelo; si no, se usa la que no lleva tema.
+            if _form_problem(texto, self._max_words) is not None:
                 texto = None
         if texto is None:
             texto = TEMPLATES_WITHOUT_TOPIC.get(decision.question_type)

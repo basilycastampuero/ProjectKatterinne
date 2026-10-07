@@ -423,3 +423,34 @@ def test_preguntar_por_lo_que_ve_la_persona_no_es_afirmar_que_lo_ve_ella(
 ) -> None:
     # La prohibición es para lo que ve la compañera, no para lo que ve la persona.
     assert validate_question(pregunta, "document", ("document",)) is None
+
+
+@pytest.mark.parametrize(
+    "titulo",
+    [
+        "¿Por qué el cielo es azul? - YouTube",
+        "Sigue así: rutina de productividad extrema - YouTube",
+    ],
+)
+def test_una_plantilla_con_tema_cumple_las_mismas_reglas_que_el_modelo(titulo: str) -> None:
+    """La plantilla no puede hacer lo que se le rechaza al modelo.
+
+    Muchos títulos de vídeo son preguntas: "¿De qué va «¿Por qué el cielo
+    es azul?»?" lleva dos interrogaciones, y al modelo se le rechaza por
+    "más de una pregunta". Solo se comprobaba la longitud de la plantilla.
+    Lo encontró una revisión de código.
+    """
+    decision = CuriosityDecision.speak(
+        question_type=QuestionType.CONTENT_CURIOSITY,
+        topic=titulo,
+        topic_kind="document",
+        score=7,
+        threshold=6,
+    )
+
+    pregunta = QuestionGenerator(FakeProvider(replies=["no es json"])).generate(
+        decision, contexto(proyecto=None, documento=titulo)
+    )
+
+    assert pregunta is not None
+    assert validate_question(pregunta.text, "document", ("document",)) is None
