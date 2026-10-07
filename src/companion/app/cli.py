@@ -660,6 +660,8 @@ def run_watch(
     _out()
 
     iteraciones = 0
+    #: (tema, tipo) de la última vez que decidió hablar, para no repetirse.
+    ultima_decision: tuple[str | None, Any] | None = None
     try:
         while max_iterations is None or iteraciones < max_iterations:
             contexto, evento = engine.observe(provider.get_active_window())
@@ -671,11 +673,23 @@ def run_watch(
             # nada sería nunca nuevo. Lo mismo con `last_seen_at`, que
             # quedaría recién actualizado y mataría la señal de "vuelve
             # tras una ausencia".
-            if curiosity is not None and evento is not None:
+            #
+            # Se evalúa en cada sondeo y no solo con eventos: quedarse en una
+            # página no cambia nada en pantalla, y es justo lo que hace
+            # interesante una página.
+            if curiosity is not None:
                 decision = curiosity.evaluate(contexto)
-                _out(_format_curiosity(decision))
-                if decision.should_speak and questions is not None:
+                clave = (decision.topic, decision.question_type)
+                # Sin pregunta no empieza el enfriamiento, así que cada
+                # segundo volvería a decidir lo mismo. Solo se actúa cuando
+                # cambia: si no, la pantalla se llena y, si la redacción
+                # falla, se llama al modelo una vez por segundo.
+                nueva = decision.should_speak and clave != ultima_decision
+                if evento is not None or nueva:
+                    _out(_format_curiosity(decision))
+                if nueva and questions is not None:
                     _preguntar(decision, contexto, curiosity, questions, memory)
+                ultima_decision = clave if decision.should_speak else None
             if memory is not None:
                 # Puede devolver None: la mayoría de lo que pasa no merece
                 # una fila.

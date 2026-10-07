@@ -902,3 +902,112 @@ def test_en_la_conversacion_un_proyecto_nunca_visto_cuenta_como_nuevo(
     assert "proyecto nuevo" in curiosidad.decisiones[0].signals
     # Y se guarda igualmente, solo que después de mirar.
     assert memoria.repository.get_project("ProyectoNuevo") is not None
+
+
+# ----------------------------------------------------------------------
+# --watch evalúa también cuando no cambia nada
+# ----------------------------------------------------------------------
+
+_PAGINA_WATCH = "Cómo funciona SQLite por dentro - YouTube - Brave"
+
+
+class _CuriosidadConReloj(_CuriosidadQueApunta):
+    """Cada evaluación ocurre un minuto después de la anterior.
+
+    `run_watch()` no le pasa el momento al motor; así se puede probar qué
+    hace tras cinco minutos sin esperarlos.
+    """
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._minuto = 0
+
+    def evaluate(self, context, **kwargs) -> CuriosityDecision:
+        from tests.curiosity.conftest import minutos
+
+        kwargs.setdefault("now", minutos(self._minuto))
+        self._minuto += 1
+        return super().evaluate(context, **kwargs)
+
+    def record_question(self, decision, *, now=None) -> None:
+        from tests.curiosity.conftest import minutos
+
+        super().record_question(decision, now=now or minutos(self._minuto))
+
+
+def _una_pagina_todo_el_rato() -> FakeActiveWindowProvider:
+    return FakeActiveWindowProvider([make_window("brave.exe", title=_PAGINA_WATCH)])
+
+
+def test_watch_puede_preguntar_sin_que_cambie_la_ventana(capsys) -> None:
+    """Quedarse en una página no produce eventos.
+
+    `run_watch()` solo evaluaba la curiosidad cuando cambiaba algo, así que
+    con `--watch --ask` nunca habría preguntado por la página en la que la
+    persona lleva un rato. El REPL sí evaluaba en cada segundo sin entrada.
+    """
+    curiosidad = _CuriosidadConReloj()
+
+    run_watch(
+        _una_pagina_todo_el_rato(),
+        sleep=_sin_dormir,
+        max_iterations=8,
+        curiosity=curiosidad,
+        # Apoyada en el documento: en una página no hay proyecto, y una
+        # pregunta que dijera apoyarse en él se rechazaría con razón.
+        questions=QuestionGenerator(
+            FakeProvider(
+                replies=[
+                    json.dumps(
+                        {"question": "¿Ese vídeo de SQLite lo ves por algo?", "based_on": "document"}
+                    )
+                ]
+            )
+        ),
+    )
+
+    assert len(curiosidad.decisiones) == 8  # una por sondeo, no solo con eventos
+    assert "¿Ese vídeo de SQLite lo ves por algo?" in capsys.readouterr().out
+
+
+def test_watch_no_repite_la_linea_de_curiosidad_en_cada_segundo(capsys) -> None:
+    run_watch(
+        _una_pagina_todo_el_rato(),
+        sleep=_sin_dormir,
+        max_iterations=5,
+        curiosity=_CuriosidadConReloj(policy=CuriosityPolicy(enabled=False)),
+    )
+
+    # La del único evento. Se busca la línea y no la palabra: el banner de
+    # --watch también dice "curiosidad".
+    assert capsys.readouterr().out.count("· curiosidad") == 1
+
+
+def test_sin_ask_watch_avisa_una_vez_de_que_hablaria(capsys) -> None:
+    # Sin pregunta no empieza el enfriamiento: sin cuidado, diría que
+    # hablaría en cada segundo que siga en la página.
+    run_watch(
+        _una_pagina_todo_el_rato(),
+        sleep=_sin_dormir,
+        max_iterations=10,
+        curiosity=_CuriosidadConReloj(),
+    )
+
+    assert capsys.readouterr().out.count("HABLARÍA") == 1
+
+
+def test_si_la_pregunta_falla_watch_no_insiste_en_cada_segundo() -> None:
+    # Una pregunta que no sale no arranca el enfriamiento. Sin cuidado, se
+    # llamaría al modelo una vez por segundo mientras siga en la página.
+    modelo = FakeProvider(replies=["no es json"])
+    generador = QuestionGenerator(modelo, allow_fallback=False)
+
+    run_watch(
+        _una_pagina_todo_el_rato(),
+        sleep=_sin_dormir,
+        max_iterations=10,
+        curiosity=_CuriosidadConReloj(),
+        questions=generador,
+    )
+
+    assert len(modelo.calls) == 1

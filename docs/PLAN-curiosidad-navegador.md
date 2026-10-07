@@ -233,6 +233,13 @@ Tests:
 - `test_watch_puede_preguntar_sin_que_cambie_la_ventana`
 - `test_watch_no_repite_la_linea_de_curiosidad_en_cada_segundo`
 
+Hecho así: se evalúa en cada sondeo, pero **solo se actúa cuando cambia la
+decisión**. Sin pregunta (sin `--ask`) no empieza el enfriamiento, así que
+cada segundo volvería a decidir lo mismo: llenaría la pantalla de
+"HABLARÍA" y, si la redacción fallara, llamaría al modelo una vez por
+segundo. Hay un test para cada caso. El mismo riesgo en el REPL, con la
+plantilla desactivada, queda anotado en `PENDIENTE.md`.
+
 ### Paso 7 — Configuración
 
 `feat(config)`:
