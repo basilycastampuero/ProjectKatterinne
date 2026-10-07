@@ -323,3 +323,28 @@ def test_un_juego_produce_una_pregunta_contextual() -> None:
 
     assert pregunta is not None
     assert pregunta.text == "¿Qué intentas conseguir en esta partida?"
+
+
+def test_con_un_tema_largo_la_plantilla_no_se_pasa_del_limite() -> None:
+    """Un título de página puede tener treinta palabras.
+
+    "¿De qué va «<título>»?" con un título así daba una pregunta de 32
+    palabras: más de lo que el propio validador acepta. La plantilla que
+    no cabe se cambia por la que no lleva tema.
+    """
+    titulo = " ".join(["palabra"] * 30)
+    decision = CuriosityDecision.speak(
+        question_type=QuestionType.CONTENT_CURIOSITY,
+        topic=titulo,
+        topic_kind="document",
+        score=7,
+        threshold=6,
+    )
+
+    pregunta = QuestionGenerator(FakeProvider(replies=["no es json"])).generate(
+        decision, contexto(proyecto=None, documento=titulo)
+    )
+
+    assert pregunta is not None
+    assert validate_question(pregunta.text, "document", ("document",)) is None
+    assert titulo not in pregunta.text

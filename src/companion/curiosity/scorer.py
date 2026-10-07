@@ -17,7 +17,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from companion.context.models import ActivityType, CurrentContext
-from companion.curiosity.models import TOPIC_APPLICATION, TOPIC_PROJECT, QuestionType
+from companion.curiosity.models import (
+    TOPIC_APPLICATION,
+    TOPIC_DOCUMENT,
+    TOPIC_PROJECT,
+    QuestionType,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,6 +48,10 @@ class CuriosityWeights:
     settled_in_context: int = 2
     #: Se sabe bastante de la situacion.
     rich_context: int = 1
+    #: Se queda un buen rato en la misma página o el mismo vídeo. Al navegar
+    #: todas las páginas son nuevas, así que la novedad no dice nada; que se
+    #: quede, sí. Sola no basta: con "actividad sin proyecto" suma 5.
+    lingering_on_document: int = 2
 
     #: A partir de que confianza del contexto cuenta como "rico".
     rich_context_min_confidence: float = 0.7
@@ -61,6 +70,8 @@ class ScoringInput:
     returning_after_absence: bool = False
     #: Lleva ya un rato en este mismo contexto.
     settled_in_context: bool = False
+    #: Lleva un buen rato en el mismo documento, y no es una página sensible.
+    lingering_on_document: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,10 +107,19 @@ def score(inputs: ScoringInput, weights: CuriosityWeights | None = None) -> Scor
         context.activity is not None
         and context.activity.value is not ActivityType.UNKNOWN
     ):
-        tema, tipo_de_tema = context.application.value, TOPIC_APPLICATION
         puntos += weights.activity_without_project
         señales.append("actividad reconocible sin proyecto")
-        tipo = QuestionType.CONTEXTUAL_QUESTION
+        if inputs.lingering_on_document and context.document is not None:
+            # Lo interesante es la página, no el navegador: preguntar "sobre
+            # Brave" no tiene sentido, y además gastaría el ALREADY_ASKED de
+            # todas las páginas de la sesión en una sola pregunta.
+            tema, tipo_de_tema = context.document.value, TOPIC_DOCUMENT
+            puntos += weights.lingering_on_document
+            señales.append("se queda en la misma página")
+            tipo = QuestionType.CONTENT_CURIOSITY
+        else:
+            tema, tipo_de_tema = context.application.value, TOPIC_APPLICATION
+            tipo = QuestionType.CONTEXTUAL_QUESTION
     else:
         # Aplicacion desconocida y sin proyecto: no hay nada sobre lo que
         # preguntar que no sea inventado.

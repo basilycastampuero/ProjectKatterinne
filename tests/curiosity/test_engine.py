@@ -409,3 +409,121 @@ def test_la_puntuacion_dice_de_que_tipo_es_el_tema() -> None:
 
     assert con_proyecto.should_speak and con_proyecto.topic_kind == "project"
     assert sin_proyecto.should_speak and sin_proyecto.topic_kind == "application"
+
+
+# ----------------------------------------------------------------------
+# Quedarse en una página
+# ----------------------------------------------------------------------
+
+
+def _en(titulo: str | None, *, aplicacion: str = "Brave", proyecto: str | None = None):
+    return contexto(
+        aplicacion=aplicacion,
+        proyecto=proyecto,
+        documento=titulo,
+        actividad=ActivityType.COMMUNICATION if aplicacion == "Discord" else ActivityType.BROWSING,
+    )
+
+
+_VIDEO = "Cómo funciona SQLite por dentro - YouTube"
+
+
+def _evaluar_a_lo_largo(motor: CuriosityEngine, contextos_por_minuto: dict[float, object]):
+    """Evalúa cada minuto indicado y devuelve la última decisión.
+
+    Simula lo que hace el REPL: evaluar en cada hueco sin entrada, aunque
+    no cambie nada en pantalla.
+    """
+    decision = None
+    for minuto, ctx in sorted(contextos_por_minuto.items()):
+        decision = motor.evaluate(ctx, now=minutos(minuto))
+    return decision
+
+
+def test_quedarse_en_una_pagina_basta_para_tener_curiosidad() -> None:
+    decision = _evaluar_a_lo_largo(CuriosityEngine(), {0: _en(_VIDEO), 6: _en(_VIDEO)})
+
+    assert decision.should_speak
+    assert decision.question_type is QuestionType.CONTENT_CURIOSITY
+    assert decision.topic == _VIDEO
+    assert decision.topic_kind == "document"
+
+
+def test_una_pagina_recien_abierta_no_basta() -> None:
+    # Pasados los dos minutos de "lleva un rato", pero no los cinco en la página.
+    decision = _evaluar_a_lo_largo(CuriosityEngine(), {0: _en(_VIDEO), 3: _en(_VIDEO)})
+
+    assert not decision.should_speak
+
+
+def test_cambiar_de_pagina_reinicia_el_cronometro() -> None:
+    # Seis minutos en el navegador, pero ninguno de ellos cinco en la misma página.
+    decision = _evaluar_a_lo_largo(
+        CuriosityEngine(),
+        {0: _en("Una página"), 4: _en(_VIDEO), 6: _en(_VIDEO)},
+    )
+
+    assert not decision.should_speak
+
+
+def test_no_pregunta_por_una_pagina_de_banco_aunque_se_quede_en_ella() -> None:
+    # La lista negra va por proceso y el banco es el mismo navegador.
+    banco = _en("Banca online - Posición global")
+
+    decision = _evaluar_a_lo_largo(CuriosityEngine(), {0: banco, 30: banco})
+
+    assert not decision.should_speak
+    assert decision.topic_kind != "document"
+
+
+def test_las_palabras_sensibles_son_las_de_la_politica() -> None:
+    # Cada persona sabe qué es privado para ella.
+    terapia = _en("Notas de terapia - Documentos")
+    motor = CuriosityEngine(policy=CuriosityPolicy(sensitive_title_words=("terapia",)))
+
+    decision = _evaluar_a_lo_largo(motor, {0: terapia, 10: terapia})
+
+    assert not decision.should_speak
+
+
+def test_tras_preguntar_por_una_pagina_puede_preguntar_por_otra() -> None:
+    motor = CuriosityEngine()
+    primera = _evaluar_a_lo_largo(motor, {0: _en(_VIDEO), 6: _en(_VIDEO)})
+    motor.record_question(primera, now=minutos(6))
+
+    otra = "Speedrun de Hollow Knight en 40 minutos"
+    segunda = _evaluar_a_lo_largo(motor, {20: _en(otra), 30: _en(otra)})
+
+    assert segunda.should_speak
+    assert segunda.topic == otra
+
+
+def test_no_pregunta_dos_veces_por_la_misma_pagina() -> None:
+    motor = CuriosityEngine()
+    primera = _evaluar_a_lo_largo(motor, {0: _en(_VIDEO), 6: _en(_VIDEO)})
+    motor.record_question(primera, now=minutos(6))
+
+    # Pasado el enfriamiento, sigue en el mismo vídeo.
+    otra_vez = motor.evaluate(_en(_VIDEO), now=minutos(40))
+
+    assert not otra_vez.should_speak
+    assert otra_vez.reason == SilenceReason.ALREADY_ASKED
+
+
+def test_los_juegos_y_la_mensajeria_siguen_sin_preguntar() -> None:
+    # No tienen documento: no hay regla de título para ellos.
+    discord = _en(None, aplicacion="Discord")
+
+    decision = _evaluar_a_lo_largo(CuriosityEngine(), {0: discord, 30: discord})
+
+    assert not decision.should_speak
+
+
+def test_un_proyecto_sigue_mandando_sobre_el_documento() -> None:
+    # En VS Code el documento es el archivo: la pregunta es sobre el proyecto.
+    en_el_editor = _en("engine.py", aplicacion="Visual Studio Code", proyecto="ProjectKatterinne")
+
+    decision = _evaluar_a_lo_largo(CuriosityEngine(), {0: en_el_editor, 10: en_el_editor})
+
+    assert decision.topic_kind == "project"
+    assert decision.question_type is not QuestionType.CONTENT_CURIOSITY

@@ -25,6 +25,7 @@ from datetime import datetime, timedelta
 from companion.config.settings import DEFAULT_SENSITIVE_TITLE_WORDS
 from companion.context.models import CurrentContext, Provenance
 from companion.curiosity.models import CuriosityDecision, QuestionType, SilenceReason
+from companion.curiosity.sensitive import is_sensitive_title
 from companion.curiosity.scorer import (
     CuriosityWeights,
     ScoringInput,
@@ -68,6 +69,10 @@ class CuriosityPolicy:
     #: Si el título de una página contiene alguna, no se pregunta por ella.
     sensitive_title_words: tuple[str, ...] = DEFAULT_SENSITIVE_TITLE_WORDS
 
+    #: Cuánto tiene que quedarse en la misma página o el mismo vídeo para
+    #: que pueda interesarse por ello. Cinco minutos: más que un vistazo.
+    min_seconds_on_document: float = 300.0
+
 
 class CuriosityEngine:
     """Decide si hay motivo para iniciar una conversacion."""
@@ -89,6 +94,10 @@ class CuriosityEngine:
         self._asked: set[tuple[str | None, QuestionType]] = set()
         self._context_key: tuple[str | None, str | None] | None = None
         self._context_since: datetime | None = None
+        # Solo en RAM y solo el actual: guardar qué páginas se visitan sería
+        # un historial de navegación, justo lo que no debe existir.
+        self._document_key: tuple[str | None, str | None] | None = None
+        self._document_since: datetime | None = None
 
     @property
     def policy(self) -> CuriosityPolicy:
@@ -112,6 +121,7 @@ class CuriosityEngine:
         """Decide si decir algo. Casi siempre dira que no."""
         momento = now or utcnow()
         self._track_context(context, momento)
+        self._track_document(context, momento)
 
         if (barrera := self._blocked_by(context, momento, conversation_active)) is not None:
             return self._log(CuriosityDecision.silence(barrera))
@@ -225,7 +235,37 @@ class CuriosityEngine:
             returning_after_absence=vuelve,
             settled_in_context=self._seconds_in_context(now)
             >= self._policy.min_seconds_in_context,
+            lingering_on_document=self._usable_document(context) is not None
+            and self._seconds_on_document(now) >= self._policy.min_seconds_on_document,
         )
+
+    def _usable_document(self, context: CurrentContext) -> str | None:
+        """El documento del que se podría preguntar, o None.
+
+        Nunca el de una ventana censurada, y nunca una página sensible: la
+        lista negra va por proceso y no protege el banco en el navegador.
+        """
+        if context.redacted or context.document is None:
+            return None
+        titulo = context.document.value
+        if is_sensitive_title(titulo, self._policy.sensitive_title_words):
+            return None
+        return titulo
+
+    def _track_document(self, context: CurrentContext, now: datetime) -> None:
+        """Reinicia el cronómetro de la página cuando cambia el documento."""
+        clave = (
+            context.application.value if context.application else None,
+            context.document.value if context.document else None,
+        )
+        if clave != self._document_key:
+            self._document_key = clave
+            self._document_since = now
+
+    def _seconds_on_document(self, now: datetime) -> float:
+        if self._document_since is None:
+            return 0.0
+        return (now - self._document_since).total_seconds()
 
     def _track_context(self, context: CurrentContext, now: datetime) -> None:
         """Reinicia el cronometro cuando cambia el contexto."""
@@ -282,6 +322,8 @@ class CuriosityEngine:
         self._asked.clear()
         self._context_key = None
         self._context_since = None
+        self._document_key = None
+        self._document_since = None
 
     def _log(self, decision: CuriosityDecision) -> CuriosityDecision:
         log.debug(

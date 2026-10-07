@@ -197,14 +197,19 @@ Tests:
 - `test_los_juegos_y_la_mensajeria_siguen_sin_preguntar`
 - `test_un_proyecto_sigue_mandando_sobre_el_documento`
 
+Hecho así, con un cambio respecto a lo previsto: la pista para el modelo y
+las plantillas del tipo nuevo entraron aquí y no en el paso 5. Un test exige
+plantilla para cada `QuestionType`, y tiene razón: un tipo sin respaldo es
+una pregunta que se pierde si el modelo falla. De paso salió un fallo de las
+plantillas en general: con un tema de treinta palabras, *"¿De qué va
+«…»?"* se pasaba del límite que el validador exige. Ahora, si la plantilla
+con tema no cabe, se usa la que no lo lleva.
+
 ### Paso 5 — Redactar la pregunta
 
 `feat(curiosity)`.
 
-- `TYPE_HINTS[CONTENT_CURIOSITY]`: *"Pregúntale por lo que está viendo o
-  leyendo. Solo conoces el título: no supongas el contenido."*
-- Plantillas: *"¿De qué va «{topic}»?"* y, sin tema, *"¿Qué estás viendo?"*.
-  El test que pasa las plantillas por su propio validador las cubre.
+- ~~`TYPE_HINTS` y plantillas~~: hechas en el paso 4.
 - `QUESTION_SYSTEM_PROMPT`: una línea y un ejemplo de pregunta sobre una
   página. Cuidado con que el ejemplo no se convierta en plantilla (ADR-009).
 - `based_on` tiene que ser `document`: ya lo exige el validador.
@@ -212,7 +217,6 @@ Tests:
 Tests:
 
 - `test_una_pregunta_sobre_una_pagina_se_apoya_en_el_documento`
-- `test_la_plantilla_de_contenido_pasa_su_propio_validador`
 - `test_una_pregunta_que_afirma_haber_visto_el_video_se_rechaza`
 
 ### Paso 6 — `--watch` también evalúa sin eventos

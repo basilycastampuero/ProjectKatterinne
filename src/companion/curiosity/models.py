@@ -39,6 +39,10 @@ class QuestionType(StrEnum):
     CONTEXTUAL_QUESTION = "contextual_question"
     #: "El otro día mencionaste X, ¿en qué quedó?"
     MEMORY_FOLLOWUP = "memory_followup"
+    #: "¿De qué va ese vídeo?" Sobre la página en la que se ha quedado.
+    #: Solo se conoce su título: no es `visual_curiosity`, que necesitaría
+    #: ver la pantalla.
+    CONTENT_CURIOSITY = "content_curiosity"
 
 
 class SilenceReason(StrEnum):

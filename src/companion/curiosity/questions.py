@@ -80,6 +80,7 @@ TEMPLATES_WITH_TOPIC: dict[QuestionType, str] = {
     QuestionType.LEARNING_QUESTION: "¿Por qué decidiste hacerlo de esa forma en {topic}?",
     QuestionType.CONTEXTUAL_QUESTION: "¿Qué estás intentando conseguir en {topic}?",
     QuestionType.MEMORY_FOLLOWUP: "¿Al final funcionó lo que probabas en {topic}?",
+    QuestionType.CONTENT_CURIOSITY: "¿De qué va «{topic}»?",
 }
 
 TEMPLATES_WITHOUT_TOPIC: dict[QuestionType, str] = {
@@ -89,6 +90,7 @@ TEMPLATES_WITHOUT_TOPIC: dict[QuestionType, str] = {
     QuestionType.LEARNING_QUESTION: "¿Por qué decidiste hacerlo de esa forma?",
     QuestionType.CONTEXTUAL_QUESTION: "¿Qué estás intentando conseguir?",
     QuestionType.MEMORY_FOLLOWUP: "¿Al final funcionó lo que estabas probando?",
+    QuestionType.CONTENT_CURIOSITY: "¿Qué estás viendo?",
 }
 
 #: Pista que se le da al modelo segun el tipo de pregunta que toca.
@@ -99,6 +101,10 @@ TYPE_HINTS: dict[QuestionType, str] = {
     QuestionType.LEARNING_QUESTION: "Pídele que te explique por qué lo hace así.",
     QuestionType.CONTEXTUAL_QUESTION: "Pregúntale qué está intentando conseguir.",
     QuestionType.MEMORY_FOLLOWUP: "Retoma algo que recuerdas de antes.",
+    QuestionType.CONTENT_CURIOSITY: (
+        "Pregúntale por lo que está viendo o leyendo. Solo conoces el título: "
+        "no supongas el contenido."
+    ),
 }
 
 
@@ -275,10 +281,14 @@ class QuestionGenerator:
         if not self._allow_fallback or decision.question_type is None:
             return None
 
-        if decision.topic:
-            plantilla = TEMPLATES_WITH_TOPIC.get(decision.question_type)
-            texto = plantilla.format(topic=decision.topic) if plantilla else None
-        else:
+        texto = None
+        if decision.topic and (plantilla := TEMPLATES_WITH_TOPIC.get(decision.question_type)):
+            texto = plantilla.format(topic=decision.topic)
+            # Un título de página puede tener treinta palabras: la plantilla
+            # no puede pasarse del límite que el validador le exige al modelo.
+            if len(texto.split()) > self._max_words:
+                texto = None
+        if texto is None:
             texto = TEMPLATES_WITHOUT_TOPIC.get(decision.question_type)
 
         if not texto:

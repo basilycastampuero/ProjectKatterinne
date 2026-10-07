@@ -183,3 +183,43 @@ def test_los_pesos_son_configurables() -> None:
     )
 
     assert resultado.score == 0
+
+
+# ----------------------------------------------------------------------
+# Quedarse en una página
+# ----------------------------------------------------------------------
+
+
+def _pagina() -> CurrentContext:
+    return contexto(
+        aplicacion="Brave",
+        proyecto=None,
+        documento="Cómo funciona SQLite por dentro - YouTube",
+        actividad=ActivityType.BROWSING,
+    )
+
+
+def test_quedarse_en_una_pagina_suma_y_la_convierte_en_el_tema() -> None:
+    resultado = score(
+        ScoringInput(context=_pagina(), settled_in_context=True, lingering_on_document=True),
+        PESOS,
+    )
+
+    assert resultado.score >= 6
+    assert resultado.question_type is QuestionType.CONTENT_CURIOSITY
+    assert resultado.topic == "Cómo funciona SQLite por dentro - YouTube"
+    assert resultado.topic_kind == "document"
+    assert "se queda en la misma página" in resultado.signals
+
+
+def test_sin_quedarse_la_pagina_no_basta() -> None:
+    # Al navegar todas las páginas son nuevas: estar en una no dice nada.
+    resultado = score(ScoringInput(context=_pagina(), settled_in_context=True), PESOS)
+
+    assert resultado.score < 6
+    assert resultado.topic_kind == "application"
+
+
+def test_quedarse_sola_tampoco_basta() -> None:
+    # Ninguna señal sola llega al umbral: hacen falta al menos dos.
+    assert PESOS.lingering_on_document + PESOS.activity_without_project < 6
