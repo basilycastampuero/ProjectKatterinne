@@ -16,6 +16,7 @@ from __future__ import annotations
 import logging
 from collections import deque
 from collections.abc import Iterable
+from dataclasses import replace
 
 from companion.context.activity import classify
 from companion.context.models import (
@@ -84,8 +85,9 @@ class ContextEngine:
         if self._is_ignored(window):
             # Se hace como si no hubiera pasado nada: ni contexto nuevo ni
             # evento. Asi, mientras le hablas desde el terminal, el contexto
-            # sigue siendo aquello en lo que estabas.
-            return self._current, None
+            # sigue siendo aquello en lo que estabas. Marcado como fuera de
+            # foco: lo que mira una página tiene que saber que ya no la mira.
+            return replace(self._current, in_focus=False), None
 
         event = self._detector.observe(window)
         if event is not None:

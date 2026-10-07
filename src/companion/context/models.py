@@ -127,6 +127,11 @@ class CurrentContext:
     #: existe igual, simplemente sabe menos.
     redacted: bool = False
 
+    #: False si es lo último que tuvo delante y no lo que tiene ahora: la
+    #: ventana actual es un proceso ignorado, como el terminal desde el que
+    #: le habla. Sigue trabajando en lo mismo, pero ya no lo está mirando.
+    in_focus: bool = True
+
     #: Ultimos eventos de percepcion, del mas antiguo al mas reciente.
     recent_events: tuple[WindowEvent, ...] = ()
 

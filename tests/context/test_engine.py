@@ -278,3 +278,19 @@ def test_current_expone_el_ultimo_contexto(engine: ContextEngine) -> None:
     contexto, _ = engine.observe(make_window("Code.exe", title=VSCODE))
 
     assert engine.current is contexto
+
+
+def test_el_contexto_de_una_ventana_ignorada_dice_que_no_esta_delante() -> None:
+    # Mientras habla desde el terminal se conserva lo último que tenía
+    # delante, pero quien lo use tiene que poder saber que ya no lo mira.
+    motor = ContextEngine(ignore_processes=["WindowsTerminal.exe"])
+    delante, _ = motor.observe(make_window("brave.exe", title="Un vídeo - YouTube - Brave"))
+
+    desde_el_terminal, evento = motor.observe(make_window("WindowsTerminal.exe", title="PowerShell"))
+    otra_vez_delante, _ = motor.observe(make_window("brave.exe", title="Un vídeo - YouTube - Brave"))
+
+    assert delante.in_focus
+    assert evento is None
+    assert not desde_el_terminal.in_focus
+    assert desde_el_terminal.document == delante.document  # lo demás, igual
+    assert otra_vez_delante.in_focus

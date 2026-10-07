@@ -546,3 +546,31 @@ def test_una_pagina_sensible_calla_aunque_se_baje_el_umbral(umbral: int) -> None
 
     assert not decision.should_speak
     assert decision.reason == SilenceReason.SENSITIVE_PAGE
+
+
+def test_el_tiempo_en_el_terminal_no_cuenta_como_tiempo_en_la_pagina() -> None:
+    """Hablar con ella desde el terminal no es seguir mirando la página.
+
+    Al pasar al terminal, el motor de contexto devuelve el contexto anterior
+    para que la compañera no se cuente a sí misma. El cronómetro de la
+    página no se enteraba de que se había ido: dos minutos viendo un vídeo
+    y tres hablando con ella bastaban para preguntar por una página que ya
+    no tenía delante. En el REPL eso es lo normal. Lo encontró una revisión
+    de código.
+    """
+    from dataclasses import replace
+
+    video = _en(_VIDEO)
+    en_el_terminal = replace(video, in_focus=False)
+    motor = CuriosityEngine()
+
+    hablando = _evaluar_a_lo_largo(
+        motor, {0: video, 2: video, 3: en_el_terminal, 6: en_el_terminal, 10: en_el_terminal}
+    )
+    de_vuelta_poco = motor.evaluate(video, now=minutos(12))
+    # Vuelve en el minuto 12: los cinco minutos se cuentan desde ahí.
+    de_vuelta_un_rato = motor.evaluate(video, now=minutos(17))
+
+    assert not hablando.should_speak
+    assert not de_vuelta_poco.should_speak  # el cronómetro vuelve a empezar al volver
+    assert de_vuelta_un_rato.should_speak

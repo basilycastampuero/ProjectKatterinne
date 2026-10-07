@@ -264,7 +264,17 @@ class CuriosityEngine:
         return titulo
 
     def _track_document(self, context: CurrentContext, now: datetime) -> None:
-        """Reinicia el cronómetro de la página cuando cambia el documento."""
+        """Reinicia el cronómetro de la página cuando cambia el documento.
+
+        Fuera de foco se para del todo. Hablar con ella desde el terminal no
+        es seguir mirando la página, y al volver se empieza de cero. El
+        cronómetro del proyecto, en cambio, sigue: mientras charla, sigue
+        trabajando en lo mismo.
+        """
+        if not context.in_focus:
+            self._document_key = None
+            self._document_since = None
+            return
         clave = (
             context.application.value if context.application else None,
             context.document.value if context.document else None,
