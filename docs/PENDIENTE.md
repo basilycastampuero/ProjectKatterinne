@@ -32,9 +32,12 @@ comenta lo que ve, el título respalda el hecho y se guarda como
 
 ### Por dónde empezar
 
-`curiosity/scorer.py` y `curiosity/engine.py`. Decidir qué cuenta como
-"suficiente tiempo" en una página y si un documento nuevo puntúa como algo
-nuevo. Con tests del mismo estilo que los de novedad de proyecto.
+**Hay un plan detallado paso a paso en
+[`PLAN-curiosidad-navegador.md`](PLAN-curiosidad-navegador.md).** En
+resumen: la señal no es que la página sea nueva, sino que **se quede en
+ella**; y antes de que pueda preguntar por páginas, cerrar el log al tema y
+proteger las páginas sensibles (el banco en el navegador no lo cubre la
+lista negra de procesos).
 
 ### Cuidado con
 
