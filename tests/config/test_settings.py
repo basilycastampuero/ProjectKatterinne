@@ -200,3 +200,28 @@ def test_los_settings_son_inmutables() -> None:
 
     with pytest.raises(Exception):
         settings.llm.model = "otro"  # type: ignore[misc]
+
+
+def test_las_palabras_sensibles_del_toml_son_las_de_por_defecto() -> None:
+    # Son dos copias de la misma lista. Si divergen, el comportamiento
+    # dependería de si existe companion.toml o de si alguien lo copió a
+    # companion.local.toml antes o después del cambio.
+    from companion.config.settings import DEFAULT_SENSITIVE_TITLE_WORDS, PROJECT_ROOT
+
+    del_repositorio = load_settings(PROJECT_ROOT / "companion.toml", env={})
+
+    assert del_repositorio.privacy.sensitive_title_words == DEFAULT_SENSITIVE_TITLE_WORDS
+
+
+def test_las_palabras_sensibles_se_configuran(tmp_path: Path) -> None:
+    config = _write(
+        tmp_path, "companion.toml", '[privacy]\nsensitive_title_words = ["terapia"]\n'
+    )
+
+    desde_toml = load_settings(config, env={}).privacy.sensitive_title_words
+    desde_entorno = load_settings(
+        env={"COMPANION_PRIVACY_SENSITIVE_TITLE_WORDS": "terapia,abogado"}
+    ).privacy.sensitive_title_words
+
+    assert desde_toml == ("terapia",)
+    assert desde_entorno == ("terapia", "abogado")

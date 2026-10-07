@@ -22,6 +22,7 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
+from companion.config.settings import DEFAULT_SENSITIVE_TITLE_WORDS
 from companion.context.models import CurrentContext, Provenance
 from companion.curiosity.models import CuriosityDecision, QuestionType, SilenceReason
 from companion.curiosity.scorer import (
@@ -63,6 +64,9 @@ class CuriosityPolicy:
     #: A partir de cuanto tiempo sin ver un proyecto se considera que
     #: "vuelve" a el. Seis horas: mas o menos, otro dia de trabajo.
     absence_seconds: float = 21600.0
+
+    #: Si el título de una página contiene alguna, no se pregunta por ella.
+    sensitive_title_words: tuple[str, ...] = DEFAULT_SENSITIVE_TITLE_WORDS
 
 
 class CuriosityEngine:

@@ -151,11 +151,27 @@ convertirse en una pregunta, aunque se pase un rato en ella.
 - Con la lista negra de procesos sigue igual: una app bloqueada no tiene
   título.
 
+Hecho así:
+
+- `curiosity/sensitive.py`: `is_sensitive_title()`, lógica pura. Compara
+  sin mayúsculas ni tildes y **por principio de palabra**: "pago" cubre
+  "pagos", pero "banco" no salta con "Trabanco".
+- La lista por defecto vive en `config/settings.py`, porque es a la vez el
+  valor de un ajuste y lo que usa la curiosidad, y `config/` no puede
+  importar hacia arriba. Un test comprueba que la de `companion.toml` es la
+  misma.
+- Llega a `CuriosityPolicy.sensitive_title_words` desde `factory.py`.
+
+El test de *"no pregunta por el banco aunque se quede en él"* pasa al paso
+4: necesita la señal de quedarse en una página, que nace ahí.
+
 Tests:
 
-- `test_no_pregunta_por_una_pagina_de_banco_aunque_se_quede_en_ella`
+- `test_una_pagina_sensible_se_reconoce` y `test_una_pagina_corriente_no_es_sensible`
 - `test_las_palabras_sensibles_no_distinguen_mayusculas_ni_tildes`
+- `test_cuenta_el_principio_de_palabra_para_cubrir_plurales`
 - `test_la_lista_de_palabras_sensibles_se_puede_ampliar`
+- `test_las_palabras_sensibles_del_toml_son_las_de_por_defecto`
 
 ### Paso 4 — El cronómetro por documento y la señal nueva
 
@@ -173,6 +189,7 @@ Tests:
 
 Tests:
 
+- `test_no_pregunta_por_una_pagina_de_banco_aunque_se_quede_en_ella`
 - `test_quedarse_en_una_pagina_basta_para_tener_curiosidad`
 - `test_una_pagina_recien_abierta_no_basta`
 - `test_cambiar_de_pagina_reinicia_el_cronometro`

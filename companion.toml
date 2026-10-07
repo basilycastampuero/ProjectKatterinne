@@ -144,6 +144,21 @@ privacy_mode = false
 #   blocked_processes = ["1password.exe", "keepass.exe", "signal.exe"]
 blocked_processes = []
 
+# Palabras que, en el título de una página, hacen que la compañera NUNCA
+# pregunte por ella. La lista de arriba va por aplicación y no protege el
+# banco abierto en el navegador; esta sí.
+#
+# Sin mayúsculas ni tildes, y por principio de palabra: "pago" cubre
+# "pagos". Si la cambias, sustituye la lista entera: copia estas y añade
+# las tuyas.
+sensitive_title_words = [
+    "banco", "banca", "bank", "pago", "payment", "paypal", "checkout",
+    "factura", "invoice", "tarjeta", "transferencia", "nómina", "hacienda",
+    "impuestos", "contraseña", "password", "login", "log in",
+    "iniciar sesión", "sign in", "médico", "clínica", "hospital",
+    "analítica", "diagnóstico",
+]
+
 [logging]
 level = "INFO"
 to_file = true

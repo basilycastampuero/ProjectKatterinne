@@ -80,7 +80,7 @@ llm             no depende de ninguna otra capa
 config          no depende de ninguna otra capa
 context       → perception
 memory        → context, perception
-curiosity     → context, memory, llm
+curiosity     → config, context, memory, llm
 conversation  → context, memory, llm
 app           → todas
 ```
@@ -95,6 +95,13 @@ primero dentro de `conversation/facts.py`. Cuando la memoria también la
 necesitó, no se importó desde `conversation` (eso habría hecho que la
 memoria dependiera de la conversación, hacia arriba). Se movió a
 `memory/similarity.py`, y ahora la conversación la importa desde ahí.
+
+Otro ejemplo: la lista de palabras que hacen sensible una página
+(`DEFAULT_SENSITIVE_TITLE_WORDS`) es a la vez el valor por defecto de un
+ajuste de `[privacy]` y lo que usa la curiosidad. Vive en
+`config/settings.py`, que no depende de nada, y la curiosidad la importa de
+ahí. Ponerla en `curiosity/` obligaría a `config/` a importar hacia arriba;
+duplicarla haría que las dos copias acabaran diciendo cosas distintas.
 
 > **Si alguna vez necesitas importar algo de una capa de arriba**, es la
 > señal de que ese algo está en el sitio equivocado. Muévelo hacia abajo.

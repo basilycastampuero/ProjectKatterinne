@@ -24,6 +24,41 @@ CONFIG_CANDIDATES = ("companion.local.toml", "companion.toml")
 
 ENV_PREFIX = "COMPANION_"
 
+#: Punto de partida conservador, editable en `[privacy]` como
+#: `sensitive_title_words`. Cubre banca y
+#: pagos, cuentas y contraseñas, y salud. Se compara sin mayúsculas ni
+#: tildes y por principio de palabra, así que "pago" cubre "pagos".
+DEFAULT_SENSITIVE_TITLE_WORDS: tuple[str, ...] = (
+    # Dinero
+    "banco",
+    "banca",
+    "bank",
+    "pago",
+    "payment",
+    "paypal",
+    "checkout",
+    "factura",
+    "invoice",
+    "tarjeta",
+    "transferencia",
+    "nómina",
+    "hacienda",
+    "impuestos",
+    # Cuentas
+    "contraseña",
+    "password",
+    "login",
+    "log in",
+    "iniciar sesión",
+    "sign in",
+    # Salud
+    "médico",
+    "clínica",
+    "hospital",
+    "analítica",
+    "diagnóstico",
+)
+
 
 @dataclass(frozen=True, slots=True)
 class LLMSettings:
@@ -177,9 +212,15 @@ class PrivacySettings:
     #: concretas usa cada persona.
     blocked_processes: tuple[str, ...] = ()
 
+    #: Palabras que, en el título de una página, hacen que la compañera no
+    #: pregunte nunca por ella. La lista negra va por proceso y no protege
+    #: el banco abierto en el navegador; esto sí.
+    sensitive_title_words: tuple[str, ...] = DEFAULT_SENSITIVE_TITLE_WORDS
+
     def __post_init__(self) -> None:
         # TOML entrega listas; el resto del sistema asume una tupla inmutable.
         object.__setattr__(self, "blocked_processes", tuple(self.blocked_processes))
+        object.__setattr__(self, "sensitive_title_words", tuple(self.sensitive_title_words))
 
 
 @dataclass(frozen=True, slots=True)

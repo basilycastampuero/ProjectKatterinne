@@ -85,6 +85,7 @@ def build_curiosity(
         min_context_confidence=settings.curiosity.min_context_confidence,
         max_questions_per_session=settings.curiosity.max_questions_per_session,
         absence_seconds=settings.curiosity.absence_seconds,
+        sensitive_title_words=settings.privacy.sensitive_title_words,
     )
     return CuriosityEngine(policy=policy, memory=memory)
 

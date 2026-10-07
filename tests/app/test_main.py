@@ -211,3 +211,16 @@ def test_el_maximo_de_hechos_llega_desde_la_configuracion(tmp_path: Path) -> Non
 
     assert len(extraidos) == 1
     memoria.repository.close()
+
+
+def test_las_palabras_sensibles_llegan_a_la_curiosidad() -> None:
+    from dataclasses import replace
+
+    from companion.app.factory import build_curiosity
+
+    settings = Settings()
+    settings = replace(
+        settings, privacy=replace(settings.privacy, sensitive_title_words=("terapia",))
+    )
+
+    assert build_curiosity(settings).policy.sensitive_title_words == ("terapia",)
