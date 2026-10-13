@@ -1,6 +1,6 @@
 # 8. Los tests
 
-Este proyecto tiene más de 690 tests y **ninguno necesita Ollama, la GPU ni
+Este proyecto tiene más de 800 tests y **ninguno necesita Ollama, la GPU ni
 una base de datos en disco**. La suite entera tarda unos dos segundos. Este
 capítulo explica cómo es eso posible, cómo se ejecutan y cómo escribir el
 tuyo.
@@ -30,7 +30,7 @@ Salida normal:
 
 ```
 .........................................................                [100%]
-711 passed in 2.41s
+829 passed in 2.91s
 ```
 
 Cada punto es un test que pasa. Una `F` es uno que falla, y al final verás
@@ -290,6 +290,32 @@ Falla por el motivo correcto: hoy sale `"Steamwebhelper"`.
 
 Ese es el ciclo completo. El capítulo 9 explica cómo convertirlo en un
 commit.
+
+## 8.8 Lo que pytest no puede medir: el benchmark
+
+Los dobles de `FakeProvider` devuelven lo que se les pide, así que **ningún
+test ve cómo falla un modelo de verdad** (capítulo 8.6). Para eso está el
+benchmark (`benchmark/`, capítulo 3.10): pasa casos fijos por el modelo real
+y cuenta cuántos supera. No corre con pytest, a propósito: necesita Ollama y
+GPU, tarda minutos por modelo, y la suite tiene que seguir terminando en
+unos segundos y sin hardware.
+
+Lo que sí está en pytest es su **contabilidad**, en `tests/benchmark/`:
+
+- `test_cases.py`: cada caso aprueba con su respuesta ideal y suspende lo
+  que debe. Es la protección contra comprobaciones mal hechas. Al construir
+  el benchmark, las comprobaciones por palabras clave suspendieron respuestas
+  correctas tres veces ("no estoy segura" no contaba como admitir que no lo
+  sabe, y "no puedo ver la otra pestaña" se tomaba por afirmar que la ve).
+  Sin ese test, el benchmark castigaría a los modelos por un fallo suyo.
+- `test_runner.py`: el calentamiento no cuenta, un error del modelo es una
+  nota, y tras descargar espera a que la GPU quede libre.
+- `test_informe.py`: la tabla, la hoja ciega (letras barajadas, la clave
+  devuelve cada respuesta a su modelo, abre bien en Excel) y la lectura de
+  notas.
+
+Sirve para el mismo ciclo del capítulo 8.6: cuando tocas un prompt, antes de
+darlo por bueno, lo mides con el modelo de verdad varias veces.
 
 ---
 

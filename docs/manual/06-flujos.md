@@ -274,6 +274,16 @@ apoya**, y ese dato tiene que ser uno de los que se le dieron. Si dice
 apoyarse en el documento y no había documento abierto, se lo ha inventado,
 y la pregunta se descarta. Lo explica el [ADR-009](../architecture-decisions/ADR-009-validate-what-the-model-says.md).
 
+Por dentro, `generate()` se reparte el trabajo con `propose()`. `propose()`
+hace los pasos 1 a 3 y devuelve un `ModelProposal`: lo que dijo el modelo,
+el dato en que dice apoyarse y el motivo de rechazo si no pasó la
+validación, o `None` si no había nada real en lo que apoyarse. No usa la
+plantilla. `generate()` solo añade el paso 4: si la propuesta vale, la
+convierte en `GeneratedQuestion`; si no, usa la plantilla. Se separó para
+el benchmark (capítulo 3.10): con la plantilla detrás, un modelo que fallara
+siempre parecería funcionar. Los fallos del modelo tienen nombre: "error del
+modelo", "JSON inválido" y "JSON que no es un objeto".
+
 La **plantilla** es peor que una buena pregunta del modelo, pero mucho mejor
 que una mala: no puede inventarse nada porque no genera nada.
 
@@ -443,6 +453,16 @@ FactExtractor.extract()                             conversation/facts.py
           sí → lo marca como usado y no duplica
           no → lo guarda como USER_CONFIRMED
 ```
+
+`extract()` tiene un hermano, `review()`, que hace exactamente lo mismo pero
+devuelve un `ExtractionReport`: los hechos aceptados, cuántos propuso el
+modelo, cuántos rechazó el validador por cada motivo y, si no hubo
+candidatos, por qué (el modelo falló o no devolvió una lista). `extract()`
+se queda con la parte de los aceptados. Existe porque, para medir un modelo,
+no basta con lo que se guarda: no proponer nada y proponer algo que el
+validador rechaza son fallos distintos y se arreglan de forma distinta. Los
+motivos van sin el detalle entre paréntesis, porque ese detalle puede
+repetir algo que dijiste.
 
 ### La idea clave: cita y respaldo
 

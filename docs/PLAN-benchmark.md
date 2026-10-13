@@ -73,15 +73,18 @@ por detrás de sus familias) y todo lo que pasa de ~7 GB a 4 bits, como
 ```
 benchmark/                  fuera de src/: no es parte de la aplicación
     __main__.py             python -m benchmark --model qwen3:8b
+    core.py                 Case, Verdict, Attempt y RecordingProvider
     runner.py               repeticiones, calentamiento, guardar resultados
-    scoring.py              las notas de cada tarea
+    report.py               resumen por tarea y tabla comparativa
+    blind.py                la hoja ciega y la lectura de notas
+    informe.py              python -m benchmark.informe <carpeta>
     cases/
-        questions.py        contextos para la curiosidad
-        facts.py            conversaciones para la extracción
-        conversation.py     idioma, persona, retención, alucinación, técnica
-    report.py               tabla comparativa y hoja ciega
+        rendimiento.py      velocidad y memoria
+        preguntas.py        contextos para la curiosidad
+        hechos.py           conversaciones para la extracción
+        conversacion.py     conversación y estilo
 tests/benchmark/            la puntuación, probada con FakeProvider
-data/benchmark/<fecha>/     resultados por modelo (ignorado por git)
+data/benchmark/<carpeta>/   resultados por modelo (ignorado por git)
 ```
 
 - **Fuera de `src/` y fuera de `pytest`.** Necesita Ollama y GPU, y tarda;

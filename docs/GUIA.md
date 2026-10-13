@@ -233,12 +233,14 @@ ProjectKatterinne/
 ├── companion.toml         configuración por defecto
 ├── pyproject.toml         empaquetado y configuración de pytest
 ├── data/                  memoria y logs (en .gitignore, nunca se commitea)
+├── benchmark/             comparar modelos; fuera de src/ y de pytest
 ├── docs/
 │   ├── GUIA.md            este documento
 │   ├── PENDIENTE.md       qué falta y por dónde seguir
+│   ├── PLAN-benchmark.md  el plan del benchmark y su estado
 │   └── architecture-decisions/   los porqués, un archivo por decisión
 ├── src/companion/
-└── tests/
+└── tests/                 refleja src/; tests/benchmark/ prueba el benchmark
 ```
 
 ### `src/companion/` — las capas
@@ -390,6 +392,14 @@ perfectamente válido y aun así inventarse lo que hay en pantalla o soltar un
 "¡sigue así!". El truco central: el modelo debe **declarar en qué dato se
 apoya**, y ese campo tiene que ser uno de los que se le dieron de verdad.
 Ver [ADR-009](architecture-decisions/ADR-009-validate-what-the-model-says.md).
+**`propose()` es lo que dice el modelo; `generate()`, lo que se dice en voz
+alta.** `propose()` devuelve un `ModelProposal`: la pregunta tal cual llegó,
+el dato en que dice apoyarse y el motivo de rechazo si no vale, **sin
+plantilla de respaldo**. `generate()` lo usa y, si no pasa, cae en la
+plantilla, igual que antes. Existe porque con la plantilla detrás un modelo
+que fallara siempre parecería funcionar: el benchmark necesita ver el fallo.
+Los fallos del modelo tienen nombre ("error del modelo", "JSON inválido",
+"JSON que no es un objeto").
 También rechaza lo que finge haber visto una página: "vi que" y "he visto"
 ("has visto" vale, es una pregunta). Y si una plantilla con tema se pasa de
 `max_words`, usa la que no lo lleva.
@@ -400,7 +410,7 @@ También rechaza lo que finge haber visto una página: "vi que" y "he visto"
 
 | Archivo | Qué hace |
 |---|---|
-| `provider.py` | `LLMProvider`: la interfaz de la que depende todo |
+| `provider.py` | `LLMProvider`: la interfaz de la que depende todo, y `MemoryUsage` |
 | `ollama.py` | **El único archivo que sabe que existe Ollama** |
 | `http_client.py` | GET/POST sobre `urllib`, y traducción de fallos de red |
 | `prompts.py` | Los prompts del sistema |
@@ -411,6 +421,14 @@ JSON lo resuelve `urllib` de la biblioteca estándar. El proyecto entero
 tiene **cero dependencias de runtime**, y eso tiene un beneficio concreto
 para un programa que lee los títulos de tus ventanas: no hay superficie de
 terceros que auditar. Ver [ADR-002](architecture-decisions/ADR-002-zero-runtime-dependencies.md).
+
+**`memory_usage()` dice cuánta memoria ocupa el modelo cargado.** Devuelve
+un `MemoryUsage` (`total_bytes`, `gpu_bytes`, `context_length` y la
+propiedad `fits_in_gpu`) o `None`: si no está cargado o el runtime no lo
+dice. Como `unload()`, no es abstracto y por defecto no hace nada
+(devuelve `None`): nada de la aplicación depende de él. En Ollama sale de
+`/api/ps`. Si el modelo no cabe entero en la GPU, el runtime manda capas a
+la CPU y la latencia se dispara: un modelo así no sirve aunque conteste bien.
 
 **`prompts.py` es código que se edita a mano y con cuidado.** Un ejemplo
 demasiado literal se convierte en plantilla: el modelo llegó a copiar
@@ -445,6 +463,14 @@ nunca lanza: si el modelo falla o devuelve algo raro, no se guarda nada,
 que es lo mismo que pasaba antes de que existiera. Y el log cuenta cuántos
 hechos se proponen y por qué se rechazan, **nunca su contenido**: es texto
 tuyo.
+
+**`review()` cuenta lo que `extract()` calla.** Devuelve un
+`ExtractionReport`: lo aceptado (`accepted`), cuántos hechos propuso el
+modelo (`proposed`), los rechazos por categoría (`rejections`) y, si no hubo
+candidatos, por qué (`failure`). `extract()` lo usa y devuelve lo mismo que
+siempre. Las categorías van sin el detalle entre paréntesis porque puede
+repetir texto tuyo. No proponer nada y proponer algo que el validador
+rechaza son fallos distintos, y se arreglan de forma distinta.
 
 **Las reglas del validador salen de casos reales.** Están en
 `tests/conversation/test_facts_real_cases.py`: hechos fieles que deben
@@ -486,6 +512,41 @@ sincronizar.
 registra títulos de ventana ni texto de conversación. Solo métricas y
 metadatos. Hubo una fuga real por saltársela y está contada en
 [ADR-005](architecture-decisions/ADR-005-privacy-as-a-filter-layer.md).
+
+---
+
+### `benchmark/` — comparar modelos
+
+Vive en la raíz, **fuera de `src/` y fuera de pytest**: necesita Ollama y
+GPU y tarda. Usa las piezas reales (el proveedor de `build_provider`,
+`QuestionGenerator`, `FactExtractor`, `ConversationManager`, los prompts y
+los validadores): con copias propias mediría otra cosa. Todos los casos son
+inventados. Plan y estado: [`PLAN-benchmark.md`](PLAN-benchmark.md).
+
+| Archivo | Qué hace |
+|---|---|
+| `__main__.py` | `python -m benchmark --model ...`: pasa los casos por cada modelo y guarda un JSON por modelo. Anota el commit con que se mide (`+cambios` si `src/` o `benchmark/` están sin commitear) |
+| `core.py` | `Case`, `Verdict`, `Attempt` y `RecordingProvider`, que deja pasar cada llamada y apunta lo que costó |
+| `runner.py` | `run_model()` (calentamiento, memoria, repeticiones), `unload_and_wait()`, `save()` y `load()` |
+| `report.py` | Resume una ejecución (`summarize()`, `format_run()`) y arma la tabla comparativa (`compare()`) |
+| `blind.py` | La hoja ciega: `build()`, `write()` y `read_scores()` |
+| `informe.py` | `python -m benchmark.informe <carpeta> [--notas]`: escribe `comparativa.md`, `hoja_ciega.csv` y `clave.json` |
+| `cases/` | Los 51 casos, en cinco tareas: `rendimiento` (3), `preguntas` (12), `hechos` (16), `conversacion` (14) y `estilo` (6) |
+
+**Qué se mide y cómo se nota.** Preguntas y hechos los juzgan los mismos
+validadores de la aplicación, sin plantilla de respaldo, así que miden lo que
+importa en uso real. `conversacion` y `estilo` van en tareas separadas para
+que un emoji no suspenda una respuesta técnica perfecta. Lo que solo puede
+juzgar una persona (si suena natural, si ayuda) va a la **hoja ciega**: las
+respuestas de todos los modelos mezcladas, con letras barajadas en cada
+escenario y la clave en otro archivo. El CSV usa `;` y UTF-8 con BOM para
+que Excel en español lo abra bien.
+
+**Cada caso se repite** (5 veces por defecto, `--reps`): con temperatura
+0,7 un caso puede salir bien una vez y mal la siguiente, así que se comparan
+tasas. La velocidad de la tabla sale solo de `rendimiento`, que manda los
+mismos mensajes a todos los modelos. Los resultados van a
+`data/benchmark/<carpeta>/`, que git ignora.
 
 ---
 
@@ -550,7 +611,7 @@ que comentas de un vídeo o de lo que te gusta es `LONG_TERM`.
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-**711 tests. Solo 7 necesitan Windows de verdad**, y están marcados para
+**829 tests. Solo 7 necesitan Windows de verdad**, y están marcados para
 saltarse en otras plataformas. El resto corre con dobles:
 
 | Se sustituye | Por | Dónde |
@@ -564,6 +625,11 @@ saltarse en otras plataformas. El resto corre con dobles:
 
 Esto es un requisito explícito, no una preferencia: **nada del
 proyecto debe necesitar GPU para testearse.**
+
+El benchmark tampoco corre en la suite, pero su contabilidad sí se prueba
+(`tests/benchmark/`): que cada caso aprueba con su respuesta ideal, que
+suspende lo que debe, que la hoja ciega no mezcla las notas y que el runner
+espera a que la GPU quede libre.
 
 ### Cómo escribir un test aquí
 
@@ -630,6 +696,7 @@ desactivó a propósito.
 | Proteger una página (que nunca pregunte por ella) | Añadir una palabra a `sensitive_title_words` en `[privacy]` (copia la lista entera y añade) |
 | Cambiar el tono o la personalidad | `llm/prompts.py` |
 | Añadir un filtro a las preguntas | `curiosity/questions.py`, `validate_question()` |
+| Medir un modelo nuevo o un cambio de prompt | `python -m benchmark` (ver `benchmark/`); para un caso nuevo, `benchmark/cases/` |
 | Que aprenda más o menos de lo que le cuentas | Primero un caso en `tests/conversation/test_facts_real_cases.py`; luego `validate_fact()` o el prompt |
 | Borrar lo que ha aprendido | `/memory` para ver el id, `/forget <id>` |
 | Guardar un tipo de dato nuevo | `memory/schema.py` + `models.py` + `repository.py` |
@@ -739,6 +806,32 @@ los compara con `describe_context` y `describe_facts`), y cualquier cambio
 en un prompt se prueba con el modelo de verdad, varias veces. Reescribir
 solo la regla no arregló nada; el ejemplo sí (ADR-010).
 
+### Las comprobaciones por palabras clave suspenden respuestas correctas
+
+Pasó tres veces al construir el benchmark. "No estoy segura" no contaba
+como admitir que no lo sabe. Y la lista de "afirma ver la pantalla" del
+validador de preguntas suspendía "no puedo ver la otra pestaña": en una
+pregunta nunca hay negaciones, en una conversación sí, y la respuesta buena
+es justo esa. Por eso ahora una negación justo antes no cuenta. La regla:
+cada caso de `benchmark/cases/` lleva su **respuesta ideal** y un test exige
+que apruebe. Si una comprobación suspende lo que tú darías por bueno, el
+fallo es de la comprobación; el test lo descubre antes de culpar al modelo.
+
+### La memoria del modelo incluye el contexto
+
+`qwen3:8b` pesa 5,2 GB en la descarga y ocupa **5,96 GB** cargado con
+`num_ctx = 4096`: la ventana de contexto también gasta memoria. Por eso
+`memory_usage()` se mide con el modelo cargado como lo usa la aplicación, y
+no se fía de la cifra de la página del modelo.
+
+### Descargar un modelo de Ollama es asíncrono
+
+`unload()` contesta al instante y la VRAM se libera un momento después:
+medido, justo tras descargar seguía cargado y dos segundos más tarde ya no.
+Si se carga otro modelo sin esperar, ambos coinciden en la GPU y la memoria
+medida no vale. `unload_and_wait()` (en `benchmark/runner.py`) consulta
+`memory_usage()` hasta que devuelve `None`.
+
 ### El pipe se traga el código de salida
 
 ```bash
@@ -761,6 +854,8 @@ Pasó, y se commitearon tests en rojo.
 | **Procedencia** | De dónde salió un dato: observado, inferido o confirmado |
 | **Sondeo** | Una consulta a la ventana activa. Uno por segundo |
 | **Alcance** *(scope)* | Cuánto debe durar un recuerdo |
+| **Benchmark** | Los mismos casos pasados a cada modelo para compararlos. Vive en `benchmark/`, fuera de pytest |
+| **Hoja ciega** | Respuestas de todos los modelos mezcladas y con letras, para puntuarlas sin saber de quién son |
 | **Provider** | Interfaz abstracta. `LLMProvider`, `ActiveWindowProvider` |
 | **Decorador** | Un objeto que envuelve a otro con la misma interfaz y le añade algo. Así funciona el filtro de privacidad |
 

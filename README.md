@@ -44,7 +44,10 @@ servicios de visión ni de voz en la nube.
   minutos en el navegador. Solo conoce el título, nunca el contenido, y
   nunca pregunta por páginas con palabras sensibles en el título (banco,
   pago, contraseña, médico…).
-- 711 tests, de los que solo 7 necesitan Windows.
+- **Un benchmark de modelos** (`benchmark/`), fuera de la aplicación: los
+  mismos 51 casos para cada modelo candidato, con las mismas piezas y los
+  mismos validadores que usa la compañera.
+- 829 tests, de los que solo 7 necesitan Windows.
 
 ## Qué todavía NO existe
 
@@ -338,11 +341,42 @@ de Windows. Existe porque un `restype` mal declarado en `ctypes` pasa todos
 los tests con dobles y falla solo contra la API real. Se salta fuera de
 Windows.
 
+## Benchmark de modelos
+
+`qwen3:8b` está porque cabía en la VRAM y funcionaba, no porque ganara una
+comparación. El benchmark (`benchmark/`) existe para compararlo con otros
+en este equipo. **No corre con `pytest`**: necesita Ollama y GPU, y tarda.
+Lo que sí está en la suite (`tests/benchmark/`) es su contabilidad: que cada
+caso se califica bien con respuestas fijas.
+
+Cinco tareas, 51 casos inventados: `rendimiento` (velocidad y memoria),
+`preguntas` (la pregunta de curiosidad, sin plantilla de respaldo), `hechos`
+(qué aprende de una conversación), `conversacion` y `estilo`. Para notas
+que solo puede dar una persona (si suena natural, si ayuda), el informe
+genera una hoja ciega con las respuestas mezcladas y sin nombre de modelo.
+
+```powershell
+# Medir, con la GPU libre (--model se repite). Resultados en la carpeta de --out
+.\.venv\Scripts\python.exe -m benchmark --out data\benchmark\candidatos `
+    --model qwen3:8b --model gemma4:e4b
+
+# Tabla comparativa (comparativa.md) y hoja ciega (hoja_ciega.csv)
+.\.venv\Scripts\python.exe -m benchmark.informe data\benchmark\candidatos
+
+# Tras puntuar la hoja del 1 al 5: añade la nota media de cada modelo
+.\.venv\Scripts\python.exe -m benchmark.informe data\benchmark\candidatos --notas
+```
+
+Otras opciones de `python -m benchmark`: `--reps` (repeticiones por caso, 5
+por defecto) y `--task` (repetible; por defecto, todas). El plan, con los
+candidatos y lo que falta, está en [`docs/PLAN-benchmark.md`](docs/PLAN-benchmark.md).
+
 ---
 
 ## Arquitectura
 
 ```
+benchmark/               comparar modelos; fuera de src/ y de pytest
 src/companion/
 ├── main.py              punto de entrada y parseo de argumentos
 ├── logging_setup.py     logs con formato [COMPONENTE]
@@ -399,6 +433,7 @@ módulo hermano y añadir una rama en `factory.py`.
 | [`docs/manual/`](docs/manual/README.md) | Para quien empieza de cero: conceptos, arquitectura, flujos, tests y cómo se trabaja |
 | [`docs/GUIA.md`](docs/GUIA.md) | La referencia rápida: cómo funciona, archivo por archivo, y el porqué de cada cosa |
 | [`docs/PENDIENTE.md`](docs/PENDIENTE.md) | Qué falta y con qué contexto retomarlo |
+| [`docs/PLAN-benchmark.md`](docs/PLAN-benchmark.md) | El benchmark de modelos: qué mide, los candidatos y qué falta |
 | [`docs/architecture-decisions/`](docs/architecture-decisions/) | Once ADRs: las decisiones y por qué se tomaron |
 
 Si vas a cambiar algo que ya tiene un ADR, léelo antes: casi siempre la
@@ -461,8 +496,9 @@ Medido en ese equipo, comparado con el modelo provisional anterior:
 | Primer token | ~6.0 s | **~0.6 s** |
 | Velocidad | 3–7 tok/s | **~28 tok/s** |
 
-Sigue siendo una elección provisional hasta el benchmark, pero ya
-cumple el rango 4B–8B previsto y deja ~1.7 GB de VRAM libres.
+Sigue siendo una elección provisional: el benchmark ya está construido,
+pero falta ejecutarlo con los candidatos. Ya cumple el rango 4B–8B
+previsto y deja ~1.7 GB de VRAM libres.
 
 **El modo de razonamiento va desactivado** (`think = false`). Ver
 [ADR-003](docs/architecture-decisions/ADR-003-disable-thinking-mode.md).

@@ -14,6 +14,7 @@ importa, **qué no hay que romper**.
 ProjectKatterinne/
 ├── src/companion/        el código
 ├── tests/                los tests
+├── benchmark/            la comparación de modelos (no es parte de la aplicación)
 ├── docs/                 la documentación
 ├── data/                 lo que genera la aplicación (no se sube)
 ├── companion.toml        la configuración
@@ -112,7 +113,7 @@ memoria** (capítulo 1.1): la continuidad la construye el programa.
 | `scorer.py` | `score()`: suma puntos a partir de señales. `CuriosityWeights`: cuánto vale cada una | Lógica pura: sin reloj, sin base de datos. Los pesos están calibrados para que **ninguna señal sola** llegue al umbral. Sin proyecto y con una página en la que se queda, el tema es la página (`CONTENT_CURIOSITY`) y no el navegador |
 | `sensitive.py` | `is_sensitive_title()`: ¿el título de una página contiene una palabra sensible? | Lógica pura. Compara sin mayúsculas ni tildes y por **principio de palabra** ("pago" cubre "pagos", "banco" no salta con "Trabanco"). Existe porque la lista negra va por proceso y no protege el banco abierto en el navegador. La lista por defecto (`DEFAULT_SENSITIVE_TITLE_WORDS`) vive en `config/settings.py`, porque `config` no puede importar hacia arriba |
 | `engine.py` | `CuriosityEngine`: las barreras en orden, luego la puntuación. `CuriosityPolicy`: cuándo se le permite hablar. Lleva dos cronómetros: el del contexto y el de la página actual | El segundo vive **solo en RAM** y no guarda más que la página actual: sin historial de navegación. **No llama al modelo.** `evaluate()` decide; `record_question()` compromete y arranca el enfriamiento. Son dos pasos para no callarse 20 minutos por una pregunta que nunca salió |
-| `questions.py` | `QuestionGenerator`: pide la pregunta al modelo, la valida y, si falla, usa una plantilla | Casi todo el archivo es validación. Si una plantilla con tema se pasa de `max_words`, se usa la que no lleva tema. Las frases prohibidas son **expresiones regulares** y no textos literales porque el español conjuga: *"sigue así"*, *"seguir así"* y *"sigues así"* son lo mismo |
+| `questions.py` | `QuestionGenerator`: pide la pregunta al modelo, la valida y, si falla, usa una plantilla. `propose()` devuelve `ModelProposal` (lo que propuso el modelo y el motivo de rechazo, sin plantilla); `generate()` lo usa y se comporta como siempre | Casi todo el archivo es validación. `propose()` existe para medir al modelo sin que la plantilla tape sus fallos. Si una plantilla con tema se pasa de `max_words`, se usa la que no lleva tema. Las frases prohibidas son **expresiones regulares** y no textos literales porque el español conjuga: *"sigue así"*, *"seguir así"* y *"sigues así"* son lo mismo |
 
 ---
 
@@ -120,8 +121,8 @@ memoria** (capítulo 1.1): la continuidad la construye el programa.
 
 | Archivo | Qué hace | Por qué, y qué no romper |
 |---|---|---|
-| `provider.py` | La interfaz `LLMProvider` y los tipos `Message`, `ModelInfo` y `GenerationResult` | El resto del programa depende **solo** de esto. `generate_with_image()` está declarado pero no implementado: la visión es la fase 5 |
-| `ollama.py` | `OllamaProvider`: habla con la API de Ollama | **El único archivo que sabe que existe Ollama.** Consulta si el modelo soporta *thinking* antes de mandar ese campo, porque cambiar de modelo no debe romper nada. `unload()` libera la VRAM al salir |
+| `provider.py` | La interfaz `LLMProvider` y los tipos `Message`, `ModelInfo`, `GenerationResult` y `MemoryUsage` | El resto del programa depende **solo** de esto. `generate_with_image()` está declarado pero no implementado: la visión es la fase 5. `memory_usage()` dice cuánta memoria ocupa el modelo cargado y cuánta está en la GPU (`MemoryUsage.fits_in_gpu`); como `unload()`, no es abstracto y por defecto devuelve `None`, porque no todos los runtimes lo dicen y nada de la aplicación depende de ello |
+| `ollama.py` | `OllamaProvider`: habla con la API de Ollama | **El único archivo que sabe que existe Ollama.** Consulta si el modelo soporta *thinking* antes de mandar ese campo, porque cambiar de modelo no debe romper nada. `unload()` libera la VRAM al salir. `memory_usage()` lee `/api/ps`; la cifra incluye la ventana de contexto, así que es mayor que la de la descarga (`qwen3:8b`: 5,96 GB con `num_ctx` 4096, no los 5,2 de la página del modelo) |
 | `http_client.py` | GET, POST y lectura de NDJSON sobre `urllib`, y traducción de errores de red | No sabe nada de Ollama. Un fallo de conexión se convierte en `ProviderUnavailableError`; un error HTTP, en `HttpError` |
 | `prompts.py` | Los prompts: `SYSTEM_PROMPT` (personalidad y límites), `QUESTION_SYSTEM_PROMPT` (con una regla y un ejemplo sobre vídeos: solo conoce el título), `FACT_EXTRACTION_SYSTEM_PROMPT` y sus ejemplos | Viven aquí para poder cambiarlos y compararlos entre modelos. ⚠️ El bloque de **qué percibe y qué recuerda** tiene que estar al día: uno desfasado le hace negar lo que sabe o inventarse lo que no. ⚠️ Un ejemplo demasiado literal se convierte en plantilla: el modelo llegó a copiar uno palabra por palabra. ⚠️ Los ejemplos de extracción deben pintarse igual que la entrada real, incluido el bloque de lo que ya recuerda: un test lo exige |
 | `errors.py` | `LLMError` y sus variantes | Independientes del proveedor: el resto del programa nunca captura errores de `urllib` ni de Ollama |
@@ -133,7 +134,7 @@ memoria** (capítulo 1.1): la continuidad la construye el programa.
 | Archivo | Qué hace | Por qué, y qué no romper |
 |---|---|---|
 | `manager.py` | `ConversationManager`: guarda el historial, arma lo que se le manda al modelo (`build_payload()`), envía (`send()`), persiste los turnos y lleva la cola de lo que hay que revisar para aprender (`extract_pending()`) | El modelo no tiene estado: aquí se construye cada vez lo que tiene que saber. ⚠️ Ningún fallo de la memoria puede impedir conversar: cada acceso a la memoria está protegido |
-| `facts.py` | `validate_fact()`: el validador de recuerdos. `FactExtractor`: pide los recuerdos al modelo y se queda con los válidos. `PendingTurn` y `ExtractedFact` | Un recuerdo necesita **la cita literal** de lo que dijiste (ADR-010). El extractor nunca lanza: si algo falla, no se guarda nada. ⚠️ El log cuenta los rechazos por motivo, pero **nunca el contenido** |
+| `facts.py` | `validate_fact()`: el validador de recuerdos. `FactExtractor`: pide los recuerdos al modelo y se queda con los válidos; `review()` además cuenta cuántos propuso y por qué rechazó el resto (`ExtractionReport`), y `extract()` lo usa y devuelve solo lo aceptado. `PendingTurn` y `ExtractedFact` | Un recuerdo necesita **la cita literal** de lo que dijiste (ADR-010). El extractor nunca lanza: si algo falla, no se guarda nada. ⚠️ El log cuenta los rechazos por motivo, pero **nunca el contenido** |
 
 ---
 
@@ -147,7 +148,32 @@ memoria** (capítulo 1.1): la continuidad la construye el programa.
 
 ---
 
-## 7.10 `tests/` — los tests
+## 7.10 `benchmark/` — comparar modelos
+
+Responde a *"¿qué modelo conviene usar?"*. Está en la raíz, **fuera de
+`src/companion/` y fuera de pytest**: necesita Ollama y GPU y tarda, así que
+meterlo en la suite la haría lenta y dependiente de hardware (capítulo 8.8).
+Usa las piezas reales de la aplicación, no copias: si tuviera las suyas,
+mediría otra cosa. Todos sus casos son inventados. Se ejecuta como se explica
+en el capítulo 3.10.
+
+| Archivo | Qué hace | Por qué, y qué no romper |
+|---|---|---|
+| `__init__.py` | Explica en su docstring qué es y cómo se lanza | Para que `python -m benchmark` funcione, la carpeta tiene que ser un paquete |
+| `__main__.py` | El punto de entrada de `python -m benchmark`: construye un proveedor por modelo con los ajustes de la aplicación (solo cambia el modelo), pasa los casos y guarda el resultado | Anota el commit con que se midió, marcado `+cambios` si `src/` o `benchmark/` tienen cambios sin commitear: un resultado sin eso no se puede comparar, porque no se sabe con qué prompts salió. Entre modelo y modelo descarga el anterior y avisa si no se liberó la GPU |
+| `core.py` | `Case` (un caso fijo), `Verdict` (la nota de un intento, con un motivo corto), `Attempt` (una repetición), `CallMetrics` y `RecordingProvider` | `RecordingProvider` envuelve al proveedor real y apunta cuánto cuesta cada llamada, así los casos usan `QuestionGenerator` o `FactExtractor` tal cual sin saber que los miden. Los motivos de fallo son categorías cortas: "falló" no enseña nada y una categoría se puede contar |
+| `runner.py` | `run_model()`, `unload_and_wait()`, `save()` y `load()` | `run_model()` hace una llamada de **calentamiento** que no cuenta: sin ella el primer caso pagaría cargar 5 GB de disco (3,4 s contra 0,39 s hasta el primer token). Un error del modelo es una nota, no un motivo para tirar la ejecución. `unload_and_wait()` existe porque la descarga de Ollama es asíncrona: contesta al instante y libera la VRAM un poco después |
+| `report.py` | `summarize()`, `format_run()` y `compare()`: tasas por tarea, motivos de fallo y la tabla comparativa | Usa la **mediana** y no la media: una llamada que tarde diez veces más no debe mover la cifra. La velocidad sale solo de la tarea `rendimiento`, que manda lo mismo a todos los modelos. Avisa si los modelos se midieron con revisiones distintas |
+| `blind.py` | `build()`, `write()` y `read_scores()`: la hoja ciega | Las letras se barajan en cada escenario, o a las pocas filas se le reconocería el estilo a un modelo. El CSV usa `;` y UTF-8 con BOM, que es lo que abre bien Excel en español. Una nota que no se entiende **para** en vez de promediar mal |
+| `informe.py` | `python -m benchmark.informe`: escribe `comparativa.md`, `hoja_ciega.csv` y `clave.json`, y con `--notas` añade la nota de cada modelo | Si la hoja ya existe no la regenera: podría tener las notas puestas |
+| `cases/` | Los 51 casos, en cinco tareas: `rendimiento` (3), `preguntas` (12), `hechos` (16), `conversacion` (14) y `estilo` (6) | Cada caso lleva su **respuesta ideal** y un test exige que apruebe. Los casos se escriben antes de ver resultados; si uno resulta injusto, se cambia para todos los modelos y se mide de nuevo todo |
+
+El plan, con los modelos candidatos y lo que falta, está en
+[`PLAN-benchmark.md`](../PLAN-benchmark.md).
+
+---
+
+## 7.11 `tests/` — los tests
 
 La carpeta `tests/` **refleja la estructura de `src/`**: los tests de
 `src/companion/memory/manager.py` están en `tests/memory/test_manager.py`.
@@ -156,6 +182,7 @@ La carpeta `tests/` **refleja la estructura de `src/`**: los tests de
 |---|---|
 | `conftest.py` | Los dobles compartidos: `FakeProvider` (un modelo falso), `FakeActiveWindowProvider` (un Windows falso) y `make_window()` para crear ventanas de prueba. pytest carga los `conftest.py` solo |
 | `perception/` | Detección de ventana, privacidad, nombres de proceso, títulos y cambios |
+| `benchmark/` | La contabilidad del benchmark: que cada caso aprueba con su respuesta ideal, que la tabla y la hoja ciega salen bien y que el runner espera a la GPU. Capítulo 8.8 |
 | `perception/test_win32_real.py` | Los únicos tests que llaman a la API real de Windows. Comprueban lo que un doble nunca podría: que las declaraciones de `ctypes` son correctas. Se saltan fuera de Windows |
 | `context/` | El motor de contexto, la clasificación de actividad y los modelos |
 | `memory/conftest.py` | `T0` (un instante fijo) y `minutos(n)`, para razonar sobre fechas sin el reloj; y la fixture `repo` con una base de datos en RAM |
@@ -172,13 +199,14 @@ El capítulo 8 explica cómo escribirlos.
 
 ---
 
-## 7.11 `docs/` — la documentación
+## 7.12 `docs/` — la documentación
 
 | Archivo | Para qué |
 |---|---|
 | `manual/` | Este manual: para quien empieza de cero |
 | `GUIA.md` | La referencia rápida: mapa, conceptos, trampas y "¿dónde toco para…?" |
 | `PENDIENTE.md` | Qué falta, por prioridad, con el contexto para retomarlo. Incluye fallos conocidos |
+| `PLAN-benchmark.md` | El plan paso a paso del benchmark de modelos y su estado |
 | `architecture-decisions/ADR-*.md` | Una decisión importante por archivo, con las alternativas descartadas (capítulo 2.7) |
 
 La documentación **se actualiza con el código**, no después. El capítulo 9

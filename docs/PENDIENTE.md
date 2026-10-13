@@ -14,10 +14,21 @@ Lo que sigue es, por orden, lo que más valor daría.
 
 ---
 
-## 1. El benchmark de modelos
+## 1. Ejecutar el benchmark de modelos y decidir
 
 `qwen3:8b` entró porque **cabía en VRAM y funcionaba**, no por ganar una
 comparación, y no se debe fijar un modelo sin benchmark.
+
+**El benchmark ya está construido** (`benchmark/`): cinco tareas y 51 casos
+(rendimiento, preguntas, hechos, conversación y estilo), un informe con tabla
+comparativa y una hoja ciega para puntuar a mano lo que solo una persona
+puede juzgar. **Lo que falta es ejecutarlo con los candidatos y decidir**:
+los pasos 6 y 7 de [`PLAN-benchmark.md`](PLAN-benchmark.md). Hay que
+descargar los modelos (`ollama pull`, unos 33 GB), dejar la GPU libre,
+lanzar `python -m benchmark` (unos 6 minutos por modelo con las 5
+repeticiones por defecto), puntuar la hoja ciega y escribir el ADR con la
+tabla y la decisión. Los comandos exactos están en el paso 6 del plan y en
+el README.
 
 Medido en la RTX 4070 Laptop (8 GB):
 
@@ -26,28 +37,34 @@ qwen3:8b Q4_K_M · 100% GPU · 6185/8188 MiB
 primer token 0,39 s · ~33 tok/s · prompt de 561 tokens
 ```
 
-### Qué hay que montar
+### Cómo se mide
 
-Un conjunto de pruebas **fijo**, para poder comparar de verdad. Tiene que
-cubrir: calidad conversacional, preguntas técnicas, seguimiento de
-instrucciones, español, inglés, retención de contexto, alucinación,
-latencia y VRAM.
+El conjunto es **fijo**, para poder comparar de verdad, y usa las piezas
+reales de la aplicación: lo que decide si una pregunta o un recuerdo vale
+es el mismo `validate_question()` y `validate_fact()` que en el uso real.
+`QuestionGenerator.propose()` y `FactExtractor.review()` existen para ello:
+devuelven lo que propuso el modelo y por qué se rechazó, sin la plantilla de
+respaldo que taparía los fallos. `LLMProvider.memory_usage()` mide la
+memoria del modelo cargado y si cabe entero en la GPU.
 
-Este proyecto tiene una ventaja para medir: **ya hay validadores
-automáticos**. `validate_question()` cuenta cuántas preguntas rechaza cada
-modelo, y con `allow_template_fallback = false` esa cifra sale limpia. Y
-`validate_fact()` hace lo mismo con los hechos: el log de extracción da
-propuestos, aceptados y rechazos por motivo. Con `qwen3:8b`, sobre un
-conjunto fijo de 15 conversaciones, aceptó 8 hechos de 10 y calló en los 9
-casos donde no había nada (ADR-010). Es una cifra para comparar.
-
-El plan paso a paso, con los candidatos comprobados en la biblioteca de
-Ollama, está en [`PLAN-benchmark.md`](PLAN-benchmark.md).
+Con `qwen3:8b`, una primera medida (3 repeticiones) dio: 33 de 36 en
+preguntas (los tres fallos son el mismo caso: copia un título motivacional y
+el validador lo rechaza por sonar a coach), 39 de 48 en hechos, 42 de 42 en
+contenido de conversación y 15 de 18 en estilo, con 186 ms hasta el primer
+token y 32,8 tokens/s en caliente. Es la línea base contra la que comparar,
+no una conclusión.
 
 ### Cuidado con
 
 - Medir **en caliente**. Cada `--prompt` descarga el modelo al salir, así
   que incluye cargar 5 GB de disco. La diferencia es 3,4 s contra 0,39 s.
+  El benchmark ya lo hace (una llamada de calentamiento que no cuenta).
+- Nada más usando la GPU mientras se ejecuta, o la latencia no vale.
+- Los prompts están ajustados a `qwen3:8b`. Un candidato puede rendir peor
+  solo porque las reglas y los ejemplos se afinaron con otro; si queda
+  cerca, merece una vuelta de ajuste antes de descartarlo.
+- Un caso que parece injusto después de ver resultados se cambia **para
+  todos** los modelos y se vuelve a medir todo.
 - No elegir por benchmarks publicados.
 
 ---
@@ -108,7 +125,7 @@ Ninguna urgente. Buenas para entrar en calor.
 | Paráfrasis duplicadas | `memory/similarity.py` | *"La memoria va integrada en SQLite"* y *"La memoria que conecta a la compañera está integrada en SQLite"* no se reconocen como el mismo hecho (Jaccard 0,6). Es trabajo de embeddings, PHASE 9 |
 | ¿Avisar al guardar? | `conversation/manager.py` | Hoy aprende en silencio y lo aprendido está en `/memory`. La alternativa es una línea discreta tipo `(lo recordaré)`: más transparente, pero rompe el silencio en cada revisión |
 | Recuerdos que dejan de ser ciertos | `memory/` | *"Estoy aprendiendo Rust"* se guarda como `long_term` y no caduca. Si se acumulan, habrá que decidir cómo se actualizan. Probablemente PHASE 9 |
-| Emojis a pesar del prompt | `llm/prompts.py` | En la prueba real respondió con 😊 aunque el prompt lo prohíbe. Puede que haga falta un ejemplo en vez de solo la regla |
+| Emojis a pesar del prompt | `llm/prompts.py` | En la prueba real respondió con 😊 aunque el prompt lo prohíbe, y la tarea `estilo` del benchmark lo confirma con `qwen3:8b` (también un "deberías dejarlo" que suena a coach). Puede que haga falta un ejemplo en vez de solo la regla; ahora hay forma de medir si funciona |
 | Navegación privada | `context/`, `curiosity/` | Algunos navegadores marcan la ventana privada en el título. Si se confirma en una máquina real, habría que tratarla como página sensible entera. Sin verificar el formato, no se implementa |
 | Música en una aplicación propia | `context/` | Con un reproductor en primer plano el título suele ser "artista - canción". Una regla de título lo convertiría en documento y le aplicaría la curiosidad por páginas. Sin verificar el formato, se deja |
 | Preguntas repetidas entre días | `curiosity/` | El cronómetro de la página y `ALREADY_ASKED` viven en RAM. Si en el uso real repite preguntas sobre la misma página en días distintos, habrá que decidirlo, y eso sí sería guardar títulos |
@@ -119,7 +136,7 @@ Ninguna urgente. Buenas para entrar en calor.
 ## Cómo retomar esto
 
 1. Lee [`GUIA.md`](GUIA.md) si no tienes el proyecto fresco.
-2. `pytest` antes de tocar nada: 711 en verde es la línea base.
+2. `pytest` antes de tocar nada: 829 en verde es la línea base.
 3. Mira si hay un ADR sobre lo que vas a cambiar. Casi siempre la
    alternativa obvia ya se consideró y hay un motivo escrito.
 4. **Ejecuta la aplicación de verdad antes de dar algo por terminado.**

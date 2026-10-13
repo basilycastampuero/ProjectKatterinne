@@ -323,6 +323,45 @@ privacidad y hay que arreglarlo.
 | El contexto dice siempre "Windows Terminal" | Falta el terminal en `ignore_processes` | Añádelo en `[perception]` |
 | Caracteres raros en la consola | Codificación de Windows | La aplicación lo corrige sola; si no, `chcp 65001` |
 
+## 3.10 Comparar modelos: el benchmark (opcional)
+
+Para elegir qué modelo usar no basta con que "conteste bien". El
+**benchmark** (la carpeta `benchmark/`, en la raíz) pasa los mismos casos
+por cada modelo que le indiques y mide cuántos supera, cuánto tarda y
+cuánta memoria de la tarjeta gráfica ocupa. No forma parte de la aplicación
+ni de la suite de tests: necesita Ollama y GPU, y tarda unos minutos por
+modelo. Cierra todo lo que use la GPU antes de ejecutarlo, o las
+velocidades no valen.
+
+Cada modelo tiene que estar descargado (`ollama pull <modelo>`):
+
+```powershell
+# Medir. --model se repite, una vez por modelo
+.\.venv\Scripts\python.exe -m benchmark --out data\benchmark\candidatos `
+    --model qwen3:8b --model gemma4:e4b
+
+# La tabla comparativa y la hoja ciega
+.\.venv\Scripts\python.exe -m benchmark.informe data\benchmark\candidatos
+
+# Después de puntuar la hoja ciega: añade la nota media de cada modelo
+.\.venv\Scripts\python.exe -m benchmark.informe data\benchmark\candidatos --notas
+```
+
+| Argumento de `python -m benchmark` | Para qué |
+|---|---|
+| `--model` | Un modelo a medir. Obligatorio y repetible |
+| `--reps 5` | Repeticiones de cada caso (5 por defecto). El modelo no responde igual dos veces, así que se compara con tasas y no con un acierto suelto |
+| `--task` | Solo una tarea (`rendimiento`, `preguntas`, `hechos`, `conversacion` o `estilo`). Repetible; por defecto, todas |
+| `--out` | La carpeta donde dejar los resultados. Por defecto, `data/benchmark/` con la fecha |
+
+El informe escribe en esa misma carpeta tres archivos: `comparativa.md` (la
+tabla, en Markdown), `hoja_ciega.csv` (respuestas de todos los modelos
+mezcladas, para puntuarlas del 1 al 5 en Excel sin saber de quién son) y
+`clave.json` (qué letra era qué modelo, para el recuento). Si la hoja ya
+existe no se vuelve a generar: podría tener tus notas. Todo queda en
+`data/`, que git ignora. Cómo está hecho, en el capítulo 7.10; el plan y lo
+que falta, en [`PLAN-benchmark.md`](../PLAN-benchmark.md).
+
 ---
 
 **Anterior:** [2. Qué es el proyecto](02-que-es-el-proyecto.md) ·

@@ -27,6 +27,10 @@ pueden decir que no (capítulo 6.3).
 **Censurado** (`redacted`). Una ventana o actividad de la que se ocultó la
 información por privacidad. Se sabe que existe, pero no qué es.
 
+**Benchmark**. Los mismos casos pasados a cada modelo para compararlos en
+este equipo: cuántos supera, cuánto tarda y cuánta memoria ocupa. Está en
+`benchmark/` y no corre con pytest (capítulo 3.10).
+
 **Cita** (`evidence`). Las palabras exactas de la persona que prueban que
 dijo algo. Imprescindible para guardar un recuerdo.
 
@@ -68,6 +72,10 @@ no hay evento.
 
 **Fixture**. En pytest, una función que prepara algo que los tests
 necesitan.
+
+**Hoja ciega**. Un CSV con las respuestas de todos los modelos mezcladas y
+con letras en vez de nombres, para puntuarlas sin saber de quién son: saber
+qué modelo habla sesga la nota.
 
 **Hecho** (`Fact`). Un recuerdo guardado, con su procedencia, su alcance y
 su origen.

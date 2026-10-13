@@ -143,10 +143,17 @@ class LLMProvider(ABC):
     def model_info(self) -> ModelInfo: ...        # ¿qué modelo es?
     def generate(self, messages, *, on_token=None, json_mode=False) -> GenerationResult: ...
     def unload(self) -> None: ...                 # libera la VRAM
+    def memory_usage(self) -> MemoryUsage | None: ...  # memoria del modelo cargado
 ```
 
 Implementaciones: `OllamaProvider` (la real) y `FakeProvider` (en
 `tests/conftest.py`, para los tests).
+
+`unload()` y `memory_usage()` no son obligatorios: por defecto no hacen
+nada (`memory_usage()` devuelve `None`, "no se sabe"), porque no todos los
+runtimes lo dicen y nada de la aplicación depende de ello. Lo usa el
+benchmark (capítulo 3.10) para saber cuánta memoria ocupa un modelo cargado
+y si cabe entero en la GPU.
 
 ### `ActiveWindowProvider` (`perception/active_window.py`)
 
