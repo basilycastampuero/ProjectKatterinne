@@ -9,6 +9,7 @@ from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 
+from benchmark import gpu
 from benchmark.cases import TASKS
 from benchmark.core import Attempt
 from benchmark.report import format_run
@@ -72,7 +73,7 @@ def main(argv: list[str] | None = None) -> int:
         try:
             ejecucion = run_model(
                 proveedor, casos, repetitions=args.reps, revision=revision,
-                on_attempt=_progreso,
+                on_attempt=_progreso, gpu_probe=gpu.used_bytes,
             )
         finally:
             # Cada modelo empieza con la GPU libre: si el anterior siguiera

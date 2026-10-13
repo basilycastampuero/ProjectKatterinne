@@ -129,6 +129,12 @@ el informe y la tarea `rendimiento`. Dos cosas que salieron al medir:
 - **Descargar es asíncrono**: Ollama contesta al instante y libera la VRAM
   un momento después. Entre modelos, `unload_and_wait()` espera a que la
   GPU quede libre de verdad.
+- **Ollama no siempre acierta con la memoria**: de `gemma4:e4b` decía
+  0,26 GB y la GPU subió 4,86. La VRAM se mide también con `nvidia-smi`
+  (antes y después de cargar, con el modelo descargado al empezar) y esa
+  cifra es la que va en la tabla. `ministral-3:8b` desborda 0,5 GB a la
+  CPU, pero su velocidad es buena: desbordar no lo descalifica solo; se
+  decide con la latencia delante.
 
 Línea base, `qwen3:8b` en este portátil: arranque en frío 3,4 s; en
 caliente, 186 ms hasta el primer token y 32,8 tokens/s.

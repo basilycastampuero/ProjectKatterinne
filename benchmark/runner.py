@@ -33,6 +33,9 @@ class ModelRun:
     #: Para saber con qué prompts se midió: el hash del commit.
     revision: str | None = None
     attempts: list[Attempt] = field(default_factory=list)
+    #: Lo que subió la memoria de la GPU al cargarlo, según la GPU. Ollama no
+    #: siempre acierta con `memory`; esta es la cifra que decide si cabe.
+    gpu_measured_bytes: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -45,11 +48,24 @@ def run_model(
     repetitions: int,
     revision: str | None = None,
     on_attempt: Callable[[Attempt], None] | None = None,
+    gpu_probe: Callable[[], int | None] | None = None,
 ) -> ModelRun:
-    """Calienta el modelo, mide su memoria y pasa cada caso `repetitions` veces."""
+    """Calienta el modelo, mide su memoria y pasa cada caso `repetitions` veces.
+
+    `gpu_probe` dice cuánta memoria hay ocupada en la GPU; se mira antes y
+    después de cargar el modelo. Hace falta que la GPU empiece libre del
+    modelo anterior, y por eso se espera a la descarga entre modelos.
+    """
+    if gpu_probe is not None:
+        # Si ya estaba cargado (Ollama los guarda unos minutos), la GPU no
+        # sube al "cargarlo" y la medida sale cero: pasó con gemma4:e4b
+        # justo después de una prueba a mano. Se empieza siempre sin él.
+        unload_and_wait(provider)
+    antes = gpu_probe() if gpu_probe else None
     # Medir en caliente: sin esto, el primer caso pagaría la carga de 5 GB
     # de disco (3,4 s contra 0,39 s hasta el primer token).
     calentamiento = provider.generate(WARMUP)
+    despues = gpu_probe() if gpu_probe else None
     info = provider.model_info()
 
     ejecucion = ModelRun(
@@ -60,6 +76,7 @@ def run_model(
         memory=provider.memory_usage(),
         info=asdict(info),
         revision=revision,
+        gpu_measured_bytes=despues - antes if antes is not None and despues is not None else None,
     )
 
     grabador = RecordingProvider(provider)
@@ -129,6 +146,7 @@ def load(path: Path) -> ModelRun:
         memory=MemoryUsage(**memoria) if memoria else None,
         info=datos.get("info") or {},
         revision=datos.get("revision"),
+        gpu_measured_bytes=datos.get("gpu_measured_bytes"),
         attempts=[
             Attempt(**{**a, "calls": tuple(CallMetrics(**c) for c in a["calls"])})
             for a in datos["attempts"]

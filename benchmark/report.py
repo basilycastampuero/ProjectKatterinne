@@ -61,6 +61,33 @@ def summarize(attempts: list[Attempt]) -> list[TaskSummary]:
     return resumenes
 
 
+def memory_mismatch(run: ModelRun) -> str | None:
+    """Si lo que dice Ollama no se parece a lo que mide la GPU.
+
+    Pasó con `gemma4:e4b`: Ollama decía 0,26 GB y la GPU subió 4,5 GB.
+    Margen amplio, porque la GPU cuenta también lo que el runtime reserva
+    aparte del modelo.
+    """
+    if run.memory is None or run.gpu_measured_bytes is None or run.gpu_measured_bytes <= 0:
+        return None
+    if 0.5 <= run.memory.total_bytes / run.gpu_measured_bytes <= 1.5:
+        return None
+    return (
+        f"Ollama dice {run.memory.total_bytes / GB:.2f} GB y la GPU subió "
+        f"{run.gpu_measured_bytes / GB:.2f} GB; vale la cifra de la GPU"
+    )
+
+
+def _vram(run: ModelRun) -> str:
+    # La cifra de la GPU manda; la de Ollama solo si no hay otra.
+    if run.gpu_measured_bytes is not None:
+        marca = " ⚠" if memory_mismatch(run) else ""
+        return f"{run.gpu_measured_bytes / GB:.2f} GB{marca}"
+    if run.memory is not None:
+        return f"{run.memory.total_bytes / GB:.2f} GB (Ollama)"
+    return "?"
+
+
 def format_run(run: ModelRun) -> str:
     lineas = [f"== {run.model} =="]
     if run.memory is None:
@@ -71,6 +98,10 @@ def format_run(run: ModelRun) -> str:
             f"memoria: {run.memory.total_bytes / GB:.2f} GB, "
             f"{run.memory.gpu_bytes / GB:.2f} GB en GPU ({cabe})"
         )
+    if run.gpu_measured_bytes is not None:
+        lineas.append(f"según la GPU: {run.gpu_measured_bytes / GB:.2f} GB al cargarlo")
+        if aviso := memory_mismatch(run):
+            lineas.append(f"aviso: {aviso}")
     lineas.append(f"arranque en frío: {run.cold_start_ms / 1000:.1f} s")
 
     for r in summarize(run.attempts):
@@ -97,7 +128,7 @@ def compare(runs: list[ModelRun], tasks: list[str], blind: dict[str, float] | No
     mensajes con todos los modelos; las demás llaman al modelo un número de
     veces distinto según lo que conteste, y mezclarlas falsearía la cifra.
     """
-    cabecera = ["Modelo", "Memoria", "¿Cabe?", "Arranque", "Primer token", "tok/s", *tasks]
+    cabecera = ["Modelo", "VRAM", "¿Cabe?", "Arranque", "Primer token", "tok/s", *tasks]
     if blind is not None:
         cabecera.append("Hoja ciega")
     filas = ["| " + " | ".join(cabecera) + " |", "|" + "---|" * len(cabecera)]
@@ -108,7 +139,8 @@ def compare(runs: list[ModelRun], tasks: list[str], blind: dict[str, float] | No
         tps = rendimiento.tokens_per_second if rendimiento else None
         celdas = [
             f"`{run.model}`",
-            f"{run.memory.total_bytes / GB:.2f} GB" if run.memory else "?",
+            _vram(run),
+            # Si una parte va a la CPU lo dice Ollama: la GPU no lo sabe.
             ("sí" if run.memory.fits_in_gpu else "**no**") if run.memory else "?",
             f"{run.cold_start_ms / 1000:.1f} s",
             f"{ttft:.0f} ms" if ttft is not None else "—",
@@ -121,7 +153,8 @@ def compare(runs: list[ModelRun], tasks: list[str], blind: dict[str, float] | No
         filas.append("| " + " | ".join(celdas) + " |")
 
     revisiones = sorted({r.revision or "?" for r in runs})
-    pie = f"\nRevisión: {', '.join(revisiones)}. Repeticiones por caso: "
+    pie = "\nVRAM medida en la GPU al cargar el modelo; ⚠: Ollama decía otra cosa."
+    pie += f"\nRevisión: {', '.join(revisiones)}. Repeticiones por caso: "
     pie += ", ".join(sorted({str(r.repetitions) for r in runs})) + "."
     if len(revisiones) > 1:
         # Con prompts distintos, la comparación no vale.

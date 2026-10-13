@@ -159,3 +159,86 @@ def _puntuar(hoja: Path, nota_de, *, saltar_ultima: bool = False) -> None:
         escritor = csv.DictWriter(f, fieldnames=list(filas[0]), delimiter=";")
         escritor.writeheader()
         escritor.writerows(filas)
+
+
+# ----------------------------------------------------------------------
+# VRAM medida en la GPU
+# ----------------------------------------------------------------------
+
+
+def test_la_vram_medida_es_lo_que_sube_la_gpu_al_cargar() -> None:
+    from benchmark.runner import run_model
+    from tests.conftest import FakeProvider
+
+    lecturas = iter([500 * 2**20, 5_100 * 2**20])
+
+    ejecucion = run_model(FakeProvider(), [], repetitions=1, gpu_probe=lambda: next(lecturas))
+
+    assert ejecucion.gpu_measured_bytes == 4_600 * 2**20
+
+
+def test_sin_nvidia_smi_no_se_inventa_la_medida() -> None:
+    from benchmark.runner import run_model
+    from tests.conftest import FakeProvider
+
+    ejecucion = run_model(FakeProvider(), [], repetitions=1, gpu_probe=lambda: None)
+
+    assert ejecucion.gpu_measured_bytes is None
+
+
+def test_la_medida_de_la_gpu_se_guarda_y_se_lee(tmp_path: Path) -> None:
+    original = _ejecucion("a:1b")
+    original.gpu_measured_bytes = 4_500_000_000
+
+    assert load(save(original, tmp_path)).gpu_measured_bytes == 4_500_000_000
+
+
+def test_si_ollama_y_la_gpu_no_coinciden_se_avisa_y_manda_la_gpu() -> None:
+    """Pasó de verdad: Ollama decía 0,26 GB de gemma4:e4b y la GPU subió 4,5.
+
+    Sin la medida de la GPU, la tabla habría dicho que era el modelo que
+    menos ocupaba de todos.
+    """
+    from benchmark.report import format_run, memory_mismatch
+
+    run = _ejecucion("gemma4:e4b")
+    run.memory = MemoryUsage(total_bytes=257_152_777, gpu_bytes=257_152_777)
+    run.gpu_measured_bytes = 4_600 * 2**20
+
+    assert memory_mismatch(run) is not None
+    assert "4.82 GB ⚠" in compare([run], ["preguntas"])
+    assert "vale la cifra de la GPU" in format_run(run)
+
+
+def test_si_coinciden_no_hay_aviso() -> None:
+    from benchmark.report import memory_mismatch
+
+    run = _ejecucion("qwen3:8b")
+    run.gpu_measured_bytes = 6_200_000_000
+
+    assert memory_mismatch(run) is None
+
+
+def test_para_medir_la_gpu_el_modelo_empieza_descargado() -> None:
+    """Si ya estaba en la GPU, cargarlo no la hace subir y la medida da cero.
+
+    Pasó: gemma4:e4b salió con 0,00 GB y 0,4 s de arranque porque seguía
+    cargado de una prueba hecha a mano minutos antes.
+    """
+    from benchmark.runner import run_model
+    from tests.conftest import FakeProvider
+
+    proveedor = FakeProvider()
+    run_model(proveedor, [], repetitions=1, gpu_probe=lambda: 0)
+
+    assert proveedor.unload_count == 1
+
+
+def test_sin_medir_la_gpu_no_se_descarga_nada() -> None:
+    from benchmark.runner import run_model
+    from tests.conftest import FakeProvider
+
+    proveedor = FakeProvider()
+    run_model(proveedor, [], repetitions=1)
+
+    assert proveedor.unload_count == 0

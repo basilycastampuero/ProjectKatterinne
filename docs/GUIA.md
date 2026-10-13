@@ -832,6 +832,15 @@ Si se carga otro modelo sin esperar, ambos coinciden en la GPU y la memoria
 medida no vale. `unload_and_wait()` (en `benchmark/runner.py`) consulta
 `memory_usage()` hasta que devuelve `None`.
 
+### Ollama no siempre sabe cuánto ocupa un modelo
+
+Con `gemma4:e4b`, `/api/ps` decía 0,26 GB mientras la GPU pasaba de 488 a
+5127 MiB al cargarlo. Por eso el benchmark mide también con `nvidia-smi`
+(`benchmark/gpu.py`) la diferencia antes y después de cargar, y esa es la
+cifra que manda. Para que valga, el modelo tiene que empezar descargado:
+Ollama guarda los modelos unos minutos, y uno que siguiera cargado de una
+prueba a mano salió con 0,00 GB. El runner lo descarga antes de medir.
+
 ### El pipe se traga el código de salida
 
 ```bash
