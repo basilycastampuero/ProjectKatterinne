@@ -1,6 +1,6 @@
 # Plan — benchmark de modelos
 
-Estado: **pasos 1 a 3 hechos** (rendimiento y VRAM, preguntas, hechos). Es el punto 1 de
+Estado: **pasos 1 a 4 hechos**: las cinco tareas están listas. Falta el informe comparativo y la hoja ciega (paso 5). Es el punto 1 de
 [`PENDIENTE.md`](PENDIENTE.md).
 
 ## Por qué ahora
@@ -176,6 +176,26 @@ Unos 20 casos con su comprobación automática: idioma, sin emojis, sin
 frases de coach, retención a cinco turnos, decir "no lo sé" sobre lo que no
 percibe, entender un error en inglés y unas preguntas técnicas con
 respuesta conocida.
+
+**Hecho**, en dos tareas para que no se tapen entre sí (un emoji
+suspendería una respuesta técnica perfecta):
+
+- `conversacion`, 14 escenarios: usar el contexto y los recuerdos, recordar
+  lo dicho cinco turnos atrás, admitir lo que no percibe, entender inglés y
+  cuatro preguntas técnicas. Siempre en español.
+- `estilo`, 6 escenarios donde es fácil salirse de la persona (un saludo,
+  una frustración, un logro, cansancio): sin emojis de caras y sin coach.
+
+El mensaje lo arma `ConversationManager`, el de la aplicación. Los turnos
+previos los contesta un guion fijo, así todos los modelos reciben el mismo
+historial y solo se paga la última respuesta. Cada escenario lleva su
+respuesta ideal y un test exige que apruebe.
+
+Primera medida con `qwen3:8b` (3 repeticiones): 42 de 42 en contenido y 15
+de 18 en estilo. En la primera pasada salieron 40 en contenido: la
+comprobación de "admite que no lo sabe" no reconocía "no estoy segura", y
+suspendía respuestas correctas. Los fallos de estilo son reales: el 😊 que
+ya estaba apuntado en PENDIENTE, y un "deberías dejarlo".
 
 ### Paso 5 — Informe y hoja ciega
 
