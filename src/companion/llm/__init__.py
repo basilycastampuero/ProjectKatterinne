@@ -10,6 +10,7 @@ from companion.llm.errors import (
 from companion.llm.provider import (
     GenerationResult,
     LLMProvider,
+    MemoryUsage,
     Message,
     ModelInfo,
     Role,
@@ -22,6 +23,7 @@ __all__ = [
     "GenerationResult",
     "LLMError",
     "LLMProvider",
+    "MemoryUsage",
     "Message",
     "ModelInfo",
     "ModelNotFoundError",

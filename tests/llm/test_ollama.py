@@ -16,7 +16,7 @@ from companion.llm import ollama as ollama_module
 from companion.llm.errors import GenerationError, ModelNotFoundError, ProviderUnavailableError
 from companion.llm.http_client import HttpError
 from companion.llm.ollama import OllamaProvider
-from companion.llm.provider import Message
+from companion.llm.provider import MemoryUsage, Message
 
 TAGS_RESPONSE = {
     "models": [
@@ -360,3 +360,75 @@ def test_sin_metadatos_se_asume_que_no_razona(
 
     assert provider.capabilities() == frozenset()
     assert provider.supports_thinking() is False
+
+
+# ----------------------------------------------------------------------
+# Memoria ocupada
+# ----------------------------------------------------------------------
+
+
+def _con_ps(monkeypatch: pytest.MonkeyPatch, respuesta: dict) -> None:
+    def _fake(url: str, payload: dict | None = None, *, timeout: float = 30.0):
+        assert url.endswith("/api/ps")
+        return respuesta
+
+    monkeypatch.setattr(ollama_module, "request_json", _fake)
+
+
+def test_memory_usage_lee_lo_que_ocupa_el_modelo_cargado(
+    provider, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Forma real de /api/ps, recortada.
+    _con_ps(
+        monkeypatch,
+        {
+            "models": [
+                {"name": "otro:3b", "size": 1, "size_vram": 1},
+                {
+                    "name": "qwen2.5-coder:14b",
+                    "model": "qwen2.5-coder:14b",
+                    "size": 5957619840,
+                    "size_vram": 5957619840,
+                    "context_length": 4096,
+                },
+            ]
+        },
+    )
+
+    uso = provider.memory_usage()
+
+    assert uso == MemoryUsage(
+        total_bytes=5957619840, gpu_bytes=5957619840, context_length=4096
+    )
+    assert uso.fits_in_gpu
+
+
+def test_un_modelo_que_desborda_a_la_cpu_no_cabe(
+    provider, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Lo que importa del benchmark: si una parte va a la CPU, se descarta.
+    _con_ps(
+        monkeypatch,
+        {"models": [{"name": "qwen2.5-coder:14b", "size": 9_000, "size_vram": 7_000}]},
+    )
+
+    assert provider.memory_usage().fits_in_gpu is False
+
+
+def test_memory_usage_es_none_si_el_modelo_no_esta_cargado(
+    provider, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _con_ps(monkeypatch, {"models": []})
+
+    assert provider.memory_usage() is None
+
+
+def test_memory_usage_no_lanza_si_el_servidor_esta_caido(
+    provider, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def _caido(*args, **kwargs):
+        raise ProviderUnavailableError("conexion rechazada")
+
+    monkeypatch.setattr(ollama_module, "request_json", _caido)
+
+    assert provider.memory_usage() is None

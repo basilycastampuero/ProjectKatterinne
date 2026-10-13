@@ -17,6 +17,7 @@ from companion.llm.http_client import HttpError, request_json, stream_ndjson
 from companion.llm.provider import (
     GenerationResult,
     LLMProvider,
+    MemoryUsage,
     Message,
     ModelInfo,
     TokenCallback,
@@ -237,3 +238,19 @@ class OllamaProvider(LLMProvider):
             log.info("modelo descargado de VRAM model=%s", self.model)
         except Exception as exc:  # noqa: BLE001 - descargar nunca debe romper el cierre
             log.debug("no se pudo descargar el modelo: %s", exc)
+
+    def memory_usage(self) -> MemoryUsage | None:
+        """Lo que dice `/api/ps` del modelo configurado, si está cargado."""
+        try:
+            payload = request_json(f"{self.host}/api/ps", timeout=self.connect_timeout_s)
+        except LLMError as exc:
+            log.debug("no se pudo consultar la memoria del modelo: %s", exc)
+            return None
+        for entry in payload.get("models", []):
+            if self.model in (entry.get("name"), entry.get("model")):
+                return MemoryUsage(
+                    total_bytes=int(entry.get("size") or 0),
+                    gpu_bytes=int(entry.get("size_vram") or 0),
+                    context_length=entry.get("context_length"),
+                )
+        return None

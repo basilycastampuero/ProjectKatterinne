@@ -47,6 +47,25 @@ class ModelInfo:
 
 
 @dataclass(frozen=True, slots=True)
+class MemoryUsage:
+    """Cuánta memoria ocupa el modelo cargado y cuánta de ella está en la GPU.
+
+    Incluye la ventana de contexto, así que es más que lo que pesa la
+    descarga: se mide con el modelo cargado como lo usa la aplicación.
+    """
+
+    total_bytes: int
+    gpu_bytes: int
+    context_length: int | None = None
+
+    @property
+    def fits_in_gpu(self) -> bool:
+        # Si no cabe entero, el runtime manda capas a la CPU y la latencia
+        # se dispara: un modelo así no sirve aunque conteste bien.
+        return self.gpu_bytes >= self.total_bytes
+
+
+@dataclass(frozen=True, slots=True)
 class GenerationResult:
     """Resultado de una generacion, con metricas para observabilidad.
 
@@ -133,5 +152,13 @@ class LLMProvider(ABC):
         """Libera el modelo de memoria/VRAM si el runtime lo permite.
 
         Por defecto no hace nada.
+        """
+        return None
+
+    def memory_usage(self) -> MemoryUsage | None:
+        """Memoria que ocupa el modelo ahora mismo, o `None` si no se sabe.
+
+        `None` también si no está cargado. Por defecto no se sabe: no todos
+        los runtimes lo dicen, y nada de la aplicación depende de ello.
         """
         return None
