@@ -41,8 +41,8 @@ propuestos, aceptados y rechazos por motivo. Con `qwen3:8b`, sobre un
 conjunto fijo de 15 conversaciones, aceptó 8 hechos de 10 y calló en los 9
 casos donde no había nada (ADR-010). Es una cifra para comparar.
 
-Candidatos razonables: `llama3.1:8b`, `qwen2.5:7b`, `gemma3:4b` (este
-último además es multimodal, útil si algún día llega PHASE 5).
+El plan paso a paso, con los candidatos comprobados en la biblioteca de
+Ollama, está en [`PLAN-benchmark.md`](PLAN-benchmark.md).
 
 ### Cuidado con
 
