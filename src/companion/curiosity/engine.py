@@ -98,6 +98,10 @@ class CuriosityEngine:
         # un historial de navegación, justo lo que no debe existir.
         self._document_key: tuple[str | None, str | None] | None = None
         self._document_since: datetime | None = None
+        # Solo decide qué va al log, nunca qué se responde: `evaluate()` sigue
+        # dando lo mismo con o sin él. Lleva el tema en RAM, como
+        # `_document_key`, y por la misma razón nunca se escribe.
+        self._last_ask: tuple[str | None, QuestionType | None] | None = None
 
     @property
     def policy(self) -> CuriosityPolicy:
@@ -345,6 +349,7 @@ class CuriosityEngine:
         self._context_since = None
         self._document_key = None
         self._document_since = None
+        self._last_ask = None
 
     def _log(self, decision: CuriosityDecision) -> CuriosityDecision:
         log.debug(
@@ -354,8 +359,17 @@ class CuriosityEngine:
             "ASK" if decision.should_speak else "NO_ACTION",
             decision.reason,
         )
-        if decision.should_speak:
+        if not decision.should_speak:
+            self._last_ask = None
+            return decision
+
+        # Mientras nadie registre la pregunta, la decisión se repite en cada
+        # sondeo: con `--watch` sin `--ask` el enfriamiento nunca empieza, y
+        # el log ganaba una línea por segundo mientras se seguía en la página.
+        clave = (decision.topic, decision.question_type)
+        if clave != self._last_ask:
             log.info(
                 "score=%d decision=ASK tipo=%s", decision.score, decision.question_type
             )
+            self._last_ask = clave
         return decision

@@ -325,6 +325,43 @@ def test_evaluar_sin_registrar_no_se_limita_solo(engine: CuriosityEngine) -> Non
     assert engine.questions_asked == 0
 
 
+def _lineas_ask(caplog) -> int:
+    return sum(
+        "decision=ASK" in r.getMessage() for r in caplog.records if r.levelname == "INFO"
+    )
+
+
+def test_una_decision_que_se_repite_se_registra_una_sola_vez(
+    engine: CuriosityEngine, caplog
+) -> None:
+    """Una línea por decisión, no una por sondeo.
+
+    Con `--watch` sin `--ask` nadie registra la pregunta, así que el
+    enfriamiento no empieza y cada sondeo vuelve a decidir hablar. Se vio
+    en el log de una prueba real: una línea `decision=ASK` por segundo
+    mientras se seguía en la misma página. Ningún test lo veía porque
+    ninguno contaba líneas del log.
+    """
+    with caplog.at_level("DEBUG", logger="companion"):
+        decisiones = [engine.evaluate(contexto(), now=minutos(5 + i)) for i in range(30)]
+
+    assert all(d.should_speak for d in decisiones)
+    assert _lineas_ask(caplog) == 1
+
+
+def test_si_deja_de_querer_hablar_y_vuelve_se_registra_otra_vez(
+    engine: CuriosityEngine, caplog
+) -> None:
+    # Callar en medio cuenta como cambio: la decisión nueva merece su línea.
+    with caplog.at_level("INFO", logger="companion"):
+        primera = engine.evaluate(contexto(), now=minutos(5))
+        callada = engine.evaluate(contexto(), now=minutos(6), conversation_active=True)
+        otra_vez = engine.evaluate(contexto(), now=minutos(7))
+
+    assert primera.should_speak and not callada.should_speak and otra_vez.should_speak
+    assert _lineas_ask(caplog) == 2
+
+
 def test_el_motor_no_llama_al_modelo(engine: CuriosityEngine) -> None:
     # PHASE 6 decide; redactar la pregunta es PHASE 7. Si esto cambiara,
     # cada evaluación costaría tokens.
