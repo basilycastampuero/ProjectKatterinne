@@ -237,3 +237,37 @@ def test_en_una_app_censurada_no_hay_titulo_que_respalde() -> None:
     )
 
     assert hechos == []
+
+
+# ----------------------------------------------------------------------
+# El informe completo, para medir al modelo
+# ----------------------------------------------------------------------
+
+
+def test_el_informe_separa_lo_aceptado_de_lo_rechazado() -> None:
+    """No proponer nada y proponer algo rechazado son fallos distintos.
+
+    El del canal de YouTube era el primero (`propuestos=0`) y se arregló en
+    el prompt; uno del segundo tipo se arregla en el validador. `extract()`
+    solo devolvía lo aceptado, y el resto quedaba en el log.
+    """
+    informe = FactExtractor(FakeProvider(replies=[respuesta(SQLITE, INVENTADO)])).review(TURNOS)
+
+    assert [h.content for h in informe.accepted] == [SQLITE["content"]]
+    assert informe.proposed == 2
+    assert informe.rejections == {"la cita no existe": 1}
+    assert informe.failure is None
+
+
+def test_el_informe_dice_si_el_modelo_no_propuso_nada() -> None:
+    informe = FactExtractor(FakeProvider(replies=[respuesta()])).review(TURNOS)
+
+    assert (informe.accepted, informe.proposed, informe.failure) == ([], 0, None)
+
+
+def test_el_informe_dice_por_que_no_hubo_candidatos() -> None:
+    roto = FactExtractor(FakeProvider(replies=["{}"])).review(TURNOS)
+    caido = FactExtractor(FakeProvider(raises=GenerationError("caído"))).review(TURNOS)
+
+    assert roto.failure == "JSON sin lista 'facts'"
+    assert caido.failure == "error del modelo"

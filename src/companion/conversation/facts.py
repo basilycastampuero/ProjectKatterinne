@@ -19,7 +19,7 @@ import logging
 import re
 from collections import Counter
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from companion.context.models import CurrentContext
@@ -193,6 +193,21 @@ class PendingTurn:
 
 
 @dataclass(frozen=True, slots=True)
+class ExtractionReport:
+    """Qué propuso el modelo, qué se aceptó y por qué se rechazó lo demás.
+
+    Los rechazos van por categoría, sin el detalle entre paréntesis: ese
+    detalle puede repetir texto de la persona.
+    """
+
+    accepted: list[ExtractedFact] = field(default_factory=list)
+    proposed: int = 0
+    rejections: Counter[str] = field(default_factory=Counter)
+    #: Por qué no hubo candidatos: el modelo falló o no devolvió una lista.
+    failure: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class ExtractedFact:
     """Un hecho que ha pasado el validador y se puede guardar."""
 
@@ -252,15 +267,29 @@ class FactExtractor:
         context: CurrentContext | None = None,
         known: Sequence[Fact] = (),
     ) -> list[ExtractedFact]:
+        return self.review(turns, context, known).accepted
+
+    def review(
+        self,
+        turns: Sequence[PendingTurn],
+        context: CurrentContext | None = None,
+        known: Sequence[Fact] = (),
+    ) -> ExtractionReport:
+        """Lo mismo que `extract()`, pero con lo propuesto y lo rechazado.
+
+        Para medir al modelo no basta con lo que se guarda: no proponer
+        nada y proponer algo que el validador rechaza son fallos distintos,
+        y se arreglan de forma distinta.
+        """
         user_texts = [t.user_text for t in turns if t.user_text.strip()]
         if not user_texts:
             # Sin nada que haya dicho la persona no puede haber evidencia:
             # la llamada sería trabajo tirado.
-            return []
+            return ExtractionReport()
 
-        candidatos = self._ask_model(turns, context, known)
+        candidatos, fallo = self._ask_model(turns, context, known)
         if candidatos is None:
-            return []
+            return ExtractionReport(failure=fallo)
 
         respaldo = _support_texts(turns, context)
         aceptados: list[ExtractedFact] = []
@@ -292,34 +321,36 @@ class FactExtractor:
             len(aceptados),
             dict(rechazos) or "-",
         )
-        return aceptados
+        return ExtractionReport(
+            accepted=aceptados, proposed=len(candidatos), rejections=rechazos
+        )
 
     def _ask_model(
         self,
         turns: Sequence[PendingTurn],
         context: CurrentContext | None,
         known: Sequence[Fact],
-    ) -> list[Any] | None:
-        """Los candidatos tal cual los propone el modelo, o `None` si falla."""
+    ) -> tuple[list[Any] | None, str | None]:
+        """Los candidatos tal cual los propone el modelo, o por qué no hay."""
         try:
             resultado = self._provider.generate(
                 self._build_messages(turns, context, known), json_mode=True
             )
         except LLMError as exc:
             log.warning("el modelo no pudo extraer hechos: %s", exc)
-            return None
+            return None, "error del modelo"
 
         try:
             datos = json.loads(resultado.text)
         except json.JSONDecodeError:
             log.info("extracción de hechos: el modelo no devolvió JSON válido")
-            return None
+            return None, "JSON inválido"
 
         candidatos = datos.get("facts") if isinstance(datos, dict) else None
         if not isinstance(candidatos, list):
             log.info("extracción de hechos: el JSON no tiene una lista 'facts'")
-            return None
-        return candidatos
+            return None, "JSON sin lista 'facts'"
+        return candidatos, None
 
     @staticmethod
     def _build_messages(
