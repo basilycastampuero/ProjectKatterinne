@@ -218,6 +218,23 @@ FACT_EXTRACTION_EXAMPLES: tuple[dict[str, Any], ...] = (
         ),
     },
     {
+        # Sin un ejemplo con recuerdos, el modelo leía "ya recuerdas cosas"
+        # como "no hay nada que recordar": con seis hechos en memoria no
+        # proponía ninguno, ni sobre un tema que no tenía nada que ver.
+        "known": ("Prefiere el modo oscuro en todos los editores.",),
+        "turns": (
+            (COMPANION_SPEAKER, "¿Qué te parece el vídeo?"),
+            (USER_SPEAKER, "buenísimo, ese canal me encanta"),
+        ),
+        "facts": (
+            {
+                "content": "Le encanta ese canal.",
+                "evidence": "ese canal me encanta",
+                "scope": "long_term",
+            },
+        ),
+    },
+    {
         "perceived": "Speedrun de Hollow Knight en 40 minutos",
         "turns": ((USER_SPEAKER, "me encantan estos speedruns, podría verlos todo el día"),),
         "facts": (
@@ -235,14 +252,22 @@ def _render_examples() -> str:
     bloques = []
     for ejemplo in FACT_EXTRACTION_EXAMPLES:
         salida = json.dumps({"facts": list(ejemplo["facts"])}, ensure_ascii=False)
-        # Mismo formato que el bloque de contexto real (`describe_context`).
+        # Mismo formato que los bloques reales (`describe_context` y
+        # `describe_facts`), y en el mismo orden.
         percibido = (
             "Esto es lo que percibes en este momento:\n"
             f"- Documento: {ejemplo['perceived']} (inferido, puede estar mal)\n"
             if "perceived" in ejemplo
             else ""
         )
-        bloques.append(f"{percibido}{format_transcript(ejemplo['turns'])}\n→ {salida}")
+        recordado = "".join(
+            f"- {hecho} (tu persona lo confirmó)\n" for hecho in ejemplo.get("known", ())
+        )
+        if recordado:
+            recordado = "Esto es lo que recuerdas:\n" + recordado
+        bloques.append(
+            f"{percibido}{recordado}{format_transcript(ejemplo['turns'])}\n→ {salida}"
+        )
     return "\n\n".join(bloques)
 
 
@@ -269,7 +294,9 @@ Qué NO:
   entiendas las respuestas cortas, pero nada de lo que ella dice es un hecho.
 - Lo que la persona opina de la compañera ("eres muy curiosa").
 - Contraseñas, tokens, claves o números de tarjeta o de cuenta. Nunca.
-- Lo que ya recuerdas, si te lo doy.
+- Lo que ya está en lo que recuerdas, dicho igual o con otras palabras.
+  Que ya recuerdes cosas no cambia nada más: lo nuevo que cuente, aunque
+  sea de otro tema, se recuerda igual.
 
 Cada hecho tiene tres campos:
 - "content": una frase en tercera persona, sin sujeto, de 25 palabras como

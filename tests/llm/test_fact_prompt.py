@@ -7,8 +7,12 @@ ejemplos tiene que ser algo que el validador acepte.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pytest
 
+from companion.context.models import CurrentContext, Provenance, Signal
+from companion.context.rendering import describe_context
 from companion.conversation.facts import ALLOWED_SCOPES, MAX_FACT_WORDS, validate_fact
 from companion.llm.prompts import (
     FACT_EXTRACTION_EXAMPLES,
@@ -16,6 +20,8 @@ from companion.llm.prompts import (
     USER_SPEAKER,
     format_transcript,
 )
+from companion.memory.models import Fact, MemoryScope
+from companion.memory.rendering import describe_facts
 
 
 def _textos_de_la_persona(ejemplo: dict) -> list[str]:
@@ -64,6 +70,45 @@ def test_los_ejemplos_cubren_todos_los_alcances_que_se_aceptan() -> None:
     usados = {h["scope"] for e in FACT_EXTRACTION_EXAMPLES for h in e["facts"]}
 
     assert usados == set(ALLOWED_SCOPES)
+
+
+def test_hay_un_ejemplo_que_aprende_algo_nuevo_aunque_ya_recuerde_cosas() -> None:
+    """Recordar cosas no significa que no haya nada nuevo.
+
+    Probándolo con el navegador, la persona dijo que le gustaba el canal del
+    vídeo por el que le preguntaba la compañera, y no se guardó. Con el
+    modelo real, la misma respuesta se guardaba 6 de 6 veces sin recuerdos
+    previos y 0 de 6 con seis hechos ya conocidos: ningún ejemplo llevaba
+    recuerdos, y el modelo leía "ya recuerdas cosas" como "no hay nada".
+    Los tests no lo veían porque el modelo era un doble.
+    """
+    assert any(e.get("known") and e["facts"] for e in FACT_EXTRACTION_EXAMPLES)
+
+
+def test_los_ejemplos_pintan_los_bloques_igual_que_el_uso_real() -> None:
+    # Si un ejemplo no se parece a lo que llega de verdad, el modelo no
+    # reconoce la situación y el ejemplo no le sirve de nada.
+    for ejemplo in FACT_EXTRACTION_EXAMPLES:
+        if "perceived" in ejemplo:
+            documento = Signal(
+                value=ejemplo["perceived"], provenance=Provenance.INFERRED, confidence=0.8
+            )
+            bloque = describe_context(CurrentContext(document=documento))
+            assert bloque in FACT_EXTRACTION_SYSTEM_PROMPT
+        if ejemplo.get("known"):
+            conocidos = [
+                Fact(
+                    id=i,
+                    content=texto,
+                    provenance=Provenance.USER_CONFIRMED,
+                    confidence=1.0,
+                    source="conversation",
+                    scope=MemoryScope.LONG_TERM,
+                    created_at=datetime(2026, 1, 1, tzinfo=UTC),
+                )
+                for i, texto in enumerate(ejemplo["known"], start=1)
+            ]
+            assert describe_facts(conocidos) in FACT_EXTRACTION_SYSTEM_PROMPT
 
 
 def test_el_limite_de_palabras_del_prompt_es_el_del_validador() -> None:
