@@ -107,6 +107,39 @@ El proyecto conserva su procedencia: atarle un hecho confirmado no lo
 convierte en confirmado. Ese efecto secundario existía en `remember()` y se
 corrigió antes de empezar.
 
+## Ajuste — Recordar cosas no impide aprender cosas nuevas
+
+Probando la curiosidad en el navegador, la persona contestó a una pregunta
+sobre un vídeo diciendo que le gustaba el canal, y no se guardó nada. El
+log decía `propuestos=0`: no lo rechazó el validador, el modelo no propuso
+nada.
+
+`FactExtractor` pasa al modelo lo que ya se sabe (`describe_facts`, con la
+cabecera "Esto es lo que recuerdas:") para que no repita. Pero ningún
+ejemplo de `FACT_EXTRACTION_EXAMPLES` llevaba recuerdos, y el modelo leía
+"ya recuerdas cosas" como "no hay nada que recordar".
+
+| Con el modelo real y la misma respuesta | Se guarda el hecho |
+|---|---|
+| Sin recuerdos previos | 6 de 6 |
+| Con seis hechos ya conocidos | 0 de 6 |
+| Reescribiendo solo la regla "Qué NO" | 0 de 6 |
+| Con el ejemplo nuevo y la regla aclarada | 8 de 8 |
+
+Y una respuesta sin nada que recordar sigue dando la lista vacía 8 de 8.
+
+- **Un ejemplo con recuerdos previos** (clave `"known"`): un recuerdo ya
+  guardado y, aun así, un hecho nuevo con alcance `long_term`.
+  `_render_examples()` lo pinta con el mismo formato que `describe_facts`.
+  Probado por separado, es lo que lo arregla.
+- **La regla lo dice**: solo se descarta lo ya recordado, igual o con otras
+  palabras; lo nuevo se recuerda igual.
+
+Los tests no lo veían porque el modelo es un doble que devuelve lo que se
+le pide. Ahora un test genera los bloques con `describe_context` y
+`describe_facts` y exige que estén literalmente en el prompt: un ejemplo
+que no se parece a lo que llega de verdad no le sirve al modelo.
+
 ## Lo que se descartó
 
 - **Extraer en cada turno.** Duplica la latencia, y un turno suelto casi

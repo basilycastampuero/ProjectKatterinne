@@ -168,5 +168,17 @@ llevaba interrogaciones.
   `--watch` y llegar al modelo para redactar la pregunta: es local y es el
   mismo trato que ya recibía cuando la persona le habla. Lo que no llega
   nunca es al log ni a un evento serializado.
-- Falta la prueba real de una hora de navegación para ajustar
-  `min_seconds_on_document` y la lista de palabras.
+- La prueba real con el navegador en primer plano salió como se esperaba:
+  - preguntó por los vídeos tras cinco minutos en la misma página
+    (`tipo=content_curiosity`);
+  - en una página de banca nunca habló, y el log registra
+    `motivo=sensitive_page`;
+  - el tiempo en el terminal no contó como tiempo en la página;
+  - cambiar de vídeo cada pocos minutos no la hizo preguntar;
+  - ningún título llegó al log: solo `tema=(documento)`;
+  - preguntar por una portada o por el propio perfil en una red social no
+    molestó a la persona, así que no hacen falta reglas nuevas.
+
+  `min_seconds_on_document` (300) y `sensitive_title_words` se quedan como
+  están. Sigue valiendo lo de arriba: la lista cubre palabras, no sitios, y
+  se revisará si el uso real encuentra una página sensible que se cuele.

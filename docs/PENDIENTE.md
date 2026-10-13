@@ -14,55 +14,7 @@ Lo que sigue es, por orden, lo que más valor daría.
 
 ---
 
-## 1. Interesarse por lo que ves en el navegador
-
-**Estado: implementado, falta la prueba real y cerrar la documentación.**
-Los pasos 1 a 7 del plan están hechos (695 tests en verde). Falta el paso 8,
-que tiene que hacer la persona: una hora de navegación normal con una página
-sensible de por medio, contar cuántas veces decide hablar y revisar a mano
-que no pregunta por nada sensible y que ningún título aparece en el log. Con
-eso se ajustan `min_seconds_on_document` y `sensitive_title_words`. Cuando
-eso esté, se quita este punto y se borra el plan. La decisión está en
-[ADR-011](architecture-decisions/ADR-011-asking-about-a-title-is-not-seeing-it.md).
-
-**Lo pidió la persona al probar la extracción de hechos.** No todo es un
-proyecto: si pasa un buen rato con un vídeo o una página, la compañera
-podría tener curiosidad por ello, igual que la tiene por un proyecto nuevo.
-
-La percepción ya daba lo necesario: en un navegador, el título de la página
-llega al contexto como `document` y el modelo lo ve. Lo que faltaba era que
-la **curiosidad** lo usara: sin proyecto, el máximo eran 5 puntos y el umbral
-es 6. Ahora, tras cinco minutos en la misma página, suma 7 y puede
-preguntar; una página sensible sigue en 5.
-
-Y la memoria ya está preparada para lo que salga de ahí: si la persona
-comenta lo que ve, el título respalda el hecho y se guarda como
-`long_term` (ADR-010).
-
-### Lo que queda
-
-El plan paso a paso, con el estado de cada paso, está en
-[`PLAN-curiosidad-navegador.md`](PLAN-curiosidad-navegador.md). Pendientes:
-la prueba real (paso 8) y las decisiones abiertas del final del plan
-(navegación privada, música en una aplicación propia, recordar entre
-sesiones de qué páginas ya preguntó).
-
-### Cuidado con
-
-- **Lo que suena de fondo no existe.** Solo se ve la ventana con el foco:
-  si Spotify suena mientras programa, no lo sabe. Su prompt ya lo dice, y
-  no hay que prometer lo contrario.
-- **Un título de página puede ser cualquier cosa.** No se registra en el
-  log por eso (ADR-005). Preguntar por él en voz alta es otra cosa que
-  guardarlo: pensar en cómo sonaría con una página privada que no está en
-  la lista negra.
-- **No convertirlo en vigilancia.** Una pregunta por un vídeo cada mucho
-  tiempo es curiosidad; comentar cada página, no. El enfriamiento de
-  veinte minutos sigue valiendo.
-
----
-
-## 2. El benchmark de modelos
+## 1. El benchmark de modelos
 
 `qwen3:8b` entró porque **cabía en VRAM y funcionaba**, no por ganar una
 comparación, y no se debe fijar un modelo sin benchmark.
@@ -100,7 +52,7 @@ Candidatos razonables: `llama3.1:8b`, `qwen2.5:7b`, `gemma3:4b` (este
 
 ---
 
-## 3. PHASE 5 — visión
+## 2. PHASE 5 — visión
 
 Está **fuera del MVP** a propósito, así que no corre prisa.
 
@@ -122,7 +74,7 @@ justificarse antes de añadirla.
 
 ---
 
-## 4. PHASE 10 — sacarlo del terminal
+## 3. PHASE 10 — sacarlo del terminal
 
 Falta una ventana de escritorio pequeña que muestre estado, aplicación,
 proyecto, conversación y estado de privacidad. El avatar es capa aparte y
@@ -152,12 +104,15 @@ Ninguna urgente. Buenas para entrar en calor.
 | Reglas de título sin verificar | `perception/project_detector.py` | Las de JetBrains y Visual Studio declaran confianza 0.7 porque **no se han comprobado en una máquina real**. Si tienes uno, verifícalas y sube la confianza |
 | Sesiones huérfanas | `memory/manager.py` | `start_session(resume=True)` las retoma, pero si nadie las cierra se acumulan. Hay 20 sesiones en la base de datos actual |
 | `min_seconds_in_context` | `companion.toml` | Diseñado a 120. Si lo bajas para probar, acuérdate de subirlo |
-| El REPL reintenta cada segundo una pregunta que no sale | `app/cli.py`, `quizas_hablar()` | Si la redacción falla no empieza el enfriamiento, y al segundo siguiente vuelve a decidir hablar. Con la plantilla de respaldo no pasa (siempre hay pregunta), pero con `allow_template_fallback = false`, que existe para medir al modelo, lo llamaría una vez por segundo. `--watch` ya lo evita actuando solo cuando cambia la decisión; aplicar lo mismo aquí |
+| El REPL reintenta cada segundo una pregunta que no sale | `app/cli.py`, `quizas_hablar()` | Si la redacción falla no empieza el enfriamiento, y al segundo siguiente vuelve a decidir hablar. Con la plantilla de respaldo no pasa (siempre hay pregunta), pero con `allow_template_fallback = false`, que existe para medir al modelo, lo llamaría una vez por segundo. El log ya no se llena (el motor escribe a nivel INFO solo cuando la decisión cambia), pero la llamada al modelo sigue repitiéndose. `--watch` lo evita actuando solo cuando cambia la decisión; aplicar lo mismo aquí |
 | Los id de los recuerdos se reutilizan | `memory/schema.py` | SQLite reutiliza el id de una fila borrada si era el último. Un id apuntado antes puede señalar otro recuerdo, y `/forget` borraría el equivocado. Se arregla con `AUTOINCREMENT`, con migración |
 | Paráfrasis duplicadas | `memory/similarity.py` | *"La memoria va integrada en SQLite"* y *"La memoria que conecta a la compañera está integrada en SQLite"* no se reconocen como el mismo hecho (Jaccard 0,6). Es trabajo de embeddings, PHASE 9 |
 | ¿Avisar al guardar? | `conversation/manager.py` | Hoy aprende en silencio y lo aprendido está en `/memory`. La alternativa es una línea discreta tipo `(lo recordaré)`: más transparente, pero rompe el silencio en cada revisión |
 | Recuerdos que dejan de ser ciertos | `memory/` | *"Estoy aprendiendo Rust"* se guarda como `long_term` y no caduca. Si se acumulan, habrá que decidir cómo se actualizan. Probablemente PHASE 9 |
 | Emojis a pesar del prompt | `llm/prompts.py` | En la prueba real respondió con 😊 aunque el prompt lo prohíbe. Puede que haga falta un ejemplo en vez de solo la regla |
+| Navegación privada | `context/`, `curiosity/` | Algunos navegadores marcan la ventana privada en el título. Si se confirma en una máquina real, habría que tratarla como página sensible entera. Sin verificar el formato, no se implementa |
+| Música en una aplicación propia | `context/` | Con un reproductor en primer plano el título suele ser "artista - canción". Una regla de título lo convertiría en documento y le aplicaría la curiosidad por páginas. Sin verificar el formato, se deja |
+| Preguntas repetidas entre días | `curiosity/` | El cronómetro de la página y `ALREADY_ASKED` viven en RAM. Si en el uso real repite preguntas sobre la misma página en días distintos, habrá que decidirlo, y eso sí sería guardar títulos |
 | Tildes en los comentarios | `src/` | Toda la prosa lleva tildes. Los módulos escritos primero (`llm/`, `perception/`) las tienen a medias, de una convención anterior. Se corrigen al tocar cada archivo, no de golpe |
 
 ---
@@ -165,7 +120,7 @@ Ninguna urgente. Buenas para entrar en calor.
 ## Cómo retomar esto
 
 1. Lee [`GUIA.md`](GUIA.md) si no tienes el proyecto fresco.
-2. `pytest` antes de tocar nada: 695 en verde es la línea base.
+2. `pytest` antes de tocar nada: 707 en verde es la línea base.
 3. Mira si hay un ADR sobre lo que vas a cambiar. Casi siempre la
    alternativa obvia ya se consideró y hay un motivo escrito.
 4. **Ejecuta la aplicación de verdad antes de dar algo por terminado.**

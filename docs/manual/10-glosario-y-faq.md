@@ -209,7 +209,7 @@ Añade su ejecutable a `blocked_processes`, en `[privacy]` de tu
 **¿Cómo cambio de modelo?**
 Instálalo con `ollama pull <modelo>` y usa `--model <modelo>` o cambia
 `model` en `[llm]`. No se debe fijar un modelo nuevo sin compararlo antes:
-es el punto 2 de `PENDIENTE.md`.
+es el punto 1 de `PENDIENTE.md`.
 
 **La lanzo desde el terminal de VS Code y el contexto dice siempre "VS Code".**
 El terminal integrado de VS Code es el propio `Code.exe`. Si añades

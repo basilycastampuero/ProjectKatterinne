@@ -44,7 +44,7 @@ servicios de visión ni de voz en la nube.
   minutos en el navegador. Solo conoce el título, nunca el contenido, y
   nunca pregunta por páginas con palabras sensibles en el título (banco,
   pago, contraseña, médico…).
-- 695 tests, de los que solo 7 necesitan Windows.
+- 707 tests, de los que solo 7 necesitan Windows.
 
 ## Qué todavía NO existe
 

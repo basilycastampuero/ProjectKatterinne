@@ -138,8 +138,17 @@ mientras que `run_watch()` **solo actúa cuando la decisión cambia**
 repetiría "HABLARÍA" cada segundo, porque sin pregunta no empieza el
 enfriamiento y la decisión no varía; y con `--ask`, si la redacción
 fallara, llamaría al modelo una vez por segundo. El REPL conserva un riesgo
-parecido cuando la plantilla está desactivada y la pregunta no sale; está
-anotado en `docs/PENDIENTE.md`.
+parecido cuando la plantilla está desactivada y la pregunta no sale: sigue
+llamando al modelo cada segundo, aunque el log ya no se llena. Está anotado
+en `docs/PENDIENTE.md`.
+
+El log tiene su propio filtro. `CuriosityEngine._log()` escribe la línea
+`decision=ASK` (nivel INFO) solo cuando la decisión pasa a hablar o cambia
+de tema o de tipo; si no, habría una por segundo mientras sigues en la
+página. Ese recuerdo (`_last_ask`) vive solo en RAM, se limpia con
+`reset()` y con cualquier decisión de no hablar, y nunca cambia lo que
+responde `evaluate()`. En DEBUG sale cada evaluación, que es para lo que
+sirve ese nivel.
 
 Antes `run_watch()` solo evaluaba con eventos, y por eso con
 `--watch --ask` nunca habría preguntado por una página.
@@ -461,6 +470,12 @@ la cita prueba que te gustó y el título dice qué vídeo era. Consecuencia:
   la conjugación.
 - `is_duplicate()` usa el **coeficiente de Jaccard**: palabras en común
   divididas entre palabras totales. Desde 0,8, dos hechos son el mismo.
+
+Al modelo le llega también lo que ya recuerdas, para que no repita. Eso
+tuvo un efecto inesperado: con seis recuerdos en el mensaje dejaba de
+proponer nada nuevo. Lo arregló un ejemplo del prompt (en
+`FACT_EXTRACTION_EXAMPLES`) con un recuerdo previo y, aun así, un hecho
+nuevo; está en el [ADR-010](../architecture-decisions/ADR-010-facts-need-a-literal-quote.md).
 
 Estas reglas no se eligieron a ojo: se probaron 48 combinaciones contra
 casos reales. Están en `tests/conversation/test_facts_real_cases.py` y en el

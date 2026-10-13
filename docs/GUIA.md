@@ -550,7 +550,7 @@ que comentas de un vídeo o de lo que te gusta es `LONG_TERM`.
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-**695 tests. Solo 7 necesitan Windows de verdad**, y están marcados para
+**707 tests. Solo 7 necesitan Windows de verdad**, y están marcados para
 saltarse en otras plataformas. El resto corre con dobles:
 
 | Se sustituye | Por | Dónde |
@@ -678,6 +678,12 @@ de "HABLARÍA" y, si la redacción fallara, una llamada al modelo por
 segundo. El REPL tiene un riesgo parecido con la plantilla desactivada
 (ver `PENDIENTE.md`).
 
+El log tiene su propio filtro, dentro de `CuriosityEngine._log()`: a nivel
+INFO, `decision=ASK` solo se escribe cuando la decisión pasa a hablar o
+cambia de tema o de tipo (`_last_ask`, solo en RAM). Sin él, un `--watch`
+sin `--ask` escribía una línea por segundo. En DEBUG sigue saliendo cada
+evaluación.
+
 ### El título de VS Code es ambiguo
 
 ```
@@ -720,6 +726,18 @@ se vuelve *prefiere*. Sin reducir las palabras a su raíz, el validador
 rechazaba 4 hechos buenos de 8. Y con la raíz y el umbral bajo pasaba un
 motivo que el modelo se había inventado. El ajuste está en ADR-010, y los
 casos que lo sostienen, en `test_facts_real_cases.py`.
+
+### Los dobles de test no ven los fallos del modelo
+
+Con seis hechos ya guardados, el modelo dejó de proponer ninguno: leía
+"esto es lo que recuerdas" como "no hay nada nuevo". Con el modelo real, la
+misma respuesta se guardaba 6 de 6 veces sin recuerdos y 0 de 6 con ellos.
+Los tests no lo veían porque el doble devuelve lo que se le pide. Dos
+reglas salen de ahí: los ejemplos del prompt deben tener la **misma forma
+que la entrada real** (por eso `test_los_ejemplos_pintan_los_bloques_igual_que_el_uso_real`
+los compara con `describe_context` y `describe_facts`), y cualquier cambio
+en un prompt se prueba con el modelo de verdad, varias veces. Reescribir
+solo la regla no arregló nada; el ejemplo sí (ADR-010).
 
 ### El pipe se traga el código de salida
 
