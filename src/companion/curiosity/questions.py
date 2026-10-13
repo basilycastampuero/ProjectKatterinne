@@ -131,6 +131,25 @@ class GeneratedQuestion:
         return self.source == "llm"
 
 
+@dataclass(frozen=True, slots=True)
+class ModelProposal:
+    """Lo que propuso el modelo y, si no vale, por qué.
+
+    `text` y `based_on` van tal cual llegaron, sin validar: pueden no ser
+    ni texto. Para decirla en voz alta está `GeneratedQuestion`.
+    """
+
+    text: Any
+    based_on: Any
+    #: Motivo de rechazo, o `None` si la pregunta es válida.
+    rejection: str | None
+    raw: dict[str, Any] = field(default_factory=dict, repr=False)
+
+    @property
+    def accepted(self) -> bool:
+        return self.rejection is None
+
+
 def validate_question(
     text: Any,
     based_on: Any,
@@ -213,6 +232,39 @@ class QuestionGenerator:
 
         `None` no es un fallo: callarse siempre es una salida válida.
         """
+        propuesta = self.propose(decision, context, memories)
+        if propuesta is None:
+            return None
+        if propuesta.accepted:
+            log.info("pregunta generada tipo=%s", decision.question_type)
+            return GeneratedQuestion(
+                text=propuesta.text.strip(),
+                question_type=decision.question_type,
+                topic=decision.topic,
+                based_on=propuesta.based_on.strip().lower(),
+                source="llm",
+                raw=propuesta.raw,
+            )
+
+        log.info("pregunta descartada motivo=%s", propuesta.rejection)
+        return self._from_template(decision)
+
+    # ------------------------------------------------------------------
+    # Modelo
+    # ------------------------------------------------------------------
+
+    def propose(
+        self,
+        decision: CuriosityDecision,
+        context: CurrentContext,
+        memories: Sequence[Fact] = (),
+    ) -> ModelProposal | None:
+        """Lo que propone el modelo, validado y sin plantilla de respaldo.
+
+        `None` si no hay que preguntar o no hay nada real en lo que apoyarse.
+        Es lo que mide el benchmark: con la plantilla detrás, un modelo que
+        fallara siempre parecería funcionar.
+        """
         if not decision.should_speak or decision.question_type is None:
             return None
 
@@ -223,37 +275,6 @@ class QuestionGenerator:
             log.info("sin contexto en el que apoyar una pregunta: silencio")
             return None
 
-        propuesta = self._ask_model(decision, context, memories)
-        if propuesta is not None:
-            texto, based_on, crudo = propuesta
-            motivo = validate_question(
-                texto, based_on, permitidos, max_words=self._max_words
-            )
-            if motivo is None:
-                log.info("pregunta generada tipo=%s", decision.question_type)
-                return GeneratedQuestion(
-                    text=texto.strip(),
-                    question_type=decision.question_type,
-                    topic=decision.topic,
-                    based_on=based_on.strip().lower(),
-                    source="llm",
-                    raw=crudo,
-                )
-            log.info("pregunta descartada motivo=%s", motivo)
-
-        return self._from_template(decision)
-
-    # ------------------------------------------------------------------
-    # Modelo
-    # ------------------------------------------------------------------
-
-    def _ask_model(
-        self,
-        decision: CuriosityDecision,
-        context: CurrentContext,
-        memories: Sequence[Fact],
-    ) -> tuple[Any, Any, dict[str, Any]] | None:
-        """Pide la pregunta al modelo. `None` si falla o no se entiende."""
         try:
             resultado = self._provider.generate(
                 self._build_messages(decision, context, memories), json_mode=True
@@ -261,19 +282,18 @@ class QuestionGenerator:
         except LLMError as exc:
             # Que el runtime falle no puede impedir preguntar: hay plantilla.
             log.warning("el modelo no pudo redactar la pregunta: %s", exc)
-            return None
+            return ModelProposal(None, None, rejection="error del modelo")
 
         try:
             datos = json.loads(resultado.text)
         except json.JSONDecodeError:
-            log.info("el modelo no devolvió JSON válido")
-            return None
-
+            return ModelProposal(None, None, rejection="JSON inválido")
         if not isinstance(datos, dict):
-            log.info("el modelo devolvió JSON que no es un objeto")
-            return None
+            return ModelProposal(None, None, rejection="JSON que no es un objeto")
 
-        return datos.get("question"), datos.get("based_on"), datos
+        texto, based_on = datos.get("question"), datos.get("based_on")
+        motivo = validate_question(texto, based_on, permitidos, max_words=self._max_words)
+        return ModelProposal(texto, based_on, rejection=motivo, raw=datos)
 
     def _build_messages(
         self,
@@ -338,6 +358,7 @@ __all__ = [
     "BANNED_VISION",
     "CONTEXT_FIELDS",
     "GeneratedQuestion",
+    "ModelProposal",
     "MAX_WORDS",
     "QuestionGenerator",
     "validate_question",

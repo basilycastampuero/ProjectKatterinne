@@ -454,3 +454,48 @@ def test_una_plantilla_con_tema_cumple_las_mismas_reglas_que_el_modelo(titulo: s
 
     assert pregunta is not None
     assert validate_question(pregunta.text, "document", ("document",)) is None
+
+
+# ----------------------------------------------------------------------
+# Lo que propone el modelo, sin plantilla detrás
+# ----------------------------------------------------------------------
+
+
+def test_propose_dice_por_que_se_rechaza_lo_que_propone_el_modelo() -> None:
+    # `generate()` cae en la plantilla y el motivo solo quedaba en el log.
+    # Para medir a un modelo hace falta saber por qué falla, no solo que
+    # falló: el benchmark cuenta los motivos.
+    provider = _provider(question="Estás programando algo.", based_on="project")
+
+    propuesta = QuestionGenerator(provider).propose(_decision(), contexto())
+
+    assert propuesta is not None and not propuesta.accepted
+    assert propuesta.rejection == "no es una pregunta"
+
+
+def test_propose_acepta_una_pregunta_valida_tal_cual() -> None:
+    provider = _provider(question="¿Qué estás montando ahí?", based_on="project")
+
+    propuesta = QuestionGenerator(provider).propose(_decision(), contexto())
+
+    assert propuesta.accepted
+    assert propuesta.text == "¿Qué estás montando ahí?"
+
+
+def test_propose_distingue_un_json_roto() -> None:
+    propuesta = QuestionGenerator(FakeProvider(replies=["no es json"])).propose(
+        _decision(), contexto()
+    )
+
+    assert propuesta.rejection == "JSON inválido"
+
+
+def test_propose_nunca_usa_la_plantilla() -> None:
+    # Con la plantilla detrás, un modelo que fallara siempre parecería
+    # funcionar.
+    generador = QuestionGenerator(FakeProvider(raises=ProviderUnavailableError("caído")))
+
+    propuesta = generador.propose(_decision(), contexto())
+
+    assert propuesta.rejection == "error del modelo"
+    assert propuesta.text is None
