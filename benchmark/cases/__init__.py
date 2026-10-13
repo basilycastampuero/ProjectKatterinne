@@ -7,11 +7,12 @@ todos los modelos y se vuelve a ejecutar todo.
 
 from __future__ import annotations
 
-from benchmark.cases import preguntas, rendimiento
+from benchmark.cases import hechos, preguntas, rendimiento
 from benchmark.core import Case
 
 #: Tarea → sus casos. El orden es el de ejecución.
 TASKS: dict[str, tuple[Case, ...]] = {
     rendimiento.TASK: rendimiento.CASES,
     preguntas.TASK: preguntas.CASES,
+    hechos.TASK: hechos.CASES,
 }

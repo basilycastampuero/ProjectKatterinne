@@ -1,6 +1,6 @@
 # Plan — benchmark de modelos
 
-Estado: **pasos 1 y 2 hechos** (rendimiento y VRAM; preguntas). Es el punto 1 de
+Estado: **pasos 1 a 3 hechos** (rendimiento y VRAM, preguntas, hechos). Es el punto 1 de
 [`PENDIENTE.md`](PENDIENTE.md).
 
 ## Por qué ahora
@@ -153,6 +153,22 @@ recuerdos previos y algo nuevo, tercera persona, una respuesta corta que
 solo se entiende con la pregunta, una charla sin nada que recordar, y una
 contraseña que nunca debe guardarse. Nota: aciertos, silencios correctos y
 rechazos por motivo.
+
+**Hecho.** Dieciséis conversaciones en `benchmark/cases/hechos.py`, cada una
+con su respuesta ideal: un test comprueba que el validador la acepta (ya
+pilló una que no: "prefiere tabs" cuando la persona nunca dijo "prefiere").
+Para ver qué propuso el modelo y por qué se rechazó, `FactExtractor` tiene
+`review()`; `extract()` lo usa y devuelve lo mismo que antes.
+
+Primera medida con `qwen3:8b` (3 repeticiones): 39 de 48. Sin nada que
+recordar, a veces devuelve `{}` en vez de `{"facts": []}`; deja lo mismo en
+la memoria y no cuenta como fallo. Lo que queda es real:
+
+- 6 hechos buenos que el validador rechaza por "añade cosas que no dijo",
+  en una preferencia y en un comentario sobre música. En la aplicación se
+  perderían igual.
+- 3 veces repite un recuerdo que ya tiene. En la aplicación lo frenaría el
+  detector de duplicados, pero es una instrucción del prompt que no sigue.
 
 ### Paso 4 — Conversación
 
