@@ -1,6 +1,6 @@
 # Plan — benchmark de modelos
 
-Estado: **pasos 1 a 4 hechos**: las cinco tareas están listas. Falta el informe comparativo y la hoja ciega (paso 5). Es el punto 1 de
+Estado: **pasos 1 a 5 hechos.** Falta ejecutarlo con los candidatos (paso 6, la persona) y decidir (paso 7). Es el punto 1 de
 [`PENDIENTE.md`](PENDIENTE.md).
 
 ## Por qué ahora
@@ -206,11 +206,34 @@ ya estaba apuntado en PENDIENTE, y un "deberías dejarlo".
   clave queda en un archivo aparte. Sin esto, saber qué modelo habla sesga
   la nota.
 
+**Hecho.** `python -m benchmark.informe <carpeta>` escribe
+`comparativa.md` (Markdown, para pegarla en el ADR) y `hoja_ciega.csv` con
+`clave.json`. La velocidad de la tabla sale solo de la tarea
+`rendimiento`, que manda los mismos mensajes a todos los modelos. Las
+letras se barajan en cada escenario, el CSV va con `;` y BOM para Excel en
+español, y una hoja que ya existe no se regenera: podría tener notas.
+`--notas` lee la hoja puntuada y añade la media de cada modelo.
+
+La prueba de principio a fin destapó otra comprobación mal hecha: reutilizar
+la lista de "afirma ver la pantalla" del validador de preguntas suspendía
+"no puedo ver la otra pestaña", que en conversación es la respuesta buena.
+Ahora una negación justo antes no cuenta.
+
 ### Paso 6 — Ejecutarlo (lo hace la persona, con la GPU libre)
 
-Una hora y media, más o menos, para los seis: ~60 casos × 5 repeticiones ×
-~3 s por modelo. Nada más usando la GPU mientras tanto, o la latencia no
-vale.
+Medido: una repetición de los 51 casos tarda unos 75 s con `qwen3:8b`, así
+que con 5 repeticiones son unos 6 minutos por modelo y unos 40 los seis
+(más si alguno es más lento). Nada más usando la GPU mientras tanto, o la
+latencia no vale.
+
+```powershell
+.\.venv\Scripts\python.exe -m benchmark --out data\benchmark\candidatos `
+    --model qwen3:8b --model qwen3.5:9b --model qwen3.5:4b `
+    --model gemma4:e4b --model ministral-3:8b --model granite4.1:8b
+.\.venv\Scripts\python.exe -m benchmark.informe data\benchmark\candidatos
+# puntuar hoja_ciega.csv del 1 al 5 en Excel, guardarla, y:
+.\.venv\Scripts\python.exe -m benchmark.informe data\benchmark\candidatos --notas
+```
 
 ### Paso 7 — Decidir y documentar
 

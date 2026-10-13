@@ -88,9 +88,21 @@ def sin_coach(texto: str) -> str | None:
     return "suena a coach" if any(p.search(minusculas) for p in _COACH) else None
 
 
+#: Una negación justo antes: "no estoy viendo", "no puedo ver", "tampoco veo".
+_NEGADO = re.compile(r"\b(no|nunca|tampoco)\s+(\w+\s+)?$")
+
+
 def no_afirma_ver(texto: str) -> str | None:
+    # La lista es la del validador de preguntas, donde una negación no sale
+    # nunca. En conversación es justo la respuesta buena: "no puedo ver la
+    # otra pestaña". Sin esto, la primera medida suspendió dos respuestas
+    # correctas.
     minusculas = texto.lower()
-    return "afirma ver la pantalla" if any(p.search(minusculas) for p in _VISION) else None
+    for patron in _VISION:
+        for encontrado in patron.finditer(minusculas):
+            if not _NEGADO.search(minusculas[: encontrado.start()]):
+                return "afirma ver la pantalla"
+    return None
 
 
 _NO_SABE = re.compile(

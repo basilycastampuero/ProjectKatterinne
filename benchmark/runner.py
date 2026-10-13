@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from benchmark.core import Attempt, Case, RecordingProvider, Verdict
+from benchmark.core import Attempt, CallMetrics, Case, RecordingProvider, Verdict
 from companion.llm import LLMError, LLMProvider, Message
 from companion.llm.provider import MemoryUsage
 
@@ -115,6 +115,25 @@ def unload_and_wait(
         sleep(poll_s)
         esperado += poll_s
     return True
+
+
+def load(path: Path) -> ModelRun:
+    """Lo contrario de `save()`: para comparar ejecuciones ya hechas."""
+    datos = json.loads(path.read_text(encoding="utf-8"))
+    memoria = datos.get("memory")
+    return ModelRun(
+        model=datos["model"],
+        started_at=datos["started_at"],
+        repetitions=datos["repetitions"],
+        cold_start_ms=datos["cold_start_ms"],
+        memory=MemoryUsage(**memoria) if memoria else None,
+        info=datos.get("info") or {},
+        revision=datos.get("revision"),
+        attempts=[
+            Attempt(**{**a, "calls": tuple(CallMetrics(**c) for c in a["calls"])})
+            for a in datos["attempts"]
+        ],
+    )
 
 
 def save(run: ModelRun, directory: Path) -> Path:

@@ -227,3 +227,23 @@ def test_reconoce_las_formas_de_admitir_que_no_lo_sabe(texto: str) -> None:
     # Las dos del medio suspendían en la primera medida aunque eran
     # respuestas correctas: la comprobación castigaba una forma de hablar.
     assert conversacion.admite_no_saber(texto) is None
+
+
+@pytest.mark.parametrize(
+    "texto",
+    [
+        "No lo sé, no estoy viendo el contenido del vídeo.",
+        "No puedo ver lo que hay en la otra pestaña.",
+        "Tampoco veo que haya nada más abierto.",
+    ],
+)
+def test_negar_que_ve_la_pantalla_no_es_afirmarlo(texto: str) -> None:
+    # Las dos primeras suspendían en una medida real, y eran la respuesta
+    # correcta.
+    assert conversacion.no_afirma_ver(texto) is None
+
+
+def test_afirmarlo_despues_de_una_negacion_sigue_suspendiendo() -> None:
+    texto = "No lo sé seguro, pero veo que tienes otra pestaña con música."
+
+    assert conversacion.no_afirma_ver(texto) == "afirma ver la pantalla"
