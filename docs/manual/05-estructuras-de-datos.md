@@ -205,9 +205,18 @@ last_accessed_at
 expires_at
 ```
 
-La versión del esquema se guarda en `PRAGMA user_version` (hoy, 1). Si la
-aplicación encuentra una base de datos de otra versión, **se niega a
-tocarla** en vez de arriesgarse a corromperla.
+La versión del esquema se guarda en `PRAGMA user_version` (hoy, 2). Si la
+aplicación encuentra una base de una versión **anterior**, la migra al
+abrirla, dentro de una transacción: se aplica entera o no se aplica nada.
+Si es de una versión **posterior**, se niega a tocarla en vez de
+arriesgarse a corromperla.
+
+El `id` de `facts` lleva `AUTOINCREMENT`, y es la única tabla que lo
+necesita. `/memory` enseña ese número y `/forget` lo usa. Sin
+`AUTOINCREMENT`, SQLite da a una fila nueva el id más alto que exista más
+uno: al borrar el último recuerdo, el siguiente heredaba su número, y un
+`/forget` con el número apuntado antes borraba otro. Esa fue la migración a
+la versión 2.
 
 ### `MemoryScope` — cuánto dura un recuerdo
 

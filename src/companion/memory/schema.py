@@ -19,12 +19,34 @@ import sqlite3
 
 from companion.memory.errors import SchemaVersionError
 
-#: Version del esquema, guardada en `PRAGMA user_version`.
+#: Versión del esquema, guardada en `PRAGMA user_version`.
 #:
-#: Hoy solo sirve para detectar una base de datos de otra version y avisar
-#: en vez de corromperla. Cuando haga falta migrar, aqui es donde se
-#: engancha.
-SCHEMA_VERSION = 1
+#: Una base de una versión anterior se migra al abrirla (`_MIGRATIONS`); una
+#: de una versión posterior no se toca, para no corromperla.
+#:
+#: 2: `facts.id` con AUTOINCREMENT, para que un id no se reutilice.
+SCHEMA_VERSION = 2
+
+# AUTOINCREMENT es lo que hace que un id no se reutilice nunca. Sin él,
+# SQLite da a una fila nueva el id más alto que exista más uno, así que al
+# borrar el último recuerdo el siguiente heredaba su número: `/memory` lo
+# enseña y `/forget <id>` lo usa, y borraba el que no era. Solo esta tabla
+# lo necesita, porque es la única cuyos id ve y escribe la persona.
+_FACTS_TABLE = """
+    CREATE TABLE IF NOT EXISTS {name} (
+        id               INTEGER PRIMARY KEY AUTOINCREMENT,
+        content          TEXT    NOT NULL,
+        provenance       TEXT    NOT NULL,
+        confidence       REAL    NOT NULL,
+        source           TEXT    NOT NULL,
+        scope            TEXT    NOT NULL,
+        created_at       TEXT    NOT NULL,
+        project_id       INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+        session_id       INTEGER REFERENCES sessions(id) ON DELETE SET NULL,
+        last_accessed_at TEXT,
+        expires_at       TEXT
+    )
+"""
 
 _TABLES = (
     # ------------------------------------------------------------------
@@ -77,21 +99,7 @@ _TABLES = (
     #
     # provenance + confidence + source son ADR-006 hecho columnas.
     # ------------------------------------------------------------------
-    """
-    CREATE TABLE IF NOT EXISTS facts (
-        id               INTEGER PRIMARY KEY,
-        content          TEXT    NOT NULL,
-        provenance       TEXT    NOT NULL,
-        confidence       REAL    NOT NULL,
-        source           TEXT    NOT NULL,
-        scope            TEXT    NOT NULL,
-        created_at       TEXT    NOT NULL,
-        project_id       INTEGER REFERENCES projects(id) ON DELETE CASCADE,
-        session_id       INTEGER REFERENCES sessions(id) ON DELETE SET NULL,
-        last_accessed_at TEXT,
-        expires_at       TEXT
-    )
-    """,
+    _FACTS_TABLE.format(name="facts"),
     # ------------------------------------------------------------------
     # Conversaciones
     # ------------------------------------------------------------------
@@ -143,15 +151,39 @@ def configure_connection(connection: sqlite3.Connection) -> None:
     connection.row_factory = sqlite3.Row
 
 
+_FACTS_COLUMNS = (
+    "id, content, provenance, confidence, source, scope, created_at,"
+    " project_id, session_id, last_accessed_at, expires_at"
+)
+
+
+def _migrate_to_2(connection: sqlite3.Connection) -> None:
+    # SQLite no deja añadir AUTOINCREMENT con ALTER TABLE: se reconstruye la
+    # tabla. Los id se copian tal cual, porque son los que la persona ya ha
+    # visto en `/memory`. El id más alto queda apuntado en `sqlite_sequence`
+    # y desde ahí no se repite. Si el último recuerdo se borró antes de
+    # migrar, su número aún podría volver una vez: eso ya no se puede saber.
+    connection.execute(_FACTS_TABLE.format(name="facts_v2"))
+    connection.execute(
+        f"INSERT INTO facts_v2 ({_FACTS_COLUMNS}) SELECT {_FACTS_COLUMNS} FROM facts"
+    )
+    connection.execute("DROP TABLE facts")
+    connection.execute("ALTER TABLE facts_v2 RENAME TO facts")
+
+
+#: Qué hacer para llegar a cada versión desde la anterior.
+_MIGRATIONS = {2: _migrate_to_2}
+
+
 def apply_schema(connection: sqlite3.Connection) -> None:
-    """Crea el esquema si falta y comprueba la version si ya existe.
+    """Crea el esquema si falta, o migra una base de una versión anterior.
 
     Raises:
-        SchemaVersionError: la base de datos es de una version distinta.
+        SchemaVersionError: la base de datos es de una versión posterior.
     """
     version = connection.execute("PRAGMA user_version").fetchone()[0]
 
-    if version not in (0, SCHEMA_VERSION):
+    if version > SCHEMA_VERSION:
         raise SchemaVersionError(
             f"La base de datos usa el esquema version {version} y este "
             f"programa entiende la {SCHEMA_VERSION}. No se toca nada para "
@@ -159,6 +191,14 @@ def apply_schema(connection: sqlite3.Connection) -> None:
         )
 
     with connection:
+        # `sqlite3` no abre transacción por su cuenta para CREATE, DROP o
+        # ALTER: sin este BEGIN, un fallo a mitad de migrar dejaría la
+        # memoria sin la tabla de hechos. Así se aplica entera o nada.
+        connection.execute("BEGIN")
+        if version > 0:
+            for destino in range(version + 1, SCHEMA_VERSION + 1):
+                _MIGRATIONS[destino](connection)
+        # Después de migrar, porque reconstruir una tabla se lleva sus índices.
         for statement in (*_TABLES, *_INDEXES):
             connection.execute(statement)
         # No admite parametros: es un pragma, no una consulta.
