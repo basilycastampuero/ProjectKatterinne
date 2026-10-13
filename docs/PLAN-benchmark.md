@@ -1,6 +1,6 @@
 # Plan — benchmark de modelos
 
-Estado: **planificado, sin empezar.** Es el punto 1 de
+Estado: **paso 1 hecho** (rendimiento y VRAM). Es el punto 1 de
 [`PENDIENTE.md`](PENDIENTE.md).
 
 ## Por qué ahora
@@ -116,6 +116,19 @@ descargando mientras se hacen los pasos 1 a 4.
   trae).
 - `think = false` para todos, como en la aplicación (ADR-003). El
   proveedor ya solo lo manda si el modelo lo admite.
+
+**Hecho.** `LLMProvider.memory_usage()` (en Ollama, `/api/ps`), el runner,
+el informe y la tarea `rendimiento`. Dos cosas que salieron al medir:
+
+- La memoria del modelo cargado **incluye el contexto**: `qwen3:8b` ocupa
+  5,96 GB con `num_ctx = 4096`, no los 5,2 GB de la descarga. Por eso se
+  mide con los ajustes de la aplicación y no con la cifra de la página.
+- **Descargar es asíncrono**: Ollama contesta al instante y libera la VRAM
+  un momento después. Entre modelos, `unload_and_wait()` espera a que la
+  GPU quede libre de verdad.
+
+Línea base, `qwen3:8b` en este portátil: arranque en frío 3,4 s; en
+caliente, 186 ms hasta el primer token y 32,8 tokens/s.
 
 ### Paso 2 — Preguntas de curiosidad
 
