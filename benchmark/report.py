@@ -26,6 +26,12 @@ class TaskSummary:
         return self.passed / self.attempts if self.attempts else 0.0
 
 
+def category(reason: str) -> str:
+    """El motivo sin su detalle: "demasiado larga (31 palabras)" cuenta como
+    "demasiado larga". El detalle sigue en el JSON para revisarlo."""
+    return reason.split(" (", 1)[0]
+
+
 def _mediana(valores: list[float]) -> float | None:
     # La mediana y no la media: una llamada que tarda diez veces más por
     # cualquier motivo no debe mover la cifra.
@@ -45,7 +51,7 @@ def summarize(attempts: list[Attempt]) -> list[TaskSummary]:
                 task=tarea,
                 attempts=len(intentos),
                 passed=sum(i.passed for i in intentos),
-                reasons=Counter(i.reason for i in intentos if i.reason),
+                reasons=Counter(category(i.reason) for i in intentos if i.reason),
                 ttft_ms=_mediana([c.ttft_ms for c in llamadas if c.ttft_ms is not None]),
                 tokens_per_second=_mediana(
                     [c.tokens_per_second for c in llamadas if c.tokens_per_second]

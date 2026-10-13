@@ -1,6 +1,6 @@
 # Plan — benchmark de modelos
 
-Estado: **paso 1 hecho** (rendimiento y VRAM). Es el punto 1 de
+Estado: **pasos 1 y 2 hechos** (rendimiento y VRAM; preguntas). Es el punto 1 de
 [`PENDIENTE.md`](PENDIENTE.md).
 
 ## Por qué ahora
@@ -137,6 +137,14 @@ vídeo en el navegador, documento con título largo, título que es una
 pregunta, juego, aplicación sin proyecto, con y sin recuerdos. Nota: % que
 pasa `validate_question()` sin plantilla, por motivo de rechazo.
 
+**Hecho.** Doce casos en `benchmark/cases/preguntas.py`. Para medir sin la
+plantilla, `QuestionGenerator` tiene ahora `propose()`, que devuelve lo que
+propuso el modelo con su motivo de rechazo; `generate()` lo usa y sigue
+cayendo en la plantilla igual que antes. Primera medida con `qwen3:8b`
+(3 repeticiones): 33 de 36. Los tres fallos son el mismo caso: con un
+título motivacional, copia el título entero y el validador lo rechaza por
+sonar a coach.
+
 ### Paso 3 — Extracción de hechos
 
 Recuperar el conjunto perdido: unas 15 conversaciones con el resultado
@@ -177,10 +185,8 @@ escrito por qué, que también vale.
 
 ## Decisiones abiertas
 
-- **Inglés.** El prompt manda hablar siempre en español. El plan mide
-  entender inglés y contestar en español; si la persona quiere que conteste
-  en inglés cuando se le habla en inglés, eso es un cambio de la persona,
-  no del benchmark.
+- **Inglés** (decidido): sigue hablando siempre en español. Se mide que
+  entienda inglés y conteste en español.
 - **Cinco repeticiones** es un compromiso entre tiempo y ruido. Si dos
   modelos quedan a menos de un 10 % en alguna tarea, repetir solo esa tarea
   con más repeticiones antes de decidir.

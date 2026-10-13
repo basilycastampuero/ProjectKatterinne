@@ -136,3 +136,17 @@ def test_si_no_se_libera_lo_dice_en_vez_de_esperar_para_siempre() -> None:
     proveedor = _DescargaLenta(sondeos_hasta_liberar=10_000)
 
     assert unload_and_wait(proveedor, timeout_s=2.0, poll_s=0.5, sleep=lambda _: None) is False
+
+
+def test_los_motivos_se_agrupan_sin_su_detalle() -> None:
+    # "demasiado larga (31 palabras)" y "(40 palabras)" son el mismo fallo.
+    casos = [
+        _caso("a", Verdict.fail("demasiado larga (31 palabras)")),
+        _caso("b", Verdict.fail("demasiado larga (40 palabras)")),
+    ]
+    ejecucion = run_model(FakeProvider(), casos, repetitions=1)
+
+    (resumen,) = summarize(ejecucion.attempts)
+
+    assert resumen.reasons == {"demasiado larga": 2}
+    assert ejecucion.attempts[0].reason == "demasiado larga (31 palabras)"
