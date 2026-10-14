@@ -352,6 +352,10 @@ def run_repl(
     _out()
 
     ultimo_turno: float | None = None
+    #: (tema, tipo) de la última pregunta que se intentó y no llegó a salir.
+    #: Sin esto, el siguiente segundo vuelve a decidir lo mismo y vuelve a
+    #: llamar al modelo, como ya evita `run_watch()` con `ultima_decision`.
+    intento_fallido: tuple[str | None, Any] | None = None
 
     def mirar() -> tuple[CurrentContext | None, WindowEvent | None]:
         if window_provider is None:
@@ -369,6 +373,7 @@ def run_repl(
 
     def quizas_hablar() -> bool:
         """Observa y, si hay motivo, dice algo. True si llegó a hablar."""
+        nonlocal intento_fallido
         contexto, evento = mirar()
         if contexto is None or curiosity is None or questions is None:
             guardar(contexto, evento)
@@ -384,6 +389,12 @@ def run_repl(
         decision = curiosity.evaluate(contexto, conversation_active=viva)
         guardar(contexto, evento)
         if not decision.should_speak:
+            # Callar en medio cuenta como cambio: la próxima vez que quiera
+            # hablar, aunque sea de lo mismo, lo vuelve a intentar.
+            intento_fallido = None
+            return False
+        clave = (decision.topic, decision.question_type)
+        if clave == intento_fallido:
             return False
 
         recuerdos = []
@@ -392,7 +403,11 @@ def run_repl(
 
         pregunta = questions.generate(decision, contexto, recuerdos)
         if pregunta is None:
+            # Sin pregunta no empieza el enfriamiento: hay que recordar que
+            # ya se intentó. Pasa con `allow_template_fallback = false`.
+            intento_fallido = clave
             return False
+        intento_fallido = None
 
         _out()
         _out(f"IA: {pregunta.text}")

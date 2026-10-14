@@ -137,10 +137,12 @@ mientras que `run_watch()` **solo actúa cuando la decisión cambia**
 (guarda la última en `ultima_decision`). Sin eso, un `--watch` sin `--ask`
 repetiría "HABLARÍA" cada segundo, porque sin pregunta no empieza el
 enfriamiento y la decisión no varía; y con `--ask`, si la redacción
-fallara, llamaría al modelo una vez por segundo. El REPL conserva un riesgo
-parecido cuando la plantilla está desactivada y la pregunta no sale: sigue
-llamando al modelo cada segundo, aunque el log ya no se llena. Está anotado
-en `docs/PENDIENTE.md`.
+fallara, llamaría al modelo una vez por segundo. El REPL tenía el mismo
+riesgo cuando la plantilla está desactivada y la pregunta no sale: sin
+pregunta no empieza el enfriamiento, y volvía a llamar al modelo cada
+segundo. Ahora recuerda en `intento_fallido` el tema y el tipo de lo que
+intentó; no repite esa pregunta hasta que la decisión cambie, ya sea a
+callar o a otro tema.
 
 El log tiene su propio filtro. `CuriosityEngine._log()` escribe la línea
 `decision=ASK` (nivel INFO) solo cuando la decisión pasa a hablar o cambia

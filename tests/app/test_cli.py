@@ -517,6 +517,60 @@ def test_no_interrumpe_una_conversacion_recien_empezada(
     assert "¿Qué montas en questions.py?" not in capsys.readouterr().out
 
 
+def _generador_que_siempre_falla() -> tuple[QuestionGenerator, FakeProvider]:
+    # Sin plantilla detrás y con una "pregunta" que el validador rechaza:
+    # la pregunta no llega a salir nunca.
+    modelo = FakeProvider(replies=[json.dumps({"question": "Programas.", "based_on": "project"})])
+    return QuestionGenerator(modelo, allow_fallback=False), modelo
+
+
+def test_una_pregunta_que_no_sale_no_se_reintenta_cada_segundo(
+    fake_provider: FakeProvider, memoria: MemoryManager
+) -> None:
+    """Si la pregunta no sale, no empieza el enfriamiento.
+
+    Al segundo siguiente la curiosidad volvía a decidir lo mismo y volvía a
+    llamar al modelo: con `allow_template_fallback = false`, una llamada por
+    segundo mientras siguiera en la misma ventana. `--watch` ya lo evitaba;
+    el REPL no, y ningún test dejaba pasar más de un segundo sin entrada.
+    """
+    memoria.start_session()
+    generador, modelo = _generador_que_siempre_falla()
+
+    run_repl(
+        ConversationManager(fake_provider, memory=memoria),
+        window_provider=FakeActiveWindowProvider([_ventana_con_proyecto()]),
+        curiosity=CuriosityEngine(
+            policy=CuriosityPolicy(min_seconds_in_context=0.0), memory=memoria
+        ),
+        questions=generador,
+        reader=_LectorFalso([SIN_ENTRADA] * 10 + [None]),
+    )
+
+    assert len(modelo.calls) == 1
+
+
+def test_si_cambia_de_tema_lo_vuelve_a_intentar(
+    fake_provider: FakeProvider, memoria: MemoryManager
+) -> None:
+    # Lo que no se repite es la misma pregunta; otra distinta sí se intenta.
+    memoria.start_session()
+    generador, modelo = _generador_que_siempre_falla()
+    otro = make_window("Code.exe", title="main.py - OtroProyecto - Visual Studio Code")
+
+    run_repl(
+        ConversationManager(fake_provider, memory=memoria),
+        window_provider=FakeActiveWindowProvider([_ventana_con_proyecto()] * 3 + [otro] * 3),
+        curiosity=CuriosityEngine(
+            policy=CuriosityPolicy(min_seconds_in_context=0.0), memory=memoria
+        ),
+        questions=generador,
+        reader=_LectorFalso([SIN_ENTRADA] * 6 + [None]),
+    )
+
+    assert len(modelo.calls) == 2
+
+
 def test_sin_curiosidad_el_repl_no_pregunta_nada(
     fake_provider: FakeProvider, capsys
 ) -> None:
