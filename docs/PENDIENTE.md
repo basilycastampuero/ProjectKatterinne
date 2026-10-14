@@ -117,7 +117,7 @@ Ninguna urgente. Buenas para entrar en calor.
 
 | | Dónde | Notas |
 |---|---|---|
-| Nombres de aplicación feos | `perception/process.py` y `context/activity.py` | En la memoria real, los procesos que más salen sin actividad reconocida: `steamwebhelper.exe` (63 veces), `SearchHost.exe` (23), `Taskmgr.exe` (11), `ShellExperienceHost.exe` (10), `LockApp.exe` (8), `Minecraft.exe` y `javaw.exe`. Varios son del propio Windows (búsqueda, menú Inicio, bloqueo) y quizá deberían ignorarse en vez de nombrarse. `WhatsApp.Root.exe` ya está resuelto. Steam es el ejercicio guiado del manual (capítulos 8.7 y 9.8) |
+| Nombres de aplicación feos | `perception/process.py` | Las piezas de Windows (buscador, Inicio, bloqueo) ya se ignoran y los nombres más frecuentes ya se traducen. Queda `steamwebhelper.exe` (63 veces en la memoria real), que es el ejercicio guiado del manual (capítulos 8.7 y 9.8), y `javaw.exe`, que no se puede nombrar porque es cualquier programa en Java. Y una pista para quien siga: la barra de tareas y el escritorio son `explorer.exe`, igual que el explorador de archivos, así que un clic en la barra cuenta como estar en el explorador; distinguirlos exigiría mirar la clase de la ventana |
 | Reglas de título sin verificar | `perception/project_detector.py` | Las de JetBrains y Visual Studio declaran confianza 0.7 porque **no se han comprobado en una máquina real**. Si tienes uno, verifícalas y sube la confianza |
 | `min_seconds_in_context` | `companion.toml` | Diseñado a 120. Si lo bajas para probar, acuérdate de subirlo |
 | Paráfrasis duplicadas | `memory/similarity.py` | *"La memoria va integrada en SQLite"* y *"La memoria que conecta a la compañera está integrada en SQLite"* no se reconocen como el mismo hecho (Jaccard 0,6). Es trabajo de embeddings, PHASE 9 |
@@ -134,7 +134,7 @@ Ninguna urgente. Buenas para entrar en calor.
 ## Cómo retomar esto
 
 1. Lee [`GUIA.md`](GUIA.md) si no tienes el proyecto fresco.
-2. `pytest` antes de tocar nada: 829 en verde es la línea base.
+2. `pytest` antes de tocar nada: 855 en verde es la línea base.
 3. Mira si hay un ADR sobre lo que vas a cambiar. Casi siempre la
    alternativa obvia ya se consideró y hay un motivo escrito.
 4. **Ejecuta la aplicación de verdad antes de dar algo por terminado.**

@@ -274,6 +274,39 @@ def test_lo_ignorado_tampoco_entra_en_el_historial() -> None:
     assert len(contexto.recent_events) == 1
 
 
+@pytest.mark.parametrize(
+    "proceso",
+    ["SearchHost.exe", "ShellHost.exe", "ShellExperienceHost.exe", "LockApp.exe",
+     "StartMenuExperienceHost.exe", "OpenWith.exe"],
+)
+def test_las_piezas_de_windows_no_cuentan_como_aplicacion(
+    engine: ContextEngine, proceso: str
+) -> None:
+    """Abrir Inicio dos segundos no es estar en una aplicación.
+
+    En la memoria real, el buscador de Inicio salía 27 veces como si fuera
+    una aplicación, y cada vez cortaba el cronómetro de lo que se estaba
+    mirando. Se ignoran sin configurar nada: son el propio Windows.
+    """
+    engine.observe(make_window("brave.exe", title="Un vídeo - YouTube - Brave"))
+
+    contexto, evento = engine.observe(make_window(proceso, title=""))
+
+    assert evento is None
+    assert contexto.application.value == "Brave"
+    assert not contexto.in_focus
+
+
+def test_ignorar_las_piezas_de_windows_no_borra_la_lista_propia() -> None:
+    motor = ContextEngine(ignore_processes=["WindowsTerminal.exe"])
+    motor.observe(make_window("Code.exe", title=VSCODE))
+
+    _, desde_el_terminal = motor.observe(make_window("WindowsTerminal.exe", title="bash"))
+    _, desde_inicio = motor.observe(make_window("SearchHost.exe", title=""))
+
+    assert desde_el_terminal is None and desde_inicio is None
+
+
 def test_current_expone_el_ultimo_contexto(engine: ContextEngine) -> None:
     contexto, _ = engine.observe(make_window("Code.exe", title=VSCODE))
 

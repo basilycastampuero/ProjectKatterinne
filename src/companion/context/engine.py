@@ -26,7 +26,7 @@ from companion.context.models import (
     Signal,
 )
 from companion.perception.models import ActiveWindow, WindowEvent
-from companion.perception.process import normalize_process
+from companion.perception.process import WINDOWS_SHELL_PROCESSES, normalize_process
 from companion.perception.project_detector import detect
 from companion.perception.watcher import WindowChangeDetector
 
@@ -52,7 +52,7 @@ class ContextEngine:
         self._recent: deque[WindowEvent] = deque(maxlen=max_recent_events)
         self._confirmed_project: str | None = None
         self._current = CurrentContext()
-        self._ignored = frozenset(
+        self._ignored = WINDOWS_SHELL_PROCESSES | frozenset(
             normalizado
             for nombre in ignore_processes
             if (normalizado := normalize_process(nombre))

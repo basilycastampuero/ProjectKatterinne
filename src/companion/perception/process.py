@@ -30,7 +30,33 @@ KNOWN_APPLICATIONS: dict[str, str] = {
     "cmd.exe": "Simbolo del sistema",
     "notepad.exe": "Bloc de notas",
     "whatsapp.root.exe": "WhatsApp",
+    # Los que más salían con nombre feo en una memoria real.
+    "taskmgr.exe": "Administrador de tareas",
+    "valorant-win64-shipping.exe": "VALORANT",
+    "epicgameslauncher.exe": "Epic Games Launcher",
+    "snippingtool.exe": "Recortes",
+    "nvcplui.exe": "Panel de control de NVIDIA",
 }
+
+#: Partes del propio Windows que se ponen delante un momento: el buscador,
+#: el menú Inicio, los paneles de la barra de tareas, las notificaciones,
+#: la pantalla de bloqueo, el diálogo "Abrir con". No son estar en una
+#: aplicación: abrir Inicio dos segundos no debe cortar lo que se estaba
+#: haciendo. Se ignoran siempre, igual que el terminal en
+#: `ignore_processes`, pero no van en esa lista porque no dependen de desde
+#: dónde se ejecute la compañera. Salieron, por este orden, en la memoria
+#: real: SearchHost 27 veces, ShellHost 15, ShellExperienceHost 12...
+#: Claves normalizadas.
+WINDOWS_SHELL_PROCESSES: frozenset[str] = frozenset(
+    {
+        "searchhost",
+        "shellhost",
+        "shellexperiencehost",
+        "lockapp",
+        "startmenuexperiencehost",
+        "openwith",
+    }
+)
 
 #: Cuando ni siquiera se conoce el ejecutable (proceso protegido, por ejemplo).
 UNKNOWN_APPLICATION = "Desconocida"

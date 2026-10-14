@@ -611,7 +611,7 @@ que comentas de un vídeo o de lo que te gusta es `LONG_TERM`.
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-**829 tests. Solo 7 necesitan Windows de verdad**, y están marcados para
+**855 tests. Solo 7 necesitan Windows de verdad**, y están marcados para
 saltarse en otras plataformas. El resto corre con dobles:
 
 | Se sustituye | Por | Dónde |
@@ -725,6 +725,15 @@ ignore_processes = ["WindowsTerminal.exe"]
 
 Se intentó autodetectar con `GetConsoleWindow()` y devuelve `None` bajo
 consola virtual. Explícito y aburrido es mejor que mágico a medias.
+
+Las piezas del propio Windows que se ponen delante un momento (el
+buscador y el menú Inicio, los paneles de la barra de tareas, las
+notificaciones, la pantalla de bloqueo, "Abrir con") se ignoran siempre,
+sin configurar nada: están en `WINDOWS_SHELL_PROCESSES`
+(`perception/process.py`). No van en `ignore_processes` porque no
+dependen de desde dónde se ejecute la compañera. En la memoria real, el
+buscador de Inicio salía 27 veces como si fuera una aplicación, y cada vez
+cortaba el cronómetro de lo que se estaba mirando.
 
 ### El contador de notificaciones cambia la página
 

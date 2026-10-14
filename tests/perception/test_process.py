@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import pytest
 
-from companion.perception.process import UNKNOWN_APPLICATION, application_name
+from companion.perception.process import (
+    UNKNOWN_APPLICATION,
+    WINDOWS_SHELL_PROCESSES,
+    application_name,
+    normalize_process,
+)
 
 
 @pytest.mark.parametrize(
@@ -16,6 +21,12 @@ from companion.perception.process import UNKNOWN_APPLICATION, application_name
         # La aplicación de escritorio actual. Se vio en uso real como
         # "WhatsApp.Root".
         ("WhatsApp.Root.exe", "WhatsApp"),
+        # Los que más salían con nombre feo en una memoria real.
+        ("Taskmgr.exe", "Administrador de tareas"),
+        ("VALORANT-Win64-Shipping.exe", "VALORANT"),
+        ("EpicGamesLauncher.exe", "Epic Games Launcher"),
+        ("SnippingTool.exe", "Recortes"),
+        ("nvcplui.exe", "Panel de control de NVIDIA"),
     ],
 )
 def test_los_ejecutables_conocidos_se_traducen(ejecutable: str, esperado: str) -> None:
@@ -48,3 +59,10 @@ def test_sin_ejecutable_la_aplicacion_es_desconocida() -> None:
 
 def test_un_nombre_que_es_solo_la_extension_no_rompe() -> None:
     assert application_name(".exe") == UNKNOWN_APPLICATION
+
+
+def test_las_piezas_de_windows_estan_normalizadas() -> None:
+    # Se comparan con `normalize_process()`: una clave con mayúsculas o con
+    # ".exe" no coincidiría nunca, y el proceso dejaría de ignorarse sin
+    # que nadie lo notara.
+    assert all(normalize_process(p) == p for p in WINDOWS_SHELL_PROCESSES)
