@@ -62,7 +62,7 @@ responsabilidad:
 | `llm/` | Hablar con el modelo de lenguaje | ¿Qué responde el modelo? |
 | `conversation/` | El hilo con la persona y lo que aprende de él | ¿Qué le digo, y qué me ha contado? |
 | `config/` | La configuración | ¿Con qué ajustes funciono? |
-| `app/` | Montar las piezas y llevar los bucles | ¿Qué modo ejecuto y cómo? |
+| `app/` | Montar las piezas, hacer un sondeo (`Presence`) y llevar los bucles | ¿Qué modo ejecuto y cómo? |
 
 El capítulo 7 describe cada archivo de cada capa.
 
@@ -236,7 +236,7 @@ datos, sin red. Entra un dato y sale otro.
 
 | Decide (lógica pura) | Hace (efectos) |
 |---|---|
-| `WindowChangeDetector.observe()`: ¿cambió algo? | El bucle de `cli.py` que sondea cada segundo |
+| `WindowChangeDetector.observe()`: ¿cambió algo? | `Presence.tick()` (`app/presence.py`), que sondea cada segundo, y los bucles de `cli.py` que lo muestran |
 | `project_detector.detect()`: ¿qué proyecto dice el título? | `_win32.window_title()` que lo lee |
 | `scorer.score()`: ¿cuántos puntos tiene esto? | `CuriosityEngine` que reúne los datos de la memoria |
 | `validate_fact()`: ¿este recuerdo es válido? | `FactExtractor` que llama al modelo |

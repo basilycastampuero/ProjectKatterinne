@@ -47,7 +47,7 @@ servicios de visión ni de voz en la nube.
 - **Un benchmark de modelos** (`benchmark/`), fuera de la aplicación: los
   mismos 51 casos para cada modelo candidato, con las mismas piezas y los
   mismos validadores que usa la compañera.
-- 855 tests, de los que solo 7 necesitan Windows.
+- 863 tests, de los que solo 7 necesitan Windows.
 
 ## Qué todavía NO existe
 
@@ -382,6 +382,7 @@ src/companion/
 ├── logging_setup.py     logs con formato [COMPONENTE]
 ├── app/
 │   ├── factory.py       único sitio que elige la implementación concreta
+│   ├── presence.py      un sondeo entero: mirar, decidir, guardar, preguntar
 │   └── cli.py           REPL, preflight y formato de salida
 ├── config/
 │   └── settings.py      dataclasses congelados + TOML + entorno

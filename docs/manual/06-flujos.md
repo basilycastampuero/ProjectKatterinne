@@ -66,7 +66,10 @@ sigue funcionando sin contexto: `main()` captura el error y avisa.
 ## 6.2 Un sondeo: lo que pasa cada segundo
 
 Tanto `run_watch()` como `run_repl()` hacen esto una vez por segundo
-(`poll_interval_s`). Es el corazón del programa:
+(`poll_interval_s`), y lo hacen llamando a `Presence.tick()`
+(`app/presence.py`): el mismo código para los dos, que devuelve un `Tick`
+con lo que pasó y deja a cada bucle decidir cómo enseñarlo. Es el corazón
+del programa:
 
 ```
  ┌─ perception/_win32.py ──────────────────────────────────────────────┐
@@ -126,23 +129,23 @@ existió de verdad, y **dos veces**: primero en `--watch`, donde se
 documentó en el [ADR-008](../architecture-decisions/ADR-008-silence-by-construction.md),
 y después en la conversación, donde se encontró leyendo el código para
 escribir este manual. Los dos bucles llevan ahora un comentario que lo
-advierte. Si escribes un bucle nuevo, respeta el orden: **mirar, decidir
-y, solo después, guardar**.
+advierte. Hoy ese orden vive en un solo sitio, `Presence.tick()`: si
+escribes una interfaz nueva, úsalo en vez de copiar el bucle y el orden
+viene incluido (**mirar, decidir y, solo después, guardar**).
 
 Los dos bucles evalúan la curiosidad **en cada sondeo**, no solo cuando hay
 evento. Es necesario: quedarse en una página no cambia nada en pantalla y
 no produce ningún evento, pero es justo lo que la hace interesante (6.3).
-Hay una diferencia: `run_repl()` pregunta en cuanto la decisión es hablar,
-mientras que `run_watch()` **solo actúa cuando la decisión cambia**
-(guarda la última en `ultima_decision`). Sin eso, un `--watch` sin `--ask`
-repetiría "HABLARÍA" cada segundo, porque sin pregunta no empieza el
-enfriamiento y la decisión no varía; y con `--ask`, si la redacción
-fallara, llamaría al modelo una vez por segundo. El REPL tenía el mismo
-riesgo cuando la plantilla está desactivada y la pregunta no sale: sin
-pregunta no empieza el enfriamiento, y volvía a llamar al modelo cada
-segundo. Ahora recuerda en `intento_fallido` el tema y el tipo de lo que
-intentó; no repite esa pregunta hasta que la decisión cambie, ya sea a
-callar o a otro tema.
+Y los dos **solo actúan cuando la decisión cambia**: `Presence` guarda en
+`_last` el tema y el tipo de la última vez que decidió hablar. Sin eso, un
+`--watch` sin `--ask` repetiría "HABLARÍA" cada segundo, porque sin pregunta
+no empieza el enfriamiento y la decisión no varía; y si la redacción
+fallara (con `allow_template_fallback = false`, que existe para medir al
+modelo), se llamaría al modelo una vez por segundo. Esto último le pasaba
+al REPL y no a `--watch`, porque cada bucle tenía su propia copia de la
+lógica; al unificarlas en `Presence` el arreglo es uno solo. Si la decisión
+pasa a callar, `_last` se borra, y la próxima vez que quiera hablar, aunque
+sea de lo mismo, se vuelve a intentar.
 
 El log tiene su propio filtro. `CuriosityEngine._log()` escribe la línea
 `decision=ASK` (nivel INFO) solo cuando la decisión pasa a hablar o cambia
@@ -336,7 +339,7 @@ Cuando escribes un mensaje en el REPL (`run_repl()` en `app/cli.py`):
 ```
 Tu: ¿qué sabes de lo que estoy haciendo?
         │
-1. percibir()                         mira la ventana activa (6.2) y guarda (6.5)
+1. Presence.perceive()                mira la ventana activa (6.2) y guarda (6.5)
 2. ¿Empieza por "/"?  → _handle_command() y fin
 3. _stream_answer() → ConversationManager.send(texto, context=contexto)
         │

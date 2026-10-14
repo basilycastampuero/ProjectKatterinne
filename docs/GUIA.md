@@ -484,11 +484,21 @@ ajustar el umbral o la raíz, se añade primero el caso ahí.
 | Archivo | Qué hace |
 |---|---|
 | `factory.py` | **El único sitio que elige implementaciones concretas** |
-| `cli.py` | Los bucles: `run_watch`, `run_repl`, `run_once` |
+| `presence.py` | `Presence`: lo que pasa en un sondeo (`tick()`) y mirar sin curiosidad (`perceive()`) |
+| `cli.py` | Los bucles y la presentación: `run_watch`, `run_repl`, `run_once` |
 
-`cli.py` es el archivo más grande (unas 700 líneas) y el más "sucio": formato de
-salida, comandos, manejo del terminal. Es normal y es sano — la suciedad
-está concentrada aquí en vez de repartida.
+`Presence` hace en un solo sitio lo que antes estaba escrito dos veces, en el
+REPL y en `--watch`: observar, evaluar la curiosidad **antes** de guardar
+(ADR-008), guardar, redactar la pregunta sin repetir una decisión ya
+intentada, empezar el enfriamiento solo si hubo pregunta y meterla en el hilo
+de la conversación. No imprime nada: devuelve un `Tick` (contexto, evento,
+decisión, pregunta) y cada interfaz decide cómo enseñarlo. Un fallo arreglado
+en una copia seguía vivo en la otra; por eso una interfaz nueva debe usar
+`Presence` y no copiar el bucle.
+
+`cli.py` (unas 670 líneas) es el archivo más grande y el más "sucio": formato
+de salida, comandos, manejo del terminal. Es normal y es sano — la suciedad
+de la presentación está concentrada aquí en vez de repartida.
 
 **El hilo lector de `cli.py` merece una nota.** `input()` bloquea: mientras
 espera una línea no se ejecuta nada, así que la compañera no podía hablar
@@ -611,7 +621,7 @@ que comentas de un vídeo o de lo que te gusta es `LONG_TERM`.
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-**855 tests. Solo 7 necesitan Windows de verdad**, y están marcados para
+**863 tests. Solo 7 necesitan Windows de verdad**, y están marcados para
 saltarse en otras plataformas. El resto corre con dobles:
 
 | Se sustituye | Por | Dónde |
@@ -701,7 +711,7 @@ desactivó a propósito.
 | Borrar lo que ha aprendido | `/memory` para ver el id, `/forget <id>` |
 | Guardar un tipo de dato nuevo | `memory/schema.py` + `models.py` + `repository.py` |
 | Usar llama.cpp en vez de Ollama | Un módulo hermano de `llm/ollama.py` + una rama en `app/factory.py` |
-| Sacarlo del terminal | `app/cli.py` — y ojo, ahí está casi toda la interfaz |
+| Sacarlo del terminal | Una ventana nueva usa `Presence.tick()` (`app/presence.py`) y solo escribe cómo enseñar el `Tick`; `app/cli.py` es la referencia de presentación |
 
 ---
 
@@ -748,11 +758,12 @@ quita un número entre paréntesis **al principio**; "(2024)" en mitad o
 
 Quedarse en una página no produce eventos, así que evaluar solo con ellos
 nunca habría dejado preguntar. Se evalúa siempre, pero solo se actúa cuando
-cambia la decisión (`ultima_decision` en `run_watch()`). Sin pregunta no
+cambia la decisión (`_last` en `Presence`, igual para el REPL y `--watch`). Sin pregunta no
 empieza el enfriamiento y cada segundo decidiría lo mismo: pantalla llena
 de "HABLARÍA" y, si la redacción fallara, una llamada al modelo por
-segundo. El REPL tiene un riesgo parecido con la plantilla desactivada
-(ver `PENDIENTE.md`).
+segundo. El REPL tuvo ese mismo fallo con la plantilla desactivada
+(`allow_template_fallback = false`); se arregló al unificar los dos bucles en
+`Presence`.
 
 El log tiene su propio filtro, dentro de `CuriosityEngine._log()`: a nivel
 INFO, `decision=ASK` solo se escribe cuando la decisión pasa a hablar o

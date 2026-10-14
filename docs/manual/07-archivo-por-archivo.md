@@ -144,7 +144,8 @@ memoria** (capítulo 1.1): la continuidad la construye el programa.
 |---|---|---|
 | `config/settings.py` | Una dataclass por sección (`LLMSettings`, `MemorySettings`…), `load_settings()` y la lectura de variables `COMPANION_*` | Todo con la biblioteca estándar (`tomllib`). Los valores por defecto del código son la primera capa de la precedencia. ⚠️ Una clave desconocida en el TOML **hace fallar el arranque** a propósito |
 | `app/factory.py` | Las funciones `build_*()` que crean las piezas concretas | **El único sitio que elige implementaciones** (capítulo 4.7). Añadir otro runtime de modelos es añadir una rama aquí |
-| `app/cli.py` | Todo lo del terminal: los bucles `run_watch()`, `run_repl()` y `run_once()`, los comandos `/…`, el formato de salida y el hilo lector | El archivo más grande y el más "sucio", y está bien que lo sea: la suciedad de la interfaz está concentrada aquí y no repartida. Antes de hacer una interfaz gráfica, habrá que separar los bucles de la presentación |
+| `app/presence.py` | `Presence.tick()`: un sondeo entero (mirar, evaluar la curiosidad, guardar, redactar la pregunta) y `Presence.perceive()`: mirar y guardar sin curiosidad. Devuelve un `Tick` con el contexto, el evento, la decisión y la pregunta | No imprime nada. Es donde vive el orden que no se puede romper (curiosidad antes de guardar, ADR-008) y la regla de no repetir una decisión ya intentada (`_last`). El REPL, `--watch` y `run_once()` lo usan; una interfaz gráfica también debería, en vez de copiar el bucle |
+| `app/cli.py` | Todo lo del terminal: los bucles `run_watch()`, `run_repl()` y `run_once()`, los comandos `/…`, el formato de salida y el hilo lector | El archivo más grande y el más "sucio", y está bien que lo sea: es presentación. La lógica de cada sondeo está en `presence.py`; aquí solo se decide cómo enseñar lo que devuelve |
 
 ---
 
@@ -192,7 +193,7 @@ La carpeta `tests/` **refleja la estructura de `src/`**: los tests de
 | `llm/` | El cliente HTTP y `OllamaProvider` (sustituyendo `urllib` por dobles: no necesitan Ollama), la interfaz y el prompt de extracción |
 | `conversation/` | El manager, el validador de hechos, los **casos reales** del validador (`test_facts_real_cases.py`), el extractor y el flujo completo de aprendizaje |
 | `config/` | La carga de configuración y su precedencia |
-| `app/` | Los bucles del terminal (con lectores falsos para simular lo que escribes) y `main.py` |
+| `app/` | Los bucles del terminal (con lectores falsos para simular lo que escribes), `Presence` (`test_presence.py`, sin pasar por ningún bucle) y `main.py` |
 | `test_logging_setup.py` | El formato del log |
 
 El capítulo 8 explica cómo escribirlos.

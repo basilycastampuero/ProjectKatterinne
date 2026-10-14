@@ -99,7 +99,7 @@ parte de lo que dice y se quedan.
 Quedarse en una página no produce eventos, y `run_watch()` solo evaluaba la
 curiosidad con eventos: con `--watch --ask` nunca habría preguntado. Ahora
 evalúa en cada sondeo, como el REPL. Pero **solo actúa cuando cambia la
-decisión** (`ultima_decision`). Sin pregunta no empieza el enfriamiento, así
+decisión** (hoy `_last` en `Presence`; entonces `ultima_decision` en `run_watch()`). Sin pregunta no empieza el enfriamiento, así
 que cada segundo volvería a decidir lo mismo: la pantalla se llenaría de
 "HABLARÍA" y, si la redacción fallara, se llamaría al modelo una vez por
 segundo.

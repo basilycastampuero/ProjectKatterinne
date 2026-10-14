@@ -105,9 +105,14 @@ comparar `window.pid == os.getpid()` basta y es exacto.
 
 ### Cuidado con
 
-`app/cli.py` tiene 653 líneas y ahí está casi toda la interfaz mezclada con
-los bucles. Antes de añadir una GUI conviene separar los bucles de la
-presentación, o acabarás con la lógica duplicada en dos sitios.
+La separación ya está hecha: lo que pasa en cada sondeo (mirar, decidir antes
+de guardar, redactar la pregunta, no repetir una decisión ya intentada) vive
+en `app/presence.py` (`Presence.tick()`, 125 líneas) y no imprime nada. En
+`app/cli.py` (666 líneas) queda la presentación: el formato de salida, los
+comandos `/…`, el hilo lector y los bucles que enseñan lo que devuelve cada
+`Tick`. Una ventana nueva debe usar `Presence` y escribir solo cómo mostrar
+el resultado; copiar el bucle de `cli.py` repetiría el error que ya costó
+dos arreglos en dos sitios.
 
 ---
 
@@ -134,7 +139,7 @@ Ninguna urgente. Buenas para entrar en calor.
 ## Cómo retomar esto
 
 1. Lee [`GUIA.md`](GUIA.md) si no tienes el proyecto fresco.
-2. `pytest` antes de tocar nada: 855 en verde es la línea base.
+2. `pytest` antes de tocar nada: 863 en verde es la línea base.
 3. Mira si hay un ADR sobre lo que vas a cambiar. Casi siempre la
    alternativa obvia ya se consideró y hay un motivo escrito.
 4. **Ejecuta la aplicación de verdad antes de dar algo por terminado.**
