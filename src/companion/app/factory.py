@@ -57,6 +57,7 @@ def build_memory(settings: Settings) -> MemoryManager | None:
         min_window_change_interval_s=settings.memory.min_window_change_interval_s,
         ephemeral_ttl_s=settings.memory.ephemeral_ttl_s,
         min_confidence_to_store=settings.memory.min_confidence_to_store,
+        resume_within_s=settings.memory.resume_within_s,
     )
     return MemoryManager(repository, policy=policy)
 

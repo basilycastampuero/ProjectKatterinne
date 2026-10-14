@@ -47,14 +47,75 @@ def test_abrir_dos_veces_devuelve_la_misma(manager: MemoryManager) -> None:
 
 
 def test_se_retoma_una_sesion_que_quedo_abierta(repo: MemoryRepository) -> None:
-    # La aplicación puede cerrarse de golpe. Sin esto, cada cierre
-    # inesperado dejaría una sesión huérfana abierta para siempre.
+    # La aplicación puede cerrarse de golpe y volver a abrirse enseguida:
+    # eso sigue siendo la misma sesión.
     huerfana = repo.start_session(at=T0)
 
-    retomada = MemoryManager(repo).start_session(at=minutos(120))
+    retomada = MemoryManager(repo).start_session(at=minutos(10))
 
     assert retomada.id == huerfana.id
     assert len(repo.list_sessions()) == 1
+
+
+def test_una_sesion_abierta_de_otro_dia_no_se_retoma(repo: MemoryRepository) -> None:
+    """En la memoria real había una sesión de diez días.
+
+    Se retomaba la que quedó abierta, fuera de cuando fuera: si se cerró de
+    golpe un lunes, el jueves seguía siendo la misma sesión, y los
+    recuerdos de alcance `session` sobrevivían todo ese tiempo. Los tests
+    solo retomaban, y nunca miraban cuánto duraba lo retomado.
+    """
+    vieja = repo.start_session(at=T0)
+    repo.record_activity(vieja.id, "application_changed", occurred_at=minutos(30))
+
+    nueva = MemoryManager(repo).start_session(at=minutos(60 * 72))
+
+    assert nueva.id != vieja.id
+    cerrada = repo.get_session(vieja.id)
+    # Se cierra donde se quedó, no al abrir la nueva: su duración es la real.
+    assert cerrada.ended_at == minutos(30)
+
+
+def test_al_cerrar_una_sesion_abandonada_mueren_sus_recuerdos_de_sesion(
+    repo: MemoryRepository,
+) -> None:
+    vieja = repo.start_session(at=T0)
+    hecho = repo.add_fact(
+        "Hoy solo va a revisar los tests.",
+        provenance=Provenance.USER_CONFIRMED,
+        confidence=1.0,
+        source="conversation",
+        scope=MemoryScope.SESSION,
+        session_id=vieja.id,
+        created_at=T0,
+    )
+
+    MemoryManager(repo).start_session(at=minutos(60 * 72))
+
+    assert all(f.id != hecho.id for f in repo.list_facts())
+
+
+def test_hablar_cuenta_como_seguir_en_la_sesion(repo: MemoryRepository) -> None:
+    # Se puede pasar un buen rato hablando desde el terminal sin cambiar de
+    # ventana, y eso no deja actividades.
+    sesion = repo.start_session(at=T0)
+    conversacion = repo.start_conversation(session_id=sesion.id, at=T0)
+    repo.add_message(conversacion.id, "user", "sigo aquí", at=minutos(100))
+
+    retomada = MemoryManager(repo).start_session(at=minutos(110))
+
+    assert retomada.id == sesion.id
+
+
+def test_varias_sesiones_abandonadas_se_cierran_todas(repo: MemoryRepository) -> None:
+    primera = repo.start_session(at=T0)
+    segunda = repo.start_session(at=minutos(60 * 24))
+
+    MemoryManager(repo).start_session(at=minutos(60 * 72))
+
+    assert not repo.get_session(primera.id).is_open
+    assert not repo.get_session(segunda.id).is_open
+    assert len([s for s in repo.list_sessions() if s.is_open]) == 1
 
 
 def test_se_puede_forzar_una_sesion_nueva(repo: MemoryRepository) -> None:

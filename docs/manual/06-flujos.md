@@ -536,7 +536,16 @@ que Python ejecuta aunque haya un error o un Ctrl+C.
 
 **¿Y si la aplicación se cierra de golpe** (se va la luz, la matas desde el
 administrador de tareas)? La sesión queda abierta. La próxima vez que
-arranques, `start_session(resume=True)` la **retoma** en vez de abrir otra.
+arranques, `start_session(resume=True)` la **retoma** en vez de abrir otra,
+pero solo si tuvo señales de vida (una actividad o un mensaje) hace menos
+de `resume_within_s`, 30 minutos por defecto. Si es más vieja, era de otro
+día: se cierra con la hora de su última señal de vida, para que su duración
+sea la real, y se abre una nueva.
+
+Antes la retomaba fuera de cuando fuera, y en una memoria real había una
+sesión de diez días. No era solo un historial feo: los recuerdos de alcance
+`session` ("hoy solo voy a revisar los tests") deberían morir al cerrar la
+sesión, y sobrevivían todo ese tiempo.
 
 ### Una trampa que ya mordió dos veces
 

@@ -47,6 +47,10 @@ class MemoryPolicy:
     #: Confianza minima para molestarse en guardar un hecho inferido.
     min_confidence_to_store: float = 0.3
 
+    #: Una sesión que quedó abierta se retoma solo si se usó hace menos que
+    #: esto. Si no, era de otro día: se cierra y se empieza otra.
+    resume_within_s: float = 1800.0
+
 
 class MemoryManager:
     """Conecta lo que se observa con lo que se recuerda."""
@@ -85,14 +89,28 @@ class MemoryManager:
         `resume` existe porque la aplicacion puede cerrarse de golpe. Sin
         el, cada cierre inesperado dejaria una sesion huerfana abierta para
         siempre y el historial se llenaria de periodos que nunca terminan.
+
+        Pero solo se retoma una sesión reciente (`resume_within_s`). En la
+        memoria real había una de diez días: al abrir la aplicación se
+        retomaba la que quedó abierta, fuera de cuando fuera, y los
+        recuerdos de alcance `session` sobrevivían días. Una sesión antigua
+        se cierra con la hora de su última señal de vida, no con la de
+        ahora, para que su duración sea la que fue.
         """
         if self._session is not None and self._session.is_open:
             return self._session
 
-        if resume and (abierta := self._repo.open_session()) is not None:
-            log.info("sesion retomada sesion=%d", abierta.id)
+        ahora = at or utcnow()
+        # En bucle: si la más reciente es antigua, las anteriores lo son más.
+        while resume and (abierta := self._repo.open_session()) is not None:
+            ultimo = self._repo.session_last_seen(abierta.id)
+            if (ahora - ultimo).total_seconds() <= self._policy.resume_within_s:
+                log.info("sesion retomada sesion=%d", abierta.id)
+                self._session = abierta
+                return abierta
+            log.info("sesion abandonada sesion=%d: se cierra donde se quedó", abierta.id)
             self._session = abierta
-            return abierta
+            self.end_session(at=ultimo)
 
         self._session = self._repo.start_session(at=at)
         return self._session

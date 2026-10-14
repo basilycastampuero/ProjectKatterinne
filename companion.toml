@@ -73,6 +73,11 @@ ephemeral_ttl_s = 1800.0
 # siempre, sin umbral.
 min_confidence_to_store = 0.3
 
+# Si la aplicación se cerró de golpe, la sesión que quedó abierta se retoma
+# solo si se usó hace menos que esto (30 minutos). Si es de otro día, se
+# cierra donde se quedó y se empieza una nueva.
+resume_within_s = 1800.0
+
 # Cuantos recuerdos se le pasan al modelo en cada turno.
 recall_limit = 5
 

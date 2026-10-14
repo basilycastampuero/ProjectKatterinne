@@ -140,6 +140,10 @@ class MemorySettings:
     #: diga la usuaria entra siempre, sin umbral.
     min_confidence_to_store: float = 0.3
 
+    #: Una sesión que quedó abierta (un cierre de golpe) se retoma solo si
+    #: se usó hace menos que esto; si no, se cierra y se empieza otra.
+    resume_within_s: float = 1800.0
+
     #: Cuantos recuerdos se le pasan al modelo por turno.
     recall_limit: int = 5
 

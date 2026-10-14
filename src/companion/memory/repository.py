@@ -324,6 +324,27 @@ class MemoryRepository:
         )
         return _row_to_session(row) if row else None
 
+    def session_last_seen(self, session_id: int) -> datetime:
+        """Lo último que se sabe de una sesión: su inicio, su última
+        actividad o su último mensaje, lo que sea más reciente.
+
+        Los mensajes cuentan porque se puede pasar un buen rato hablando
+        desde el terminal sin cambiar de ventana, y eso no deja actividades.
+        """
+        row = self._fetch_one(
+            "SELECT MAX(t) AS ultimo FROM ("
+            " SELECT started_at AS t FROM sessions WHERE id = ?"
+            " UNION ALL SELECT MAX(occurred_at) FROM activities WHERE session_id = ?"
+            " UNION ALL SELECT MAX(m.created_at) FROM messages m"
+            "  JOIN conversations c ON m.conversation_id = c.id WHERE c.session_id = ?"
+            ")",
+            (session_id, session_id, session_id),
+        )
+        ultimo = _as_datetime(row["ultimo"]) if row else None
+        if ultimo is None:
+            raise RecordNotFoundError(f"No existe la sesion {session_id}.")
+        return ultimo
+
     def list_sessions(self, *, limit: int = 20) -> list[Session]:
         rows = self._fetch_all(
             "SELECT * FROM sessions ORDER BY started_at DESC LIMIT ?", (limit,)

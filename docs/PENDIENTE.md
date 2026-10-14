@@ -119,7 +119,6 @@ Ninguna urgente. Buenas para entrar en calor.
 |---|---|---|
 | Nombres de aplicación feos | `perception/process.py` y `context/activity.py` | En la memoria real, los procesos que más salen sin actividad reconocida: `steamwebhelper.exe` (63 veces), `SearchHost.exe` (23), `Taskmgr.exe` (11), `ShellExperienceHost.exe` (10), `LockApp.exe` (8), `Minecraft.exe` y `javaw.exe`. Varios son del propio Windows (búsqueda, menú Inicio, bloqueo) y quizá deberían ignorarse en vez de nombrarse. `WhatsApp.Root.exe` ya está resuelto. Steam es el ejercicio guiado del manual (capítulos 8.7 y 9.8) |
 | Reglas de título sin verificar | `perception/project_detector.py` | Las de JetBrains y Visual Studio declaran confianza 0.7 porque **no se han comprobado en una máquina real**. Si tienes uno, verifícalas y sube la confianza |
-| Sesiones huérfanas | `memory/manager.py` | `start_session(resume=True)` las retoma, pero si nadie las cierra se acumulan. Hay 20 sesiones en la base de datos actual |
 | `min_seconds_in_context` | `companion.toml` | Diseñado a 120. Si lo bajas para probar, acuérdate de subirlo |
 | Paráfrasis duplicadas | `memory/similarity.py` | *"La memoria va integrada en SQLite"* y *"La memoria que conecta a la compañera está integrada en SQLite"* no se reconocen como el mismo hecho (Jaccard 0,6). Es trabajo de embeddings, PHASE 9 |
 | ¿Avisar al guardar? | `conversation/manager.py` | Hoy aprende en silencio y lo aprendido está en `/memory`. La alternativa es una línea discreta tipo `(lo recordaré)`: más transparente, pero rompe el silencio en cada revisión |
