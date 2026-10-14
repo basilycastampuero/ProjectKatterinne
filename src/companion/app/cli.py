@@ -14,11 +14,12 @@ import time
 from collections.abc import Callable
 from typing import Any
 
+from companion.app.presence import Presence
 from companion.context.engine import ContextEngine
 from companion.context.models import CurrentContext, Provenance, Signal
 from companion.curiosity.engine import CuriosityEngine
 from companion.curiosity.models import CuriosityDecision
-from companion.curiosity.questions import QuestionGenerator
+from companion.curiosity.questions import GeneratedQuestion, QuestionGenerator
 from companion.context.rendering import describe_context
 from companion.conversation.manager import ConversationManager
 from companion.llm.errors import (
@@ -351,70 +352,28 @@ def run_repl(
         _out("Observando mientras hablamos. Puede que pregunte algo por su cuenta.")
     _out()
 
+    presencia = Presence(
+        window_provider=window_provider,
+        engine=engine,
+        memory=memoria,
+        # Sin generador no hay nada que decir, así que tampoco se evalúa.
+        curiosity=curiosity if questions is not None else None,
+        questions=questions,
+        conversation=conversation,
+    )
     ultimo_turno: float | None = None
-    #: (tema, tipo) de la última pregunta que se intentó y no llegó a salir.
-    #: Sin esto, el siguiente segundo vuelve a decidir lo mismo y vuelve a
-    #: llamar al modelo, como ya evita `run_watch()` con `ultima_decision`.
-    intento_fallido: tuple[str | None, Any] | None = None
-
-    def mirar() -> tuple[CurrentContext | None, WindowEvent | None]:
-        if window_provider is None:
-            return None, None
-        return engine.observe(window_provider.get_active_window())
-
-    def guardar(contexto: CurrentContext | None, evento: WindowEvent | None) -> None:
-        if memoria is not None and contexto is not None:
-            memoria.observe(contexto, evento)
-
-    def percibir() -> CurrentContext | None:
-        contexto, evento = mirar()
-        guardar(contexto, evento)
-        return contexto
 
     def quizas_hablar() -> bool:
         """Observa y, si hay motivo, dice algo. True si llegó a hablar."""
-        nonlocal intento_fallido
-        contexto, evento = mirar()
-        if contexto is None or curiosity is None or questions is None:
-            guardar(contexto, evento)
-            return False
-
         viva = (
             ultimo_turno is not None
             and (time.monotonic() - ultimo_turno) < CONVERSACION_VIVA_S
         )
-        # La curiosidad mira ANTES de que la memoria guarde, igual que en
-        # `run_watch()`: pregunta "¿esto es nuevo para mí?" a la memoria, y
-        # si se guardara primero nada sería nunca nuevo (ADR-008).
-        decision = curiosity.evaluate(contexto, conversation_active=viva)
-        guardar(contexto, evento)
-        if not decision.should_speak:
-            # Callar en medio cuenta como cambio: la próxima vez que quiera
-            # hablar, aunque sea de lo mismo, lo vuelve a intentar.
-            intento_fallido = None
-            return False
-        clave = (decision.topic, decision.question_type)
-        if clave == intento_fallido:
-            return False
-
-        recuerdos = []
-        if memoria is not None and contexto.project is not None:
-            recuerdos = memoria.recall(project=contexto.project.value, limit=5)
-
-        pregunta = questions.generate(decision, contexto, recuerdos)
+        pregunta = presencia.tick(conversation_active=viva).question
         if pregunta is None:
-            # Sin pregunta no empieza el enfriamiento: hay que recordar que
-            # ya se intentó. Pasa con `allow_template_fallback = false`.
-            intento_fallido = clave
             return False
-        intento_fallido = None
-
         _out()
         _out(f"IA: {pregunta.text}")
-        # Entra en el hilo de la conversación: si respondes, la respuesta
-        # tiene de qué colgar.
-        conversation.note_assistant_message(pregunta.text)
-        curiosity.record_question(decision)
         return True
 
     pedir_linea = True
@@ -452,7 +411,7 @@ def run_repl(
                 pedir_linea = True
                 continue
 
-            contexto = percibir()
+            contexto = presencia.perceive()
             if texto.startswith("/"):
                 if not _handle_command(texto, conversation, contexto):
                     break
@@ -502,12 +461,9 @@ def run_once(
         # arrancaba sin ninguna actividad que contar.
         memoria.start_session()
 
-    contexto = None
-    if window_provider is not None:
-        engine = engine or ContextEngine()
-        contexto, evento = engine.observe(window_provider.get_active_window())
-        if memoria is not None:
-            memoria.observe(contexto, evento)
+    contexto = Presence(
+        window_provider=window_provider, engine=engine or ContextEngine(), memory=memoria
+    ).perceive()
 
     _out(f"Tu: {prompt}")
     try:
@@ -623,22 +579,11 @@ def _format_curiosity(decision: CuriosityDecision) -> str:
     )
 
 
-def _preguntar(
-    decision: CuriosityDecision,
-    context: CurrentContext,
-    curiosity: CuriosityEngine,
-    questions: QuestionGenerator,
-    memory: MemoryManager | None,
-) -> None:
-    """Redacta la pregunta y la dice. Solo entonces empieza el enfriamiento."""
-    recuerdos = []
-    if memory is not None and context.project is not None:
-        recuerdos = memory.recall(project=context.project.value, limit=5)
-
-    pregunta = questions.generate(decision, context, recuerdos)
+def _show_watch_question(pregunta: GeneratedQuestion | None) -> None:
+    """La pregunta de `--watch --ask`, con de dónde salió."""
     if pregunta is None:
         # Ni el modelo ni la plantilla dieron nada decente. Callarse es una
-        # salida válida, y el enfriamiento no debe empezar.
+        # salida válida, y el enfriamiento no empieza.
         _out(f"{' ' * _DETAIL_INDENT}              (sin pregunta que merezca la pena)")
         return
 
@@ -647,7 +592,6 @@ def _preguntar(
     origen = "modelo" if pregunta.from_model else "plantilla"
     _out(f"      ({origen}, se apoya en: {pregunta.based_on})")
     _out()
-    curiosity.record_question(decision)
 
 
 def run_watch(
@@ -674,41 +618,26 @@ def run_watch(
     _print_memory_status(memory)
     _out()
 
+    # Se evalúa en cada sondeo y no solo con eventos: quedarse en una página
+    # no cambia nada en pantalla, y es justo lo que hace interesante una
+    # página. `Presence` se encarga de no repetirse.
+    presencia = Presence(
+        window_provider=provider,
+        engine=engine,
+        memory=memory,
+        curiosity=curiosity,
+        questions=questions,
+    )
     iteraciones = 0
-    #: (tema, tipo) de la última vez que decidió hablar, para no repetirse.
-    ultima_decision: tuple[str | None, Any] | None = None
     try:
         while max_iterations is None or iteraciones < max_iterations:
-            contexto, evento = engine.observe(provider.get_active_window())
-            if evento is not None:
-                _out(_format_event(evento, contexto))
-            # La curiosidad va ANTES de guardar, y el orden no es un
-            # detalle: pregunta "¿esto es nuevo para mí?" consultando la
-            # memoria. Si se guardara primero, el proyecto ya existiría y
-            # nada sería nunca nuevo. Lo mismo con `last_seen_at`, que
-            # quedaría recién actualizado y mataría la señal de "vuelve
-            # tras una ausencia".
-            #
-            # Se evalúa en cada sondeo y no solo con eventos: quedarse en una
-            # página no cambia nada en pantalla, y es justo lo que hace
-            # interesante una página.
-            if curiosity is not None:
-                decision = curiosity.evaluate(contexto)
-                clave = (decision.topic, decision.question_type)
-                # Sin pregunta no empieza el enfriamiento, así que cada
-                # segundo volvería a decidir lo mismo. Solo se actúa cuando
-                # cambia: si no, la pantalla se llena y, si la redacción
-                # falla, se llama al modelo una vez por segundo.
-                nueva = decision.should_speak and clave != ultima_decision
-                if evento is not None or nueva:
-                    _out(_format_curiosity(decision))
-                if nueva and questions is not None:
-                    _preguntar(decision, contexto, curiosity, questions, memory)
-                ultima_decision = clave if decision.should_speak else None
-            if memory is not None:
-                # Puede devolver None: la mayoría de lo que pasa no merece
-                # una fila.
-                memory.observe(contexto, evento)
+            tic = presencia.tick()
+            if tic.event is not None:
+                _out(_format_event(tic.event, tic.context))
+            if tic.decision is not None and (tic.event is not None or tic.new_decision):
+                _out(_format_curiosity(tic.decision))
+            if tic.attempted:
+                _show_watch_question(tic.question)
             iteraciones += 1
             if max_iterations is None or iteraciones < max_iterations:
                 sleep(interval_s)
