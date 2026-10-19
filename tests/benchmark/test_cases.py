@@ -247,3 +247,28 @@ def test_afirmarlo_despues_de_una_negacion_sigue_suspendiendo() -> None:
     texto = "No lo sé seguro, pero veo que tienes otra pestaña con música."
 
     assert conversacion.no_afirma_ver(texto) == "afirma ver la pantalla"
+
+
+def test_repetir_lo_que_ya_recuerda_no_suspende_si_no_se_guardaria() -> None:
+    # La aplicación descarta un duplicado de lo que ya recuerda: en la
+    # memoria no cambia nada, y eso es lo que se mide.
+    _, prueba = _caso_de("ya_lo_recuerda")
+    repetido = hechos._hecho(
+        "Prefiere los modelos locales.", "prefiero los modelos locales", "long_term"
+    )
+
+    assert prueba.run(FakeProvider(replies=[_respuesta(repetido)])).passed
+
+
+def test_con_otro_alcance_no_es_un_duplicado_y_sigue_suspendiendo() -> None:
+    # Como en la aplicación: solo se descarta lo repetido con el mismo
+    # alcance. Con otro, se guardaría, y donde no había nada que recordar
+    # eso es un fallo.
+    _, prueba = _caso_de("ya_lo_recuerda")
+    otro_alcance = hechos._hecho(
+        "Prefiere los modelos locales.", "prefiero los modelos locales", "session"
+    )
+
+    veredicto = prueba.run(FakeProvider(replies=[_respuesta(otro_alcance)]))
+
+    assert veredicto.reason == "guardó algo sin nada que recordar"

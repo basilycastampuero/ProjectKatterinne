@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import json
 import unicodedata
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 
 from benchmark.core import Case, Verdict
@@ -27,6 +27,7 @@ from companion.context.models import ActivityType, CurrentContext, Provenance, S
 from companion.conversation.facts import ExtractionReport, FactExtractor, PendingTurn
 from companion.llm import LLMProvider
 from companion.memory.models import Fact, MemoryScope
+from companion.memory.similarity import is_duplicate
 
 TASK = "hechos"
 
@@ -102,8 +103,29 @@ def _conocidos(caso: FactCase) -> list[Fact]:
     ]
 
 
+def _what_gets_stored(caso: FactCase, informe: ExtractionReport) -> ExtractionReport:
+    """Lo que acabaría en la memoria, no lo que propone el extractor.
+
+    La aplicación no guarda un hecho que ya recuerda: `MemoryManager` lo
+    descarta si es duplicado de otro con el mismo alcance (y aquí todos los
+    recuerdos previos son de largo plazo y sin proyecto). Sin esto, repetir
+    "Prefiere los modelos locales." contaba como fallo aunque en la memoria
+    no cambiara nada.
+    """
+    nuevos = [
+        h
+        for h in informe.accepted
+        if not (
+            h.scope is MemoryScope.LONG_TERM
+            and any(is_duplicate(h.content, conocido) for conocido in caso.known)
+        )
+    ]
+    return replace(informe, accepted=nuevos)
+
+
 def score(caso: FactCase, informe: ExtractionReport) -> Verdict:
     """La nota de un intento. Separada para poder probarla sin modelo."""
+    informe = _what_gets_stored(caso, informe)
     guardados = [h.content for h in informe.accepted]
     salida = json.dumps(guardados, ensure_ascii=False)
     # Sin nada que recordar, `{}` deja lo mismo que `{"facts": []}`: nada
