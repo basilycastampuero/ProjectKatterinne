@@ -235,6 +235,20 @@ FACT_EXTRACTION_EXAMPLES: tuple[dict[str, Any], ...] = (
         ),
     },
     {
+        # Una preferencia dicha sin "prefiero". Los seis modelos del
+        # benchmark escribían "Prefiere…" y el validador lo rechazaba con
+        # razón: no lo dijo así. Distinto del caso del benchmark a
+        # propósito, o mediría si el modelo se aprende el ejemplo.
+        "turns": ((USER_SPEAKER, "nada de ratón, todo con atajos de teclado"),),
+        "facts": (
+            {
+                "content": "Nada de ratón: todo con atajos de teclado.",
+                "evidence": "nada de ratón, todo con atajos de teclado",
+                "scope": "long_term",
+            },
+        ),
+    },
+    {
         "perceived": "Speedrun de Hollow Knight en 40 minutos",
         "turns": ((USER_SPEAKER, "me encantan estos speedruns, podría verlos todo el día"),),
         "facts": (
@@ -301,7 +315,8 @@ Qué NO:
 Cada hecho tiene tres campos:
 - "content": una frase en tercera persona, sin sujeto, de 25 palabras como
   mucho. Usa las mismas palabras de la persona siempre que puedas, y no
-  añadas nada que no dijo: si no dijo por qué, no pongas por qué.
+  añadas nada que no dijo: si no dijo por qué, no pongas por qué. Si no
+  dijo "prefiero" o "me gusta", no pongas "prefiere" ni "le gusta".
   Puedes usar palabras de la pregunta de la compañera o de lo que percibes
   (el título de la página, el proyecto) para que se entienda de qué habla:
   "con SQLite" no dice para qué, la pregunta sí.
