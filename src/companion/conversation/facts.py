@@ -224,8 +224,16 @@ def _support_texts(
     Las preguntas de la compañera y lo que percibe ahora: la aplicación, el
     proyecto y el documento, que en un navegador es el título de la página.
     Es lo mismo que ya ve el modelo, ni más ni menos.
+
+    Y lo que la persona dijo en los demás mensajes del lote. La cita sale
+    de un solo mensaje, pero el hecho puede necesitar otro para entenderse:
+    "un bot para discord" y, en el siguiente, "para avisar a mis amigos". Si
+    vale como respaldo lo que pregunta la compañera, con más razón lo que
+    dijo la persona; sin esto, el benchmark rechazaba ese hecho en cinco de
+    seis modelos por "añade cosas que no dijo".
     """
     textos = [t.companion_text for t in turns if t.companion_text]
+    textos += [t.user_text for t in turns if t.user_text.strip()]
     if context is not None and not context.redacted:
         # En una app de la lista negra no se percibe nada de esto (ADR-005);
         # el `redacted` se comprueba igualmente por si el contexto lo trajera.

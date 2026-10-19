@@ -271,3 +271,42 @@ def test_el_informe_dice_por_que_no_hubo_candidatos() -> None:
 
     assert roto.failure == "JSON sin lista 'facts'"
     assert caido.failure == "error del modelo"
+
+
+DOS_MENSAJES = [
+    PendingTurn(user_text="un bot para discord", companion_text="¿Qué estás montando?"),
+    PendingTurn(user_text="para avisar a mis amigos cuando hay partida", companion_text="¿Para qué?"),
+]
+
+
+def test_lo_dicho_en_otro_mensaje_respalda_el_hecho() -> None:
+    """La cita es de un mensaje; el hecho necesita también el siguiente.
+
+    "Monta un bot para Discord para avisar a sus amigos" cita "un bot para
+    discord", y lo de los amigos lo dijo en el mensaje de después. Valía de
+    respaldo la pregunta de la compañera y no lo que dijo la persona: el
+    benchmark lo rechazaba en cinco de seis modelos.
+    """
+    hecho = {
+        "content": "Un bot para Discord para avisar a sus amigos cuando hay partida.",
+        "evidence": "un bot para discord",
+        "scope": "project",
+    }
+
+    informe = FactExtractor(FakeProvider(replies=[respuesta(hecho)])).review(DOS_MENSAJES)
+
+    assert [h.content for h in informe.accepted] == [hecho["content"]]
+
+
+def test_la_cita_sigue_saliendo_de_un_solo_mensaje() -> None:
+    # Juntar dos mensajes en una cita es fabricar algo que no se dijo así.
+    hecho = {
+        "content": "Un bot para Discord para avisar a sus amigos.",
+        "evidence": "un bot para discord para avisar a mis amigos",
+        "scope": "project",
+    }
+
+    informe = FactExtractor(FakeProvider(replies=[respuesta(hecho)])).review(DOS_MENSAJES)
+
+    assert informe.accepted == []
+    assert informe.rejections == {"la cita no existe": 1}
