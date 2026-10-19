@@ -156,13 +156,19 @@ def validate_question(
     allowed_fields: Sequence[str],
     *,
     max_words: int = MAX_WORDS,
+    quoted: Sequence[str] = (),
 ) -> str | None:
     """Comprueba una pregunta generada. Devuelve el motivo de rechazo o None.
 
     Devolver el motivo en vez de un booleano permite registrar **por que**
     se rechazo, que es lo unico que hace posible ajustar el prompt despues.
+
+    `quoted` son los textos que la compañera percibe (el título de la
+    página, el proyecto, la aplicación). Si la pregunta los cita, lo citado
+    no cuenta para las reglas de interrogaciones y de tono: ver
+    `_without_quotes`.
     """
-    if (motivo := _form_problem(text, max_words)) is not None:
+    if (motivo := _form_problem(text, max_words, quoted)) is not None:
         return motivo
 
     # La comprobacion que de verdad implementa "las preguntas deben derivar
@@ -174,7 +180,40 @@ def validate_question(
     return None
 
 
-def _form_problem(text: Any, max_words: int) -> str | None:
+#: Un fragmento entre comillas de cualquier tipo, o entre asteriscos.
+_QUOTED_RE = re.compile(r"'([^']+)'|\"([^\"]+)\"|«([^»]+)»|‘([^’]+)’|“([^”]+)”|\*([^*]+)\*")
+
+
+def _without_quotes(text: str, quoted: Sequence[str]) -> str:
+    """La pregunta sin lo que cita de lo que percibe.
+
+    Medido con seis modelos: todos preguntaban "¿Qué estás leyendo en
+    '¿Por qué los gatos duermen tanto?'?" o "¿Qué es esa rutina que dice
+    'No te rindas, sigue así'?", y el validador las rechazaba por lo que
+    había dentro de las comillas: dos interrogaciones o un "sigue así".
+    Citar un título no es hacer dos preguntas ni animar a nadie.
+
+    Solo se aparta lo citado que forma parte de lo percibido, aunque sea
+    un trozo; el título entero también sin comillas. Un "sigue así" que la
+    pregunta diga por su cuenta sigue contando.
+    """
+    percibidos = [p.lower() for p in quoted if p and p.strip()]
+    if not percibidos:
+        return text
+
+    def apartar(encontrado: re.Match[str]) -> str:
+        dentro = next(g for g in encontrado.groups() if g is not None).strip().lower()
+        if dentro and any(dentro in p for p in percibidos):
+            return "«»"
+        return encontrado.group(0)
+
+    sin_citas = _QUOTED_RE.sub(apartar, text)
+    for percibido in percibidos:
+        sin_citas = re.sub(re.escape(percibido), "«»", sin_citas, flags=re.IGNORECASE)
+    return sin_citas
+
+
+def _form_problem(text: Any, max_words: int, quoted: Sequence[str] = ()) -> str | None:
     """Lo que tiene que cumplir cualquier pregunta, la diga el modelo o no.
 
     Separado de `validate_question` para que la plantilla pase por las
@@ -193,11 +232,14 @@ def _form_problem(text: Any, max_words: int) -> str | None:
     if not limpio.endswith("?"):
         return "no es una pregunta"
 
-    if limpio.count("?") > 1:
+    # La longitud y el "?" final se miran en la pregunta entera: copiar un
+    # título de treinta palabras sigue siendo demasiado largo.
+    propio = _without_quotes(limpio, quoted)
+    if propio.count("?") > 1:
         # Dos preguntas de golpe abruman, y se busca brevedad.
         return "más de una pregunta"
 
-    minusculas = limpio.lower()
+    minusculas = propio.lower()
     for patron in _COACHING_RE:
         if patron.search(minusculas):
             return f"suena a coach de productividad ({patron.pattern!r})"
@@ -292,7 +334,10 @@ class QuestionGenerator:
             return ModelProposal(None, None, rejection="JSON que no es un objeto")
 
         texto, based_on = datos.get("question"), datos.get("based_on")
-        motivo = validate_question(texto, based_on, permitidos, max_words=self._max_words)
+        motivo = validate_question(
+            texto, based_on, permitidos, max_words=self._max_words,
+            quoted=self._perceived_texts(context),
+        )
         return ModelProposal(texto, based_on, rejection=motivo, raw=datos)
 
     def _build_messages(
@@ -342,6 +387,15 @@ class QuestionGenerator:
             based_on="template",
             source="template",
         )
+
+    @staticmethod
+    def _perceived_texts(context: CurrentContext) -> tuple[str, ...]:
+        """Lo que el modelo ve del contexto y por tanto puede citar."""
+        if context.redacted:
+            # En una aplicación de la lista negra no se le dice nada.
+            return ()
+        senales = (context.application, context.project, context.document)
+        return tuple(s.value for s in senales if s is not None and isinstance(s.value, str))
 
     @staticmethod
     def _allowed_fields(

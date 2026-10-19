@@ -141,6 +141,27 @@ Ningún test los veía: todos usaban la configuración por defecto, ninguno
 combinaba una página con un proceso ignorado y ningún título de prueba
 llevaba interrogaciones.
 
+## Revisión tras el benchmark de modelos
+
+El benchmark midió seis modelos con los mismos casos, y los seis fallaban
+en los mismos dos: con un título que ya es una pregunta y con uno
+motivacional. Preguntaban "¿Qué estás leyendo en '¿Por qué los gatos
+duermen tanto?'?" o "¿Qué es esa rutina que dice 'No te rindas, sigue
+así'?", y el validador las rechazaba por lo que había **dentro de las
+comillas**: dos interrogaciones o un "sigue así". Un fallo que tienen todos
+los modelos no dice nada de ninguno: era del validador.
+
+Citar un título no es hacer dos preguntas ni animar a nadie. Ahora, lo que
+la pregunta cita de lo que la compañera percibe (el título, el proyecto, la
+aplicación), aunque sea un trozo y con cualquier tipo de comillas, se
+aparta antes de contar interrogaciones y de buscar tono de coach. La
+longitud y el "?" final se siguen midiendo sobre la pregunta entera, y lo
+que diga por su cuenta sigue contando.
+
+La plantilla no cambia: cuando el título es una pregunta, sigue usando la
+versión sin título. Es el respaldo, y para eso tiene que ser la opción
+segura.
+
 ## Lo que se descartó
 
 - **Guardar el historial de páginas.** Es justo lo que convierte una

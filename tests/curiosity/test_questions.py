@@ -499,3 +499,99 @@ def test_propose_nunca_usa_la_plantilla() -> None:
 
     assert propuesta.rejection == "error del modelo"
     assert propuesta.text is None
+
+
+# ----------------------------------------------------------------------
+# Citar lo que percibe no es hacer dos preguntas ni animar a nadie
+# ----------------------------------------------------------------------
+
+_GATOS = "¿Por qué los gatos duermen tanto?"
+_RUTINA = "No te rindas, sigue así: rutina de estudio"
+
+
+@pytest.mark.parametrize(
+    ("pregunta", "titulo"),
+    [
+        # Escritas así por los modelos del benchmark, con sus títulos.
+        ("¿Qué estás leyendo en el documento '¿Por qué los gatos duermen tanto?'?", _GATOS),
+        ('¿Estás mirando el documento titulado "¿Por qué los gatos duermen tanto?"?', _GATOS),
+        ("¿Qué información buscas en el artículo *¿Por qué los gatos duermen tanto?*?", _GATOS),
+        ("¿Qué estás buscando en la página ¿Por qué los gatos duermen tanto??", _GATOS),
+        ("¿Qué es esa rutina de estudio que dice 'No te rindas, sigue así'?", _RUTINA),
+        ("¿Qué estás buscando en este video de 'No te rindas'?", _RUTINA),
+        ("¿Qué estás leyendo en «No te rindas, sigue así: rutina de estudio»?", _RUTINA),
+    ],
+)
+def test_citar_el_titulo_no_cuenta_para_las_reglas_de_forma(pregunta: str, titulo: str) -> None:
+    """Los seis modelos del benchmark preguntaban así, y se rechazaba a todos.
+
+    El validador miraba también lo citado: las interrogaciones del título
+    contaban como una segunda pregunta, y su "sigue así" como tono de coach.
+    Un fallo que tienen todos los modelos no dice nada de ninguno: es del
+    validador.
+    """
+    assert validate_question(pregunta, "document", ("document",), quoted=(titulo,)) is None
+
+
+def test_sin_saber_el_titulo_se_sigue_rechazando() -> None:
+    # La plantilla y cualquier llamada sin `quoted` mantienen la regla.
+    pregunta = "¿Qué estás leyendo en '¿Por qué los gatos duermen tanto?'?"
+
+    assert validate_question(pregunta, "document", ("document",)) == "más de una pregunta"
+
+
+@pytest.mark.parametrize(
+    "pregunta",
+    [
+        # El tono es suyo, no del título.
+        "¿Vas a seguir así con 'No te rindas'?",
+        # Lo citado no está en lo que percibe. Con "sigue así" sí pasaría,
+        # porque es un trozo del título: citar un trozo del título vale.
+        "¿Te dices a ti mismo 'tú puedes' cuando estudias?",
+    ],
+)
+def test_lo_que_dice_por_su_cuenta_sigue_contando(pregunta: str) -> None:
+    motivo = validate_question(pregunta, "document", ("document",), quoted=(_RUTINA,))
+
+    assert motivo is not None and motivo.startswith("suena a coach")
+
+
+def test_dos_preguntas_suyas_siguen_siendo_dos() -> None:
+    pregunta = "¿Qué lees en '¿Por qué los gatos duermen tanto?'? ¿Y te gusta?"
+
+    assert validate_question(pregunta, "document", ("document",), quoted=(_GATOS,)) == (
+        "más de una pregunta"
+    )
+
+
+def test_copiar_un_titulo_larguisimo_sigue_siendo_demasiado_largo() -> None:
+    # Lo citado se aparta para las interrogaciones y el tono, no para medir.
+    titulo = " ".join(["palabra"] * 30)
+
+    motivo = validate_question(f"¿Qué es '{titulo}'?", "document", ("document",), quoted=(titulo,))
+
+    assert motivo is not None and motivo.startswith("demasiado larga")
+
+
+def test_el_generador_le_pasa_al_validador_lo_que_percibe() -> None:
+    decision = CuriosityDecision.speak(
+        question_type=QuestionType.CONTENT_CURIOSITY,
+        topic=_GATOS,
+        topic_kind="document",
+        score=7,
+        threshold=6,
+    )
+    provider = _provider(question=f"¿Qué estás leyendo en '{_GATOS}'?", based_on="document")
+
+    propuesta = QuestionGenerator(provider).propose(
+        decision, contexto(proyecto=None, documento=_GATOS)
+    )
+
+    assert propuesta.accepted, propuesta.rejection
+
+
+def test_en_una_app_privada_no_hay_nada_que_citar() -> None:
+    # No se le dice al modelo qué hay en ella: tampoco puede citarlo.
+    privado = CurrentContext(redacted=True)
+
+    assert QuestionGenerator._perceived_texts(privado) == ()
