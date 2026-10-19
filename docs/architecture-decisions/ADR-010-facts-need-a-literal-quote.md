@@ -140,6 +140,61 @@ le pide. Ahora un test genera los bloques con `describe_context` y
 `describe_facts` y exige que estén literalmente en el prompt: un ejemplo
 que no se parece a lo que llega de verdad no le sirve al modelo.
 
+## Ajuste — Tras el benchmark de modelos
+
+El benchmark (`PLAN-benchmark.md`) repitió los casos de hechos con cinco
+modelos, y algunos fallos eran compartidos: un fallo que tienen todos los
+modelos no dice nada de ninguno, era nuestro. Se arreglaron dos:
+
+- **Lo que la persona dijo en otros mensajes respalda el hecho.**
+  *"Monta un bot para Discord para avisar a sus amigos"* cita *"un bot para
+  discord"*, y lo de los amigos lo dijo en el mensaje siguiente. El
+  validador lo rechazaba por "añade cosas que no dijo": como respaldo valía
+  lo que pregunta la compañera, pero no lo que la persona había dicho en el
+  resto del lote. Cinco de seis modelos fallaban ese caso (`varios_turnos`).
+  `_support_texts()` incluye ahora los mensajes de la persona. Si vale lo
+  que pregunta la compañera, con más razón lo que dijo ella. La **cita** no
+  cambia: sigue saliendo de un solo mensaje, porque juntar dos en una cita
+  es fabricar algo que no se dijo así.
+- **Un ejemplo de preferencia dicha sin "prefiero".** Con *"tabs, siempre
+  tabs…"*, los modelos escribían *"Prefiere tabs sobre espacios"* y el
+  validador lo rechazaba con razón. Ningún ejemplo del prompt enseñaba una
+  preferencia sin el verbo. `FACT_EXTRACTION_EXAMPLES` gana uno (*"nada de
+  ratón, todo con atajos de teclado"*), distinto a propósito del caso del
+  benchmark: si fuera el mismo, el benchmark mediría si el modelo se aprende
+  el ejemplo. La regla del prompt dice que si no dijo "prefiero" o "me
+  gusta", no se ponga "prefiere" ni "le gusta". El validador no cambia: un
+  "prefiere" que la persona no dijo es una inferencia.
+
+Una tercera corrección fue del propio benchmark: repetir un recuerdo que ya
+tiene contaba como fallo, pero la aplicación no lo guarda (`MemoryManager`
+descarta el duplicado con el mismo alcance). Ahora la puntuación aplica esa
+misma regla antes de juzgar.
+
+| Hechos guardados bien | Antes | Después |
+|---|---|---|
+| `qwen3:8b` | 78 % | 88 % |
+| `qwen3.5:9b` | 78 % | 85 % |
+| `gemma4:e4b` | 79 % | 94 % |
+| `granite4.1:8b` | 71 % | 78 % |
+| `qwen3.5:4b` | 81 % | 81 % |
+
+(Cinco modelos, repetidos; `ministral-3:8b` ya estaba descartado: no cabe en
+la GPU y devolvía JSON vacío.)
+
+**Decisión abierta: las preferencias.** Con *"tabs, siempre tabs…"*, cuatro
+de cinco modelos siguen escribiendo *"Prefiere tabs sobre espacios"* pese al
+ejemplo nuevo; solo `gemma4:e4b` aprendió. Hay dos caminos: aceptar que esos
+recuerdos se pierden, o permitir verbos de actitud ("prefiere", "le gusta")
+en el validador. El segundo recupera recuerdos, pero con riesgo de invertir
+el sentido: *"le gusta"* cuando la persona dijo *"odio"*. Hoy se acepta la
+pérdida.
+
+Límites que se conocen y no se han tocado: un resumen en otro idioma o con
+otras palabras (*"connection refused"* como *"la conexión falla"*) no
+comparte raíces con la cita, y los verbos irregulares (*pongo*, *pone*) no
+comparten cinco letras.
+
 ## Lo que se descartó
 
 - **Extraer en cada turno.** Duplica la latencia, y un turno suelto casi

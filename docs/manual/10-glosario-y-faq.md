@@ -124,7 +124,8 @@ define quién es y qué sabe.
 **REPL**. *Read-Eval-Print Loop*: el bucle de conversación por terminal.
 
 **Respaldo** (`support`). Lo que ayuda a entender un recuerdo sin ser la
-cita: la pregunta de la compañera o lo que percibe.
+cita: la pregunta de la compañera, lo que percibe o lo que dijiste en otros
+mensajes de la misma tanda.
 
 **Runtime**. El programa que ejecuta el modelo. Aquí, Ollama.
 

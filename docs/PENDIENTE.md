@@ -22,13 +22,30 @@ comparación, y no se debe fijar un modelo sin benchmark.
 **El benchmark ya está construido** (`benchmark/`): cinco tareas y 51 casos
 (rendimiento, preguntas, hechos, conversación y estilo), un informe con tabla
 comparativa y una hoja ciega para puntuar a mano lo que solo una persona
-puede juzgar. **Lo que falta es ejecutarlo con los candidatos y decidir**:
-los pasos 6 y 7 de [`PLAN-benchmark.md`](PLAN-benchmark.md). Hay que
-descargar los modelos (`ollama pull`, unos 33 GB), dejar la GPU libre,
-lanzar `python -m benchmark` (unos 6 minutos por modelo con las 5
-repeticiones por defecto), puntuar la hoja ciega y escribir el ADR con la
-tabla y la decisión. Los comandos exactos están en el paso 6 del plan y en
-el README.
+puede juzgar. **Ya se ejecutó una vez con los seis candidatos** (paso 6 de
+[`PLAN-benchmark.md`](PLAN-benchmark.md)) y de ahí salieron cuatro arreglos
+nuestros, porque varios fallos los tenían todos los modelos. Con ellos,
+preguntas y hechos mejoraron en los cinco modelos que se repitieron
+(`ministral-3:8b` quedó descartado: no cabe en la GPU y devolvía JSON
+vacío). **Lo que falta**: puntuar la hoja ciega de
+`data/benchmark/candidatos` (sigue siendo la de la primera ejecución:
+conversación y estilo no cambiaron) y escribir el ADR-012 con la tabla y la
+decisión. Los comandos exactos están en el paso 6 del plan y en el README.
+
+Lo que el benchmark dejó sin arreglar:
+
+- **Preferencias sin "prefiero".** Con *"tabs, siempre tabs…"*, cuatro de
+  cinco modelos siguen escribiendo *"Prefiere tabs sobre espacios"* pese al
+  ejemplo nuevo (solo `gemma4:e4b` aprendió) y el validador lo rechaza.
+  Decisión abierta, en el ADR-010: aceptar la pérdida o permitir verbos de
+  actitud, con el riesgo de invertir el sentido (*"le gusta"* cuando dijo
+  *"odio"*).
+- **Traducciones.** *"connection refused"* resumido como *"la conexión
+  falla"* no coincide con las raíces del validador.
+- **Verbos irregulares.** *Pongo* y *pone* no comparten raíz de cinco
+  letras.
+- **Citas que juntan dos mensajes** (`gemma4:e4b` en `varios_turnos`): se
+  rechazan con razón, la cita debe ser literal de un mensaje.
 
 Medido en la RTX 4070 Laptop (8 GB):
 
@@ -139,7 +156,7 @@ Ninguna urgente. Buenas para entrar en calor.
 ## Cómo retomar esto
 
 1. Lee [`GUIA.md`](GUIA.md) si no tienes el proyecto fresco.
-2. `pytest` antes de tocar nada: 863 en verde es la línea base.
+2. `pytest` antes de tocar nada: 882 en verde es la línea base.
 3. Mira si hay un ADR sobre lo que vas a cambiar. Casi siempre la
    alternativa obvia ya se consideró y hay un motivo escrito.
 4. **Ejecuta la aplicación de verdad antes de dar algo por terminado.**

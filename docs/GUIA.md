@@ -404,6 +404,15 @@ También rechaza lo que finge haber visto una página: "vi que" y "he visto"
 ("has visto" vale, es una pregunta). Y si una plantilla con tema se pasa de
 `max_words`, usa la que no lo lleva.
 
+**Lo que la pregunta cita de lo percibido no cuenta como suyo.**
+`validate_question()` recibe `quoted` (aplicación, proyecto y documento, que
+`QuestionGenerator._perceived_texts()` saca del contexto; vacío en una app de
+la lista negra) y `_without_quotes()` aparta de la pregunta lo que lo cita,
+con cualquier tipo de comillas o el título entero sin ellas, antes de contar
+interrogaciones y de buscar tono de coach. La longitud y el "?" final se
+miden sobre la pregunta entera. La plantilla no cambia. Ver
+[ADR-011](architecture-decisions/ADR-011-asking-about-a-title-is-not-seeing-it.md).
+
 ---
 
 ### `llm/` — hablar con el modelo
@@ -471,6 +480,13 @@ candidatos, por qué (`failure`). `extract()` lo usa y devuelve lo mismo que
 siempre. Las categorías van sin el detalle entre paréntesis porque puede
 repetir texto tuyo. No proponer nada y proponer algo que el validador
 rechaza son fallos distintos, y se arreglan de forma distinta.
+
+**El respaldo incluye lo que dijiste en el resto del lote.**
+`_support_texts()` junta las preguntas de la compañera, lo que percibe y lo
+que la persona dijo en los demás mensajes del lote. La cita sigue saliendo
+de un solo mensaje: *"un bot para discord"* y, en el siguiente, *"para
+avisar a mis amigos"* respaldan un mismo hecho, pero juntar los dos en una
+cita sería fabricar algo que no dijiste así (ADR-010).
 
 **Las reglas del validador salen de casos reales.** Están en
 `tests/conversation/test_facts_real_cases.py`: hechos fieles que deben
@@ -621,7 +637,7 @@ que comentas de un vídeo o de lo que te gusta es `LONG_TERM`.
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-**863 tests. Solo 7 necesitan Windows de verdad**, y están marcados para
+**882 tests. Solo 7 necesitan Windows de verdad**, y están marcados para
 saltarse en otras plataformas. El resto corre con dobles:
 
 | Se sustituye | Por | Dónde |
@@ -813,6 +829,17 @@ se vuelve *prefiere*. Sin reducir las palabras a su raíz, el validador
 rechazaba 4 hechos buenos de 8. Y con la raíz y el umbral bajo pasaba un
 motivo que el modelo se había inventado. El ajuste está en ADR-010, y los
 casos que lo sostienen, en `test_facts_real_cases.py`.
+
+### Un fallo que tienen todos los modelos es tuyo
+
+El benchmark midió seis modelos y seis fallaban en los mismos dos casos de
+preguntas: el validador contaba como suyas las interrogaciones y el "sigue
+así" de un título citado. Otro caso (`varios_turnos`) lo rechazaban cinco,
+por no aceptar como respaldo lo dicho en otro mensaje. Un fallo común no dice
+nada de ningún modelo: antes de elegir, mira en qué casos fallan **todos** y
+revisa primero el validador, el prompt o el caso. Tras arreglar cuatro así,
+las preguntas pasaron de 77-93 % a 88-100 % y los hechos subieron en cuatro
+de los cinco modelos repetidos (ADR-010, ADR-011 y `PLAN-benchmark.md`).
 
 ### Los dobles de test no ven los fallos del modelo
 

@@ -1,6 +1,9 @@
 # Plan — benchmark de modelos
 
-Estado: **pasos 1 a 5 hechos.** Falta ejecutarlo con los candidatos (paso 6, la persona) y decidir (paso 7). Es el punto 1 de
+Estado: **pasos 1 a 5 hechos y paso 6 ejecutado una vez.** De esa primera
+ejecución salieron cuatro arreglos nuestros y se repitieron preguntas y
+hechos con cinco modelos (ver "Qué se aprendió de la primera ejecución").
+Falta puntuar la hoja ciega y decidir (paso 7, ADR-012). Es el punto 1 de
 [`PENDIENTE.md`](PENDIENTE.md).
 
 ## Por qué ahora
@@ -243,6 +246,48 @@ latencia no vale.
 # puntuar hoja_ciega.csv del 1 al 5 en Excel, guardarla, y:
 .\.venv\Scripts\python.exe -m benchmark.informe data\benchmark\candidatos --notas
 ```
+
+**Ejecutado** con los seis candidatos y 5 repeticiones.
+
+#### Qué se aprendió de la primera ejecución
+
+Varios fallos los tenían **todos** los modelos, y un fallo que tienen todos
+no dice nada de ninguno: era nuestro. Antes de comparar modelos hubo que
+arreglar cuatro cosas:
+
+1. **El validador de preguntas** contaba como suyas las interrogaciones y el
+   "sigue así" de un título citado (`titulo_pregunta`, `titulo_de_coach`:
+   seis de seis modelos fallaban). Ahora `validate_question()` recibe
+   `quoted` y `_without_quotes()` aparta lo citado (ADR-011).
+2. **El respaldo de los hechos** no incluía lo que la persona dijo en otros
+   mensajes del lote (`varios_turnos`, cinco de seis). Ahora
+   `_support_texts()` lo incluye; la cita sigue saliendo de un solo mensaje
+   (ADR-010).
+3. **El prompt de hechos** no tenía ningún ejemplo de preferencia dicha sin
+   "prefiero". Se añadió uno distinto del caso del benchmark, a propósito,
+   para no medir memorización (ADR-010).
+4. **La puntuación de hechos** contaba como fallo repetir un recuerdo que ya
+   tiene (`ya_lo_recuerda`), cuando la aplicación lo descarta como
+   duplicado. Ahora aplica la misma regla (`is_duplicate`, con el mismo
+   alcance).
+
+Preguntas y hechos repetidos con cinco modelos (`ministral-3:8b` ya estaba
+descartado: no cabe en la GPU y devolvía JSON vacío):
+
+| Modelo | Preguntas antes → después | Hechos antes → después |
+|---|---|---|
+| `qwen3:8b` | 93 % → 100 % | 78 % → 88 % |
+| `qwen3.5:9b` | 90 % → 100 % | 78 % → 85 % |
+| `gemma4:e4b` | 80 % → 95 % | 79 % → 94 % |
+| `granite4.1:8b` | 77 % → 90 % | 71 % → 78 % |
+| `qwen3.5:4b` | 80 % → 88 % | 81 % → 81 % |
+
+Lo que queda y no se arregló está en [`PENDIENTE.md`](PENDIENTE.md) y, en lo
+de las preferencias, en el ADR-010.
+
+La hoja ciega de `data/benchmark/candidatos` **sigue siendo la de la primera
+ejecución**: conversación y estilo no cambiaron, así que sus respuestas
+valen tal cual y no hace falta regenerarla.
 
 ### Paso 7 — Decidir y documentar
 

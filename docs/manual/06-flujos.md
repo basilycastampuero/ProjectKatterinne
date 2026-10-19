@@ -274,6 +274,13 @@ visto". "Has visto" o "habías visto" sí valen, porque son preguntas a la
 persona. La plantilla de ese tipo es "¿De qué va «{tema}»?", o "¿Qué estás
 viendo?" si no hay tema.
 
+Un detalle del paso 3: si la pregunta cita lo que la compañera percibe (el
+título de la página, el proyecto, la aplicación), lo citado no cuenta para
+las reglas de "dos preguntas" ni de tono de coach. Un título como *¿Por qué
+los gatos duermen tanto?* lleva sus propias interrogaciones, y citarlo no es
+hacer dos preguntas. Lo hace `_without_quotes()`; la longitud y el "?" final
+se miden sobre la pregunta entera.
+
 La clave está en `based_on`: el modelo tiene que **decir en qué dato se
 apoya**, y ese dato tiene que ser uno de los que se le dieron. Si dice
 apoyarse en el documento y no había documento abierto, se lo ha inventado,
@@ -446,7 +453,7 @@ FactExtractor.extract()                             conversation/facts.py
       ¿la cita aparece, palabra por palabra, en un mensaje TUYO?
       ¿la cita comparte alguna palabra con el hecho?  ("sí" no basta)
       ¿habla de la compañera y no de ti?
-      ¿el 70 % de sus palabras están en tu mensaje, en la pregunta
+      ¿el 70 % de sus palabras están en tus mensajes, en la pregunta
        de la compañera o en lo que percibe?
       ¿contiene una contraseña, un token, una tarjeta…?
 8. Se queda con 3 como mucho
@@ -477,7 +484,12 @@ Un recuerdo necesita dos cosas distintas:
   en tus mensajes, con tus palabras. Nunca puede salir de lo que dijo la
   compañera.
 - **El respaldo** permite entender **de qué hablabas**. Puede venir de la
-  pregunta de la compañera o de lo que percibe, como el título de la página.
+  pregunta de la compañera, de lo que percibe (como el título de la página)
+  o de lo que dijiste en los demás mensajes de la misma tanda. Esto último
+  cubre el caso de decir *"un bot para discord"* y, en el mensaje siguiente,
+  *"para avisar a mis amigos"*: el hecho puede usar las dos cosas, pero la
+  cita sigue saliendo de un solo mensaje, porque juntar dos sería fabricar
+  una frase que no dijiste así.
 
 Si dices *"este vídeo me encanta"* mientras ves *"Cómo funciona SQLite"*,
 la cita prueba que te gustó y el título dice qué vídeo era. Consecuencia:
