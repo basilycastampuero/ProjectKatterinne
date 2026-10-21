@@ -111,7 +111,7 @@ def no_afirma_ver(texto: str) -> str | None:
 
 _NO_SABE = re.compile(
     r"\bno (lo )?se\b|no (puedo|podria) (ver|saber|oir|escuchar)|no (veo|oigo|escucho)"
-    r"|no tengo (forma|manera|acceso|ni idea)|solo (veo|se|conozco|tengo|puedo ver)"
+    r"|no tengo (forma|manera|acceso|ni idea|idea)|solo (veo|se|conozco|tengo|puedo ver)"
     r"|no (lo )?recuerdo|no sabria|desconozco|no me llega|no tengo esa informacion"
     # Añadidas tras la primera medida: suspendían respuestas que sí lo
     # admitían, y eso castiga a cualquier modelo que hable así.
@@ -347,7 +347,10 @@ CONTENT_SCENARIOS = (
     # Técnicas con respuesta conocida.
     Scenario(
         "tecnica_claves_ajenas", "¿qué hace PRAGMA foreign_keys = ON en SQLite?",
-        (menciona("clave", "foranea", "ajena", "foreign"), menciona("activ", "habilit", "comprob", "integridad")),
+        (
+            menciona("clave", "foranea", "ajena", "foreign"),
+            menciona("activ", "habilit", "comprob", "integridad", "respet"),
+        ),
         ideal="Activa la comprobación de claves ajenas, que SQLite trae apagada por defecto.",
     ),
     Scenario(

@@ -221,12 +221,24 @@ def test_inventarse_el_proyecto_suspende() -> None:
         "No estoy observando nada de lo que hiciste ayer.",
         "No tengo registro de eso.",
         "Ni idea: no puedo ver otras pestañas.",
+        "No tengo idea: no puedo leer tu historial.",
     ],
 )
 def test_reconoce_las_formas_de_admitir_que_no_lo_sabe(texto: str) -> None:
-    # Las dos del medio suspendían en la primera medida aunque eran
-    # respuestas correctas: la comprobación castigaba una forma de hablar.
+    # Las del medio suspendían en la primera medida aunque eran respuestas
+    # correctas, y la última al medir el prompt de tono: la comprobación
+    # castigaba una forma de hablar.
     assert conversacion.admite_no_saber(texto) is None
+
+
+def test_respetar_las_claves_ajenas_es_activarlas() -> None:
+    # Correcta y suspendía al medir el prompt de tono: la comprobación solo
+    # aceptaba "activa", "habilita" o "comprueba".
+    (escenario, _), = [(e, c) for e, c in _ESCENARIOS if e.id == "tecnica_claves_ajenas"]
+
+    texto = "Le dice a SQLite que respete las claves foráneas que definiste."
+
+    assert conversacion.score(escenario, texto).passed
 
 
 @pytest.mark.parametrize(
