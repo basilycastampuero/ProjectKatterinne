@@ -9,15 +9,17 @@
 provider = "ollama"
 host = "http://127.0.0.1:11434"
 
-# 8.2B en Q4_K_M (~5.2 GB): entra entero en los 8 GB de la RTX 4070 Laptop,
-# que es el requisito duro del equipo objetivo. Sigue siendo provisional
-# hasta el benchmark, pero ya cumple el rango 4B-8B.
-model = "qwen3:8b"
+# Elegido por benchmark frente a otros cinco (ADR-012): el mejor puntuado a
+# ciegas y sin una tarea floja. 9B en Q4_K_M: 6,67 GB medidos en la GPU con
+# el num_ctx de abajo, así que entra entero en los 8 GB de la RTX 4070
+# Laptop, pero con poco margen. El plan B, con la mitad de memoria, es
+# qwen3.5:4b.
+model = "qwen3.5:9b"
 
 temperature = 0.7
 
-# Contexto de trabajo. Subirlo agranda el KV cache en VRAM: 4096 deja margen
-# de sobra en 8 GB. El modelo admite hasta 40960.
+# Contexto de trabajo. Subirlo agranda el KV cache en VRAM, y con este
+# modelo sobra poco: no lo subas sin medir. El modelo admite hasta 262144.
 num_ctx = 4096
 
 # Cuanto tiempo mantiene Ollama el modelo en VRAM tras el ultimo mensaje.

@@ -33,7 +33,7 @@ class OllamaProvider(LLMProvider):
         self,
         *,
         host: str = "http://127.0.0.1:11434",
-        model: str = "qwen3:8b",
+        model: str = "qwen3.5:9b",
         temperature: float = 0.7,
         num_ctx: int = 4096,
         keep_alive: str = "5m",
