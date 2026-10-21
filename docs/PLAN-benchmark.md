@@ -356,7 +356,12 @@ opinión). Salieron tres cosas antes de llegar a la hoja:
   haga falta que no funciona: `qwen3.5:4b` aprueba lo mismo que con el
   prompt de antes.
 
-La decisión, cuando esté puntuada la hoja, va en el ADR-012.
+**La hoja ciega lo tumbó**: 2,80 el prompt nuevo frente a 3,65 el de antes,
+peor en 16 de 20 escenarios, con una diferencia que no explica el ruido de
+quien puntúa. Se quedó el prompt de antes. Lo automático (más corto, sin
+listas, aprueba lo mismo) decía que era mejor, y no lo era: para el tono,
+lo que decide es la hoja ciega. El detalle, en el ajuste del
+[ADR-012](architecture-decisions/ADR-012-qwen3.5-9b-chosen-by-benchmark.md).
 
 ## Decisiones abiertas
 

@@ -151,11 +151,63 @@ proyecto.
   dicha sin "prefiero" (5 de 5, decisión abierta en ADR-010), algún emoji y
   un tono de productividad ante el cansancio (2 de 5), y los hechos que
   juntan dos mensajes.
-- **Lo que suspenden todos**, según la hoja ciega: reaccionar a un logro
-  ("por fin funciona!!", 2,17 de media), las explicaciones técnicas largas
-  y con listas, y dar una opinión. Es trabajo de prompt para cualquier
-  modelo, no un motivo para cambiar de modelo.
+- **Lo que suspendían todos** en la hoja ciega (reaccionar a un logro,
+  explicar algo técnico, dar una opinión) parecía trabajo de prompt. Se
+  probó y no lo era, al menos para este modelo: ver el ajuste de abajo.
 - **El benchmark no sustituye a usarla.** Con el modelo nuevo, `--check`
   lo encuentra y un primer `--prompt` contestó con el contexto real y dijo
   lo que no podía confirmar. Si el uso de varios días muestra algo que el
   benchmark no mide, se apunta aquí.
+
+## Ajuste — Un prompt de tono, probado y descartado
+
+En la hoja ciega, tres escenarios salieron mal en todos los modelos:
+reaccionar a un logro (2,17 de media), explicar la diferencia entre lista
+y tupla (2,67) y dar una opinión (2,83). Además, en esa hoja los 1 eran las
+respuestas más largas. De ahí salió un prompt que pedía respuestas de dos o
+tres frases sin listas ni negritas, preguntar por curiosidad en vez de
+ofrecer ayuda, interesarse por qué fallaba ante un logro, tomar partido
+ante una opinión, no sermonear ante el cansancio y no mezclar el tú con el
+usted.
+
+Con `qwen3.5:9b` y 5 repeticiones, lo automático salió como se buscaba:
+
+| | Prompt de antes | Prompt de tono |
+|---|---|---|
+| Conversación y estilo, aprobadas | 97 de 100 | 99 de 100 |
+| Palabras por respuesta (mediana) | 92 | 40 |
+| Respuestas con listas o negritas | 20 de 100 | 0 de 100 |
+| Respuestas que mezclan tú y usted (detección aproximada) | 30 de 100 | 12 de 100 |
+
+Con `qwen3.5:4b` el efecto fue parecido (42 palabras en vez de 78) y
+aprobó casi lo mismo (95 de 100 frente a 96).
+
+**La hoja ciega lo tumbó.** Los 20 escenarios, con el prompt de antes y con
+el nuevo, mezclados: **3,65 frente a 2,80**. El nuevo perdió en 16
+escenarios, ganó en 3 y empató en 1; la diferencia media es de −0,85 y su
+intervalo (bootstrap, 95 %) va de −1,30 a −0,35, así que el cero queda
+fuera. No es ruido de quien puntúa: las 20 respuestas del prompt de antes
+eran las mismas que ya había puntuado en la primera hoja, y les dio la
+misma nota a 13 y una a un punto a las otras 7.
+
+Lo que perdió fue justo lo que se había recortado: la explicación del
+índice con su analogía (4 frente a 2), el logro con algo de personalidad
+(4 frente a 2) o un saludo con algo más que "hola". Lo único que ganó claro
+fue la tupla, donde la respuesta vieja abría con un tono condescendiente y
+la nueva iba al grano sin listas (2 frente a 4). Es un solo escenario: no
+basta para meter una regla.
+
+La premisa estaba mal leída por dos lados:
+
+- **La longitud iba pegada a otra cosa.** En la primera hoja los 1 eran
+  largos, pero también erróneos o llenos de listas; los 5 eran cortos
+  porque eran "no lo sé, solo veo el título", que por naturaleza es breve.
+- **"Lo que suspenden todos" era una media de seis modelos.** Con
+  `qwen3.5:9b` esos escenarios no suspendían: el logro tuvo un 3 y la
+  opinión un 4.
+
+**Decisión: se queda el prompt de antes** (deshecho en `dfada7b`). Lo que
+sí se queda del intento: el informe sabe comparar el mismo modelo con dos
+prompts, dos comprobaciones dejan de suspender respuestas correctas, y en
+`prompts.py` queda escrito por qué no hay frases de ejemplo ni límite de
+frases.

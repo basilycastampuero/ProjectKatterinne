@@ -890,9 +890,22 @@ prompt llevaba una respuesta de ejemplo. Con `qwen3.5:9b` salió copiada
 palabra por palabra en 3 de 5 respuestas al caso parecido, y una vez en una
 conversación sobre el cansancio, donde no tenía sentido. Describir el
 comportamiento ("te interesa qué fallaba o cómo lo arregló") sin poner la
-frase lo arregló. En el prompt de hechos los ejemplos sí funcionan, porque
+frase lo arregló, aunque ese prompt acabó descartado por otro motivo (la
+trampa siguiente). En el prompt de hechos los ejemplos sí funcionan, porque
 enseñan la forma de un JSON, no algo que decir. El comentario encima de
 `SYSTEM_PROMPT` lo recuerda, para que nadie vuelva a meter una frase.
+
+### Para el tono, lo automático puede decir lo contrario que la hoja ciega
+
+El prompt de tono mejoró todo lo que se mide solo: aprobaba más, decía lo
+mismo con la mitad de palabras y sin listas. En la hoja ciega perdió en 16
+de 20 escenarios. La idea venía de leer mal la primera hoja: allí los 1
+eran largos, pero también erróneos o llenos de listas, y los 5 eran cortos
+porque eran "no lo sé"; y lo que "suspendían todos" era una media de seis
+modelos que con el elegido no suspendía. Antes de cambiar el prompt por un
+patrón de la hoja ciega, comprueba que le pasa a tu modelo y lee las
+respuestas, no solo la correlación. Y el cambio solo es bueno si gana su
+propia hoja ciega (ADR-012).
 
 ### Un lector que no encuentra lo que busca tiene que quejarse
 

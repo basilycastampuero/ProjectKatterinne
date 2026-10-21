@@ -27,32 +27,23 @@ han salido siempre del uso real. Lo que conviene mirar durante unos días con
 - **La VRAM.** Con el escritorio quedan libres entre 0,8 y 1,2 GB. Si con
   un juego o el navegador las respuestas se vuelven lentas, es que parte del
   modelo pasó a la CPU: el plan B es `qwen3.5:4b` en `companion.local.toml`.
-- **El tono.** En estilo fue el mejor puntuado a ciegas, pero aun así un 3,67
-  de 5. Vigilar respuestas largas, emojis y el tú y el usted mezclados en la
-  misma respuesta (lo hacen casi todos los modelos).
+- **El tono.** Vigilar los emojis y el tono de productividad ante el
+  cansancio (2 de 5 en el benchmark). La longitud no: un prompt que acortaba
+  las respuestas perdió a ciegas (ver abajo).
 - **Las preguntas y los recuerdos.** En el benchmark, 100 % y 85 %. Si en el
   uso real pregunta peor o se le escapan cosas que `qwen3:8b` sí guardaba,
   apuntarlo en el ADR-012.
 
-Lo que la hoja ciega suspendió **en todos los modelos**, y por tanto es
-trabajo de prompt y no de modelo:
-
-- **Reaccionar a un logro** (*"por fin funciona!!"*: 2,17 de media, la peor
-  nota). Unos celebran como un asistente; otros preguntan algo genérico.
-- **Una explicación técnica** (*lista o tupla*: 2,67). Las peor puntuadas
-  son las más largas, con listas y negritas, como una documentación y no
-  como alguien sentado al lado, o directamente erróneas.
-- **Dar una opinión** (*tabs o espacios*: 2,83). Las peor puntuadas sueltan
-  una lista de pros y contras o se escabullen con "es una decisión
-  personal"; un "depende" que acaba tomando partido sacó un 4.
-
-**En marcha**, en la rama `feat/tono-del-prompt`: el prompt describe ahora
-cuánto hablar y cómo responder en esos momentos, y que el trato no cambie a
-mitad de respuesta. Las comprobaciones automáticas no empeoran, tampoco con
-el plan B. Falta la hoja ciega de `data/benchmark/tono-ciega`, que compara
-el prompt de antes con el nuevo en `qwen3.5:9b`. Si el nuevo no gana, no se
-fusiona. El procedimiento está en
-[`PLAN-benchmark.md`](PLAN-benchmark.md), "Medir un cambio de prompt".
+Lo que la hoja ciega de modelos suspendió en todos (reaccionar a un logro,
+una explicación técnica, dar una opinión) **no resultó ser trabajo de
+prompt**. Un prompt de tono que acortaba las respuestas y las ajustaba a
+esos casos perdió a ciegas frente al de antes: 2,80 contra 3,65, peor en 16
+de 20 escenarios. Con `qwen3.5:9b` esos escenarios no suspendían; la media
+la bajaban otros modelos. El detalle está en el ajuste del
+[ADR-012](architecture-decisions/ADR-012-qwen3.5-9b-chosen-by-benchmark.md).
+Si se vuelve a intentar, que sea un cambio pequeño y con su hoja ciega: lo
+único que ganó claro fue ir al grano sin listas en una explicación técnica,
+y un escenario no basta para una regla.
 
 Lo que el benchmark dejó sin arreglar:
 
