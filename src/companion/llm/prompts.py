@@ -15,6 +15,12 @@ from collections.abc import Sequence
 from typing import Any
 
 # Curiosa, tranquila y dispuesta a callar; nunca coach, jefa ni terapeuta.
+#
+# Aquí se describe cómo responder, sin frases de ejemplo. Medido con
+# qwen3.5:9b, una respuesta de ejemplo salía copiada tal cual en 3 de 5
+# respuestas al caso parecido, y hasta en conversaciones que no venían a
+# cuento. En el prompt de hechos los ejemplos sí funcionan: allí enseñan la
+# forma del JSON, no una frase que decir.
 SYSTEM_PROMPT = """\
 Te llamas Katterinne, TU eres Katterinne, eres una compañera de IA local 
 que vive en el ordenador de tu persona, por lo general eres directa en tu comunicacion

@@ -321,6 +321,43 @@ La regla de las decisiones abiertas (repetir una tarea si dos modelos
 quedan a menos de un 10 %) no se aplicó a hechos, donde `qwen3:8b` sacaba
 tres puntos: la decisión no dependía de esa tarea.
 
+## Medir un cambio de prompt
+
+Es el segundo uso del benchmark, y el que se queda una vez elegido el
+modelo: el mismo modelo, con el prompt de antes y con el de después.
+
+```powershell
+# Con el cambio ya commiteado: si no, la revisión sale "+cambios"
+.\.venv\Scripts\python.exe -m benchmark --model qwen3.5:9b `
+    --task conversacion --task estilo --out data\benchmark\<cambio>
+# Copiar a una carpeta nueva la ejecución de antes y la de después, con
+# nombres distintos (antes.json, despues.json), y:
+.\.venv\Scripts\python.exe -m benchmark.informe data\benchmark\<carpeta>
+```
+
+El informe ve el mismo modelo dos veces y llama a cada ejecución
+`modelo @ revisión`, así que la tabla y la hoja ciega comparan los dos
+prompts. Dos ejecuciones del mismo modelo y la misma revisión paran el
+informe: no habría forma de saber cuál es cuál.
+
+La primera vez fue para el tono: lo que la hoja ciega suspendió en todos
+los modelos (reaccionar a un logro, explicar algo técnico, dar una
+opinión). Salieron tres cosas antes de llegar a la hoja:
+
+- **Una frase de ejemplo en el prompt de conversación se copia.** La
+  respuesta de ejemplo para el logro salió palabra por palabra en 3 de 5
+  respuestas, y una vez en el escenario del cansancio. La segunda versión
+  describe el comportamiento sin frase, y ya no se copia nada.
+- **Con respuestas más cortas, las comprobaciones estrechas fallan.** "No
+  tengo idea" y "respeta las claves foráneas" suspendían siendo correctas.
+  Corregidas para todos y repuntuadas las ejecuciones guardadas: ninguno de
+  los seis modelos cambia de cifra.
+- **El plan B se mide con el mismo prompt**, para no descubrir el día que
+  haga falta que no funciona: `qwen3.5:4b` aprueba lo mismo que con el
+  prompt de antes.
+
+La decisión, cuando esté puntuada la hoja, va en el ADR-012.
+
 ## Decisiones abiertas
 
 - **Inglés** (decidido): sigue hablando siempre en español. Se mide que

@@ -47,7 +47,7 @@ servicios de visión ni de voz en la nube.
 - **Un benchmark de modelos** (`benchmark/`), fuera de la aplicación: los
   mismos 51 casos para cada modelo candidato, con las mismas piezas y los
   mismos validadores que usa la compañera.
-- 888 tests, de los que solo 7 necesitan Windows.
+- 892 tests, de los que solo 7 necesitan Windows.
 
 ## Qué todavía NO existe
 
@@ -345,7 +345,9 @@ Windows.
 
 El modelo se eligió con él: seis candidatos medidos en este equipo, y ganó
 `qwen3.5:9b` ([ADR-012](docs/architecture-decisions/ADR-012-qwen3.5-9b-chosen-by-benchmark.md)).
-Sigue sirviendo para medir un cambio de prompt antes de darlo por bueno.
+Sigue sirviendo para medir un cambio de prompt antes de darlo por bueno:
+con dos ejecuciones del mismo modelo en una carpeta, el informe compara el
+prompt de antes con el de después.
 **No corre con `pytest`**: necesita Ollama y GPU, y tarda.
 Lo que sí está en la suite (`tests/benchmark/`) es su contabilidad: que cada
 caso se califica bien con respuestas fijas.

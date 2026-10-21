@@ -561,7 +561,7 @@ inventados. Plan y estado: [`PLAN-benchmark.md`](PLAN-benchmark.md).
 | `runner.py` | `run_model()` (calentamiento, memoria, repeticiones), `unload_and_wait()`, `save()` y `load()` |
 | `report.py` | Resume una ejecución (`summarize()`, `format_run()`) y arma la tabla comparativa (`compare()`) |
 | `blind.py` | La hoja ciega: `build()`, `write()` y `read_scores()` |
-| `informe.py` | `python -m benchmark.informe <carpeta> [--notas]`: escribe `comparativa.md`, `hoja_ciega.csv` y `clave.json` |
+| `informe.py` | `python -m benchmark.informe <carpeta> [--notas]`: escribe `comparativa.md`, `hoja_ciega.csv` y `clave.json`. Si el mismo modelo aparece dos veces (medir un cambio de prompt), cada ejecución se llama `modelo @ revisión` |
 | `cases/` | Los 51 casos, en cinco tareas: `rendimiento` (3), `preguntas` (12), `hechos` (16), `conversacion` (14) y `estilo` (6) |
 
 **Qué se mide y cómo se nota.** Preguntas y hechos los juzgan los mismos
@@ -649,7 +649,7 @@ que comentas de un vídeo o de lo que te gusta es `LONG_TERM`.
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-**888 tests. Solo 7 necesitan Windows de verdad**, y están marcados para
+**892 tests. Solo 7 necesitan Windows de verdad**, y están marcados para
 saltarse en otras plataformas. El resto corre con dobles:
 
 | Se sustituye | Por | Dónde |
@@ -875,10 +875,24 @@ la respuesta buena es justo esa. Por eso ahora una negación justo antes no
 cuenta. La cuarta salió al revisar los fallos del modelo ganador: once de
 quince "afirma ver la pantalla" eran "solo veo que estás en VS Code", que
 marca el límite, y castigaba a tres modelos por esa forma de hablar. Ahora
-un "solo" pegado delante tampoco cuenta. La regla:
+un "solo" pegado delante tampoco cuenta. Y dos más al medir un prompt que
+pedía respuestas cortas: con menos palabras el modelo elige otras, y "no
+tengo idea" o "respeta las claves foráneas" suspendían siendo correctas.
+La regla:
 cada caso de `benchmark/cases/` lleva su **respuesta ideal** y un test exige
 que apruebe. Si una comprobación suspende lo que tú darías por bueno, el
 fallo es de la comprobación; el test lo descubre antes de culpar al modelo.
+
+### Una frase de ejemplo en el prompt de conversación se copia
+
+Para que reaccionara a un logro sin celebrarlo como una animadora, el
+prompt llevaba una respuesta de ejemplo. Con `qwen3.5:9b` salió copiada
+palabra por palabra en 3 de 5 respuestas al caso parecido, y una vez en una
+conversación sobre el cansancio, donde no tenía sentido. Describir el
+comportamiento ("te interesa qué fallaba o cómo lo arregló") sin poner la
+frase lo arregló. En el prompt de hechos los ejemplos sí funcionan, porque
+enseñan la forma de un JSON, no algo que decir. El comentario encima de
+`SYSTEM_PROMPT` lo recuerda, para que nadie vuelva a meter una frase.
 
 ### Un lector que no encuentra lo que busca tiene que quejarse
 

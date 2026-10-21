@@ -30,7 +30,7 @@ Salida normal:
 
 ```
 .........................................................                [100%]
-888 passed in 1.59s
+892 passed in 1.95s
 ```
 
 Cada punto es un test que pasa. Una `F` es uno que falla, y al final verás
@@ -309,7 +309,9 @@ Lo que sí está en pytest es su **contabilidad**, en `tests/benchmark/`:
   sabe, y "no puedo ver la otra pestaña" se tomaba por afirmar que la ve), y
   una cuarta al elegir modelo: "solo veo que estás en VS Code" también se
   tomaba por afirmar que ve la pantalla, cuando es justo marcar el límite.
-  Sin ese test, el benchmark castigaría a los modelos por un fallo suyo.
+  Y dos más al medir un prompt de respuestas cortas ("no tengo idea",
+  "respeta las claves foráneas"). Sin ese test, el benchmark castigaría a
+  los modelos por un fallo suyo.
 - `test_runner.py`: el calentamiento no cuenta, un error del modelo es una
   nota, y tras descargar espera a que la GPU quede libre.
 - `test_informe.py`: la tabla, la hoja ciega (letras barajadas, la clave
@@ -317,7 +319,9 @@ Lo que sí está en pytest es su **contabilidad**, en `tests/benchmark/`:
   notas, incluso si la hoja vuelve del editor con comas, y con error si no
   hay ninguna nota. Esas pruebas nacieron de un fallo real: los tests
   puntuaban la hoja con el mismo separador con que se escribe, así que
-  nunca vieron que el editor lo cambiaba.
+  nunca vieron que el editor lo cambiaba. También prueba que dos
+  ejecuciones del mismo modelo se distinguen por la revisión, y que dos
+  indistinguibles paran el informe en vez de mezclarse.
 
 Sirve para el mismo ciclo del capítulo 8.6: cuando tocas un prompt, antes de
 darlo por bueno, lo mides con el modelo de verdad varias veces.

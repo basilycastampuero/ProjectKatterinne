@@ -46,9 +46,13 @@ trabajo de prompt y no de modelo:
   una lista de pros y contras o se escabullen con "es una decisión
   personal"; un "depende" que acaba tomando partido sacó un 4.
 
-Probablemente haga falta un ejemplo en el prompt para cada uno. Hay forma de
-medirlo: `python -m benchmark --model qwen3.5:9b --task estilo --task
-conversacion` antes y después, y una hoja ciega nueva.
+**En marcha**, en la rama `feat/tono-del-prompt`: el prompt describe ahora
+cuánto hablar y cómo responder en esos momentos, y que el trato no cambie a
+mitad de respuesta. Las comprobaciones automáticas no empeoran, tampoco con
+el plan B. Falta la hoja ciega de `data/benchmark/tono-ciega`, que compara
+el prompt de antes con el nuevo en `qwen3.5:9b`. Si el nuevo no gana, no se
+fusiona. El procedimiento está en
+[`PLAN-benchmark.md`](PLAN-benchmark.md), "Medir un cambio de prompt".
 
 Lo que el benchmark dejó sin arreglar:
 
@@ -169,7 +173,7 @@ Ninguna urgente. Buenas para entrar en calor.
 ## Cómo retomar esto
 
 1. Lee [`GUIA.md`](GUIA.md) si no tienes el proyecto fresco.
-2. `pytest` antes de tocar nada: 888 en verde es la línea base.
+2. `pytest` antes de tocar nada: 892 en verde es la línea base.
 3. Mira si hay un ADR sobre lo que vas a cambiar. Casi siempre la
    alternativa obvia ya se consideró y hay un motivo escrito.
 4. **Ejecuta la aplicación de verdad antes de dar algo por terminado.**
