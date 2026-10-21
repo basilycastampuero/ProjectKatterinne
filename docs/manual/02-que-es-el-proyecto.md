@@ -187,6 +187,7 @@ cuando toques la parte correspondiente:
 | 009 | Validar lo que dice el modelo | JSON válido no es JSON correcto |
 | 010 | Un recuerdo necesita una cita literal | Solo se recuerda lo que la persona dijo de verdad |
 | 011 | Preguntar por un título no es verlo | Se interesa por la página en la que te quedas, nunca por las sensibles, y sin guardar qué páginas visitas |
+| 012 | `qwen3.5:9b` como modelo, elegido por benchmark | Seis candidatos con los mismos casos y una hoja puntuada a ciegas: es el único sin una tarea floja, pero deja poco margen de VRAM y el plan B es `qwen3.5:4b` |
 
 ---
 

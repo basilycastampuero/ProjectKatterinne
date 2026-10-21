@@ -3,7 +3,7 @@
 # (ese nombre esta en .gitignore).
 #
 # Precedencia: defaults -> este TOML -> variables COMPANION_* -> flags CLI.
-# Ejemplo de override por entorno:  COMPANION_LLM_MODEL=llama3.1:8b
+# Ejemplo de override por entorno:  COMPANION_LLM_MODEL=qwen3.5:4b
 
 [llm]
 provider = "ollama"

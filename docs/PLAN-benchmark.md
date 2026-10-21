@@ -75,7 +75,7 @@ por detrás de sus familias) y todo lo que pasa de ~7 GB a 4 bits, como
 
 ```
 benchmark/                  fuera de src/: no es parte de la aplicación
-    __main__.py             python -m benchmark --model qwen3:8b
+    __main__.py             python -m benchmark --model qwen3.5:9b
     core.py                 Case, Verdict, Attempt y RecordingProvider
     runner.py               repeticiones, calentamiento, guardar resultados
     report.py               resumen por tarea y tabla comparativa
@@ -140,7 +140,10 @@ el informe y la tarea `rendimiento`. Dos cosas que salieron al medir:
   decide con la latencia delante.
 
 Línea base, `qwen3:8b` en este portátil: arranque en frío 3,4 s; en
-caliente, 186 ms hasta el primer token y 32,8 tokens/s.
+caliente, 186 ms hasta el primer token y 32,8 tokens/s. En la ejecución
+comparativa del paso 6 el mismo modelo dio 4,9 s y 44,3 tokens/s
+([ADR-012](architecture-decisions/ADR-012-qwen3.5-9b-chosen-by-benchmark.md)):
+las cifras de velocidad solo se comparan dentro de una misma ejecución.
 
 ### Paso 2 — Preguntas de curiosidad
 
@@ -224,7 +227,8 @@ ya estaba apuntado en PENDIENTE, y un "deberías dejarlo".
 `rendimiento`, que manda los mismos mensajes a todos los modelos. Las
 letras se barajan en cada escenario, el CSV va con `;` y BOM para Excel en
 español, y una hoja que ya existe no se regenera: podría tener notas.
-`--notas` lee la hoja puntuada y añade la media de cada modelo.
+`--notas` lee la hoja puntuada y añade la media de cada modelo; al leerla no
+da el `;` por hecho ni calla si no hay notas (ver el paso 7).
 
 La prueba de principio a fin destapó otra comprobación mal hecha: reutilizar
 la lista de "afirma ver la pantalla" del validador de preguntas suspendía
@@ -327,8 +331,9 @@ tres puntos: la decisión no dependía de esa tarea.
 
 ## Cuidado con
 
-- **Medir en caliente.** Cada `--prompt` descarga el modelo al salir; la
-  diferencia es 3,4 s contra 0,39 s hasta el primer token.
+- **Medir en caliente.** Cada `--prompt` descarga el modelo al salir, así que
+  su primera respuesta incluye cargarlo: con `qwen3.5:9b`, 7,6 s la primera
+  llamada contra 75 ms hasta el primer token en caliente.
 - **No ajustar los casos al modelo actual.** Los casos se escriben antes de
   ver resultados; si uno parece injusto después, se cambia para todos y se
   vuelve a ejecutar todo.

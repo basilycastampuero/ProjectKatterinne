@@ -1,4 +1,4 @@
-"""python -m benchmark --model qwen3:8b [--model otro] [--reps 5] [--task rendimiento]"""
+"""python -m benchmark --model qwen3.5:9b [--model otro] [--reps 5] [--task rendimiento]"""
 
 from __future__ import annotations
 
