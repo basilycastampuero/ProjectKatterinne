@@ -125,6 +125,42 @@ def test_una_nota_que_no_se_entiende_para_en_vez_de_promediar_mal(tmp_path: Path
         read_scores(hoja, clave)
 
 
+def test_una_hoja_guardada_de_nuevo_con_comas_se_lee_igual(tmp_path: Path) -> None:
+    """La primera hoja puntuada de verdad volvió del editor con comas y sin BOM.
+
+    Leída con `;`, cada fila era una sola columna, no había `nota` y salían
+    cero notas: la tabla ponía "—" a todos los modelos sin ningún aviso. Los
+    tests no lo vieron porque puntuaban la hoja con el mismo separador con
+    que se escribe.
+    """
+    filas, clave = build([_ejecucion("a:1b"), _ejecucion("b:2b")], MENSAJES, seed=7)
+    hoja = tmp_path / "hoja.csv"
+    write(filas, clave, hoja, tmp_path / "clave.json")
+    _puntuar(hoja, lambda fila: "5" if clave[f"{fila['escenario']}/{fila['letra']}"] == "a:1b" else "2",
+             separador=",", bom=False)
+
+    assert read_scores(hoja, clave) == {"a:1b": 5, "b:2b": 2}
+
+
+def test_una_hoja_sin_columna_de_notas_avisa_en_vez_de_dejar_la_tabla_vacia(tmp_path: Path) -> None:
+    hoja = tmp_path / "hoja.csv"
+    hoja.write_text("escenario;mensaje;letra;respuesta\nsaludo;hola;A;qué tal\n", encoding="utf-8")
+
+    with pytest.raises(ScoreError):
+        read_scores(hoja, {"saludo/A": "a:1b"})
+
+
+def test_una_hoja_sin_ninguna_nota_avisa(tmp_path: Path) -> None:
+    # Con --notas se esperan notas: una tabla con "—" en todos los modelos
+    # parece un resultado y es un despiste.
+    filas, clave = build([_ejecucion("a:1b")], MENSAJES, seed=1)
+    hoja = tmp_path / "hoja.csv"
+    write(filas, clave, hoja, tmp_path / "clave.json")
+
+    with pytest.raises(ScoreError):
+        read_scores(hoja, clave)
+
+
 def test_el_informe_no_sobrescribe_una_hoja_ya_puntuada(tmp_path: Path) -> None:
     save(_ejecucion("a:1b"), tmp_path)
     hoja = tmp_path / informe.SHEET
@@ -149,14 +185,16 @@ def test_el_informe_completo_de_principio_a_fin(tmp_path: Path) -> None:
     assert "Hoja ciega" in tabla and "| 4.0 |" in tabla
 
 
-def _puntuar(hoja: Path, nota_de, *, saltar_ultima: bool = False) -> None:
-    """Rellena la columna de notas, como haría la persona en Excel."""
+def _puntuar(
+    hoja: Path, nota_de, *, saltar_ultima: bool = False, separador: str = ";", bom: bool = True
+) -> None:
+    """Rellena la columna de notas, como haría la persona en su editor."""
     with hoja.open(encoding="utf-8-sig", newline="") as f:
         filas = list(csv.DictReader(f, delimiter=";"))
     for i, fila in enumerate(filas):
         fila["nota"] = "" if saltar_ultima and i == len(filas) - 1 else nota_de(fila)
-    with hoja.open("w", encoding="utf-8-sig", newline="") as f:
-        escritor = csv.DictWriter(f, fieldnames=list(filas[0]), delimiter=";")
+    with hoja.open("w", encoding="utf-8-sig" if bom else "utf-8", newline="") as f:
+        escritor = csv.DictWriter(f, fieldnames=list(filas[0]), delimiter=separador)
         escritor.writeheader()
         escritor.writerows(filas)
 

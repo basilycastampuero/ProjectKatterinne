@@ -81,11 +81,26 @@ class ScoreError(ValueError):
     """Una nota que no se entiende. Mejor parar que promediar mal."""
 
 
+def _separador(cabecera: str) -> str:
+    """El separador con que volvió la hoja, que no tiene por qué ser `;`.
+
+    Al guardar, el editor puede cambiarlo: la primera hoja puntuada volvió
+    con comas y sin BOM. Leída con `;`, cada fila era una sola columna y no
+    salía ninguna nota.
+    """
+    for separador in (";", ",", "\t"):
+        if set(COLUMNS) <= {c.strip() for c in next(csv.reader([cabecera], delimiter=separador))}:
+            return separador
+    raise ScoreError(f"la cabecera no tiene las columnas {', '.join(COLUMNS)}")
+
+
 def read_scores(sheet: Path, key: dict[str, str]) -> dict[str, float]:
     """La nota media de cada modelo. Las filas sin nota no cuentan."""
     notas: dict[str, list[int]] = defaultdict(list)
     with sheet.open(encoding="utf-8-sig", newline="") as f:
-        for numero, fila in enumerate(csv.DictReader(f, delimiter=";"), start=2):
+        separador = _separador(f.readline())
+        f.seek(0)
+        for numero, fila in enumerate(csv.DictReader(f, delimiter=separador), start=2):
             texto = (fila.get("nota") or "").strip()
             if not texto:
                 continue
@@ -99,4 +114,7 @@ def read_scores(sheet: Path, key: dict[str, str]) -> dict[str, float]:
             if modelo is None:
                 raise ScoreError(f"fila {numero}: no está en la clave; ¿se cambió la hoja?")
             notas[modelo].append(nota)
+    if not notas:
+        # Una tabla con "—" en todos los modelos parece un resultado.
+        raise ScoreError("ninguna fila tiene nota")
     return {modelo: mean(valores) for modelo, valores in notas.items()}
