@@ -1,10 +1,10 @@
 # Plan — benchmark de modelos
 
-Estado: **pasos 1 a 5 hechos y paso 6 ejecutado una vez.** De esa primera
-ejecución salieron cuatro arreglos nuestros y se repitieron preguntas y
-hechos con cinco modelos (ver "Qué se aprendió de la primera ejecución").
-Falta puntuar la hoja ciega y decidir (paso 7, ADR-012). Es el punto 1 de
-[`PENDIENTE.md`](PENDIENTE.md).
+Estado: **terminado.** Se ejecutó con seis candidatos, salieron cuatro
+arreglos nuestros, se puntuó la hoja ciega y ganó `qwen3.5:9b`
+([ADR-012](architecture-decisions/ADR-012-qwen3.5-9b-chosen-by-benchmark.md)).
+El benchmark se queda para medir cambios de prompt. Lo que sigue está en el
+punto 1 de [`PENDIENTE.md`](PENDIENTE.md).
 
 ## Por qué ahora
 
@@ -296,6 +296,27 @@ modelo: `companion.toml`, el prompt si hace falta (cada modelo responde
 distinto a las mismas reglas) y la documentación. Si no cambia, queda
 escrito por qué, que también vale.
 
+**Hecho.** Ganó `qwen3.5:9b`: el único sin una tarea floja y el mejor
+puntuado a ciegas (3,50 de 5, frente a 2,95 de `qwen3:8b`). Las tablas, cuánto
+pesa cada cifra y por qué no los demás están en el
+[ADR-012](architecture-decisions/ADR-012-qwen3.5-9b-chosen-by-benchmark.md).
+Antes de decidir salieron dos cosas más que eran nuestras:
+
+- **La hoja volvió del editor con comas** y sin BOM. El informe la leía con
+  `;`, no encontraba la columna `nota` y puso "—" a todos los modelos sin
+  avisar. Ahora `read_scores()` deduce el separador de la cabecera y para
+  con un error si no hay ninguna nota.
+- **"Solo veo que estás en VS Code" contaba como afirmar ver la pantalla.**
+  Eran once de los quince fallos de ese tipo, y castigaban a `qwen3.5:9b`,
+  `gemma4:e4b` y `qwen3.5:4b`. Corregida la comprobación, se repuntuaron
+  las respuestas guardadas sin volver a ejecutar: `qwen3.5:9b` pasó de 93 %
+  a 99 % en conversación. Los modelos sin ese fallo dieron la misma cifra que
+  ya tenían, que es la prueba de que la repuntuación reproduce la original.
+
+La regla de las decisiones abiertas (repetir una tarea si dos modelos
+quedan a menos de un 10 %) no se aplicó a hechos, donde `qwen3:8b` sacaba
+tres puntos: la decisión no dependía de esa tarea.
+
 ## Decisiones abiertas
 
 - **Inglés** (decidido): sigue hablando siempre en español. Se mide que
@@ -311,7 +332,7 @@ escrito por qué, que también vale.
 - **No ajustar los casos al modelo actual.** Los casos se escriben antes de
   ver resultados; si uno parece injusto después, se cambia para todos y se
   vuelve a ejecutar todo.
-- **Los prompts están ajustados a `qwen3:8b`.** Un modelo nuevo puede
-  rendir peor solo porque las reglas y los ejemplos se afinaron con otro.
-  El informe lo dice, y si un candidato queda cerca, merece una vuelta de
-  ajuste antes de descartarlo.
+- **Los prompts se afinaron con `qwen3:8b`.** Un modelo nuevo puede rendir
+  peor solo porque las reglas y los ejemplos se afinaron con otro. Aun así
+  ganó `qwen3.5:9b`; a partir de ahora, los cambios de prompt se miden con
+  él.

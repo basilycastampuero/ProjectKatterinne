@@ -236,7 +236,7 @@ actualizó, y negó tres veces tener memoria.
 Copia la estructura de uno existente:
 
 ```markdown
-# ADR-012 — Título que resume la decisión
+# ADR-013 — Título que resume la decisión
 
 - **Estado:** aceptada
 - **Fecha:** AAAA-MM-DD

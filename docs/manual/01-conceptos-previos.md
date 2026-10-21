@@ -92,8 +92,8 @@ pero la "web" está en tu máquina.
 Los modelos se ejecutan en la tarjeta gráfica (GPU) porque hace muchas
 multiplicaciones en paralelo. La GPU tiene su propia memoria, la **VRAM**.
 El modelo tiene que caber entero en ella. El equipo objetivo tiene **8 GB**
-de VRAM, y eso condiciona todo: el modelo elegido (`qwen3:8b`) ocupa unos
-5,2 GB.
+de VRAM, y eso condiciona todo: el modelo elegido (`qwen3.5:9b`) ocupa
+6,67 GB una vez cargado, y deja poco margen.
 
 ### Cuantización
 

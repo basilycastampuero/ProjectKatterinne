@@ -30,7 +30,7 @@ Salida normal:
 
 ```
 .........................................................                [100%]
-882 passed in 1.54s
+888 passed in 1.59s
 ```
 
 Cada punto es un test que pasa. Una `F` es uno que falla, y al final verás

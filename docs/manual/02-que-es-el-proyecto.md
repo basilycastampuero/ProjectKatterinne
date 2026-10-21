@@ -139,9 +139,11 @@ decisiones reales:
 | Sistema | Windows 11 |
 
 Los 8 GB de VRAM son el límite duro: el modelo tiene que caber entero. De
-ahí sale `qwen3:8b` cuantizado a 4 bits (unos 5,2 GB), y de ahí sale
-también que la aplicación sea ligera cuando solo observa: `--watch` no
-carga el modelo.
+ahí sale que se probaran solo modelos de 4 a 9 mil millones de parámetros
+cuantizados a 4 bits, y que ganara `qwen3.5:9b` (6,67 GB cargado) por
+benchmark ([ADR-012](../architecture-decisions/ADR-012-qwen3.5-9b-chosen-by-benchmark.md)).
+De ahí sale también que la aplicación sea ligera cuando solo observa:
+`--watch` no carga el modelo.
 
 ## 2.6 Las fases
 

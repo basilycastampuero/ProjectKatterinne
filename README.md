@@ -47,7 +47,7 @@ servicios de visión ni de voz en la nube.
 - **Un benchmark de modelos** (`benchmark/`), fuera de la aplicación: los
   mismos 51 casos para cada modelo candidato, con las mismas piezas y los
   mismos validadores que usa la compañera.
-- 882 tests, de los que solo 7 necesitan Windows.
+- 888 tests, de los que solo 7 necesitan Windows.
 
 ## Qué todavía NO existe
 
@@ -93,8 +93,8 @@ Comprueba que el runtime está listo:
 ```
 proveedor : ollama
 host      : http://127.0.0.1:11434
-modelo    : qwen3:8b
-instalados: qwen3:8b
+modelo    : qwen3.5:9b
+instalados: qwen3.5:9b
 estado    : LISTO
 ```
 
@@ -321,7 +321,7 @@ Copia `companion.toml` a `companion.local.toml` para tus ajustes personales
 `COMPANION_<SECCIÓN>_<CAMPO>`:
 
 ```powershell
-$env:COMPANION_LLM_MODEL = "qwen3:8b"
+$env:COMPANION_LLM_MODEL = "qwen3.5:4b"
 $env:COMPANION_LLM_TEMPERATURE = "0.4"
 ```
 
@@ -343,9 +343,10 @@ Windows.
 
 ## Benchmark de modelos
 
-`qwen3:8b` está porque cabía en la VRAM y funcionaba, no porque ganara una
-comparación. El benchmark (`benchmark/`) existe para compararlo con otros
-en este equipo. **No corre con `pytest`**: necesita Ollama y GPU, y tarda.
+El modelo se eligió con él: seis candidatos medidos en este equipo, y ganó
+`qwen3.5:9b` ([ADR-012](docs/architecture-decisions/ADR-012-qwen3.5-9b-chosen-by-benchmark.md)).
+Sigue sirviendo para medir un cambio de prompt antes de darlo por bueno.
+**No corre con `pytest`**: necesita Ollama y GPU, y tarda.
 Lo que sí está en la suite (`tests/benchmark/`) es su contabilidad: que cada
 caso se califica bien con respuestas fijas.
 
@@ -358,7 +359,7 @@ genera una hoja ciega con las respuestas mezcladas y sin nombre de modelo.
 ```powershell
 # Medir, con la GPU libre (--model se repite). Resultados en la carpeta de --out
 .\.venv\Scripts\python.exe -m benchmark --out data\benchmark\candidatos `
-    --model qwen3:8b --model gemma4:e4b
+    --model qwen3.5:9b --model qwen3.5:4b
 
 # Tabla comparativa (comparativa.md) y hoja ciega (hoja_ciega.csv)
 .\.venv\Scripts\python.exe -m benchmark.informe data\benchmark\candidatos
@@ -369,7 +370,8 @@ genera una hoja ciega con las respuestas mezcladas y sin nombre de modelo.
 
 Otras opciones de `python -m benchmark`: `--reps` (repeticiones por caso, 5
 por defecto) y `--task` (repetible; por defecto, todas). El plan, con los
-candidatos y lo que falta, está en [`docs/PLAN-benchmark.md`](docs/PLAN-benchmark.md).
+candidatos y lo que se aprendió al ejecutarlo, está en
+[`docs/PLAN-benchmark.md`](docs/PLAN-benchmark.md).
 
 ---
 
@@ -434,8 +436,8 @@ módulo hermano y añadir una rama en `factory.py`.
 | [`docs/manual/`](docs/manual/README.md) | Para quien empieza de cero: conceptos, arquitectura, flujos, tests y cómo se trabaja |
 | [`docs/GUIA.md`](docs/GUIA.md) | La referencia rápida: cómo funciona, archivo por archivo, y el porqué de cada cosa |
 | [`docs/PENDIENTE.md`](docs/PENDIENTE.md) | Qué falta y con qué contexto retomarlo |
-| [`docs/PLAN-benchmark.md`](docs/PLAN-benchmark.md) | El benchmark de modelos: qué mide, los candidatos y qué falta |
-| [`docs/architecture-decisions/`](docs/architecture-decisions/) | Once ADRs: las decisiones y por qué se tomaron |
+| [`docs/PLAN-benchmark.md`](docs/PLAN-benchmark.md) | El benchmark de modelos: qué mide, los candidatos y lo que salió |
+| [`docs/architecture-decisions/`](docs/architecture-decisions/) | Doce ADRs: las decisiones y por qué se tomaron |
 
 Si vas a cambiar algo que ya tiene un ADR, léelo antes: casi siempre la
 alternativa obvia ya se consideró y hay un motivo escrito para no haberla
@@ -484,22 +486,26 @@ El diseño y una fuga real que se encontró implementándolo están en
 
 ## El modelo
 
-`companion.toml` usa **`qwen3:8b`** en Q4_K_M (~5.2 GB). Entra entero en los
-8 GB de la RTX 4070 Laptop, que es el requisito duro del equipo objetivo.
+`companion.toml` usa **`qwen3.5:9b`** en Q4_K_M, elegido por benchmark
+frente a otros cinco candidatos
+([ADR-012](docs/architecture-decisions/ADR-012-qwen3.5-9b-chosen-by-benchmark.md)).
+Medido en la RTX 4070 Laptop, con los ajustes de la aplicación:
 
-Medido en ese equipo, comparado con el modelo provisional anterior:
+| Modelo | VRAM | Preguntas | Hechos | Conversación | Estilo | Hoja ciega (1–5) |
+|---|---|---|---|---|---|---|
+| **`qwen3.5:9b`** | 6,67 GB | **100 %** | 85 % | **99 %** | 93 % | **3,50** |
+| `qwen3:8b` (el anterior) | 5,74 GB | **100 %** | 88 % | 97 % | 77 % | 2,95 |
+| `qwen3.5:4b` (plan B) | 3,96 GB | 88 % | 81 % | 97 % | 93 % | 3,25 |
+| `gemma4:e4b` | 4,88 GB | 95 % | **94 %** | 93 % | **97 %** | 3,15 |
 
-| Métrica | `qwen2.5-coder:14b` | `qwen3:8b` |
-|---|---|---|
-| Reparto de capas | 33% CPU / 67% GPU | **100% GPU** |
-| VRAM | 7332 / 8188 MiB | 6185 / 8188 MiB |
-| RAM del proceso Ollama | ~4.1 GB | ~0.8 GB |
-| Primer token | ~6.0 s | **~0.6 s** |
-| Velocidad | 3–7 tok/s | **~28 tok/s** |
+Es el único sin una tarea floja, y el mejor puntuado a ciegas, que es lo
+único que mide si suena a una compañera. En caliente da el primer token en
+75 ms y unos 40 tokens/s.
 
-Sigue siendo una elección provisional: el benchmark ya está construido,
-pero falta ejecutarlo con los candidatos. Ya cumple el rango 4B–8B
-previsto y deja ~1.7 GB de VRAM libres.
+El precio es la memoria: con lo que ya ocupa el escritorio quedan unos
+0,5 GB libres de 8. No subas `num_ctx` sin medir, y si la GPU se queda
+corta (por ejemplo, con un juego abierto), cambia a `qwen3.5:4b` en
+`companion.local.toml`.
 
 **El modo de razonamiento va desactivado** (`think = false`). Ver
 [ADR-003](docs/architecture-decisions/ADR-003-disable-thinking-mode.md).

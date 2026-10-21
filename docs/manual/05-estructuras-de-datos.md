@@ -500,7 +500,7 @@ tus palabras** que prueba que lo dijiste. Lo explica el capítulo 6 y el
 Una dataclass por sección del TOML, todas dentro de `Settings`:
 
 ```python
-settings.llm.model                    # "qwen3:8b"
+settings.llm.model                    # "qwen3.5:9b"
 settings.memory.recall_limit          # 5
 settings.curiosity.threshold          # 6
 settings.privacy.blocked_processes    # ()

@@ -52,8 +52,13 @@ Necesitas [Ollama](https://ollama.com) corriendo y un modelo:
 
 ```powershell
 ollama serve            # en su propia terminal
-ollama pull qwen3:8b
+ollama pull qwen3.5:9b
 ```
+
+Es el modelo elegido por benchmark frente a otros cinco
+([ADR-012](architecture-decisions/ADR-012-qwen3.5-9b-chosen-by-benchmark.md)).
+Si la VRAM se queda corta, el plan B es `qwen3.5:4b`, en
+`companion.local.toml`.
 
 Comprueba que todo está en su sitio:
 
@@ -73,7 +78,7 @@ Modos de ejecución:
 | `--prompt "..."` | Un mensaje y sale | Sí |
 
 Que `--watch` **no** cargue el modelo es deliberado: observar cuesta 26
-microsegundos, cargar el modelo cuesta 5 GB de VRAM.
+microsegundos, cargar el modelo cuesta casi 7 GB de VRAM.
 
 ---
 
@@ -637,7 +642,7 @@ que comentas de un vídeo o de lo que te gusta es `LONG_TERM`.
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-**882 tests. Solo 7 necesitan Windows de verdad**, y están marcados para
+**888 tests. Solo 7 necesitan Windows de verdad**, y están marcados para
 saltarse en otras plataformas. El resto corre con dobles:
 
 | Se sustituye | Por | Dónde |
@@ -855,14 +860,29 @@ solo la regla no arregló nada; el ejemplo sí (ADR-010).
 
 ### Las comprobaciones por palabras clave suspenden respuestas correctas
 
-Pasó tres veces al construir el benchmark. "No estoy segura" no contaba
-como admitir que no lo sabe. Y la lista de "afirma ver la pantalla" del
-validador de preguntas suspendía "no puedo ver la otra pestaña": en una
-pregunta nunca hay negaciones, en una conversación sí, y la respuesta buena
-es justo esa. Por eso ahora una negación justo antes no cuenta. La regla:
+Pasó tres veces al construir el benchmark y una más al elegir modelo. "No
+estoy segura" no contaba como admitir que no lo sabe. Y la lista de "afirma
+ver la pantalla" del validador de preguntas suspendía "no puedo ver la otra
+pestaña": en una pregunta nunca hay negaciones, en una conversación sí, y
+la respuesta buena es justo esa. Por eso ahora una negación justo antes no
+cuenta. La cuarta salió al revisar los fallos del modelo ganador: once de
+quince "afirma ver la pantalla" eran "solo veo que estás en VS Code", que
+marca el límite, y castigaba a tres modelos por esa forma de hablar. Ahora
+un "solo" pegado delante tampoco cuenta. La regla:
 cada caso de `benchmark/cases/` lleva su **respuesta ideal** y un test exige
 que apruebe. Si una comprobación suspende lo que tú darías por bueno, el
 fallo es de la comprobación; el test lo descubre antes de culpar al modelo.
+
+### Un lector que no encuentra lo que busca tiene que quejarse
+
+La hoja ciega se escribe con `;` y BOM para Excel, pero la primera hoja
+puntuada volvió del editor con comas. Leída con `;`, cada fila era una sola
+columna, no había `nota`, y el informe puso "—" a todos los modelos sin
+avisar: parecía un resultado. Los tests no lo vieron porque puntuaban la
+hoja con el mismo separador con que se escribe. Ahora `read_scores()`
+deduce el separador de la cabecera, y una cabecera sin las columnas o una
+hoja sin ninguna nota paran con `ScoreError`. Lo que vuelve de manos de una
+persona no tiene por qué tener el formato con que salió.
 
 ### La memoria del modelo incluye el contexto
 

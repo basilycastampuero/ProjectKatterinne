@@ -37,10 +37,10 @@ Esto crea la carpeta `.venv/` con un Python propio del proyecto. Está en
 .\.venv\Scripts\python.exe -m pip install -e ".[dev]"
 ```
 
-**3. Descargar el modelo** (solo la primera vez, son unos 5 GB):
+**3. Descargar el modelo** (solo la primera vez, son unos 6,6 GB):
 
 ```powershell
-ollama pull qwen3:8b
+ollama pull qwen3.5:9b
 ```
 
 **4. Arrancar Ollama** en su propia terminal, y dejarla abierta:
@@ -317,8 +317,9 @@ privacidad y hay que arreglarlo.
 |---|---|---|
 | `ModuleNotFoundError: companion` | Estás usando el Python del sistema | Usa `.\.venv\Scripts\python.exe` |
 | `No hay ningun runtime local escuchando` | Ollama no está en marcha | `ollama serve` |
-| `El modelo configurado no esta instalado` | Falta el modelo | `ollama pull qwen3:8b` |
+| `El modelo configurado no esta instalado` | Falta el modelo | `ollama pull qwen3.5:9b` |
 | La primera respuesta tarda mucho | Está cargando el modelo en VRAM | Normal la primera vez; las siguientes son rápidas |
+| Todas las respuestas tardan mucho, no solo la primera | El modelo no cabe entero en la GPU (un juego u otra aplicación pesada la está usando) y una parte va a la CPU | Cierra lo que use la GPU, o usa `qwen3.5:4b` en `companion.local.toml` |
 | Nunca pregunta nada | Es lo normal la mayor parte del tiempo | Mira con `--watch` el motivo del silencio |
 | El contexto dice siempre "Windows Terminal" | Falta el terminal en `ignore_processes` | Añádelo en `[perception]` |
 | Caracteres raros en la consola | Codificación de Windows | La aplicación lo corrige sola; si no, `chcp 65001` |
@@ -338,7 +339,7 @@ Cada modelo tiene que estar descargado (`ollama pull <modelo>`):
 ```powershell
 # Medir. --model se repite, una vez por modelo
 .\.venv\Scripts\python.exe -m benchmark --out data\benchmark\candidatos `
-    --model qwen3:8b --model gemma4:e4b
+    --model qwen3.5:9b --model qwen3.5:4b
 
 # La tabla comparativa y la hoja ciega
 .\.venv\Scripts\python.exe -m benchmark.informe data\benchmark\candidatos
