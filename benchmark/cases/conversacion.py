@@ -90,6 +90,9 @@ def sin_coach(texto: str) -> str | None:
 
 #: Una negación justo antes: "no estoy viendo", "no puedo ver", "tampoco veo".
 _NEGADO = re.compile(r"\b(no|nunca|tampoco)\s+(\w+\s+)?$")
+#: Un límite pegado: "solo veo que estás en VS Code", "solo puedo ver el
+#: título". Sin palabra en medio: "solo veo en tu pantalla" sí afirma verla.
+_LIMITADO = re.compile(r"\bs[oó]lo\s+$")
 
 
 def no_afirma_ver(texto: str) -> str | None:
@@ -100,7 +103,8 @@ def no_afirma_ver(texto: str) -> str | None:
     minusculas = texto.lower()
     for patron in _VISION:
         for encontrado in patron.finditer(minusculas):
-            if not _NEGADO.search(minusculas[: encontrado.start()]):
+            antes = minusculas[: encontrado.start()]
+            if not (_NEGADO.search(antes) or _LIMITADO.search(antes)):
                 return "afirma ver la pantalla"
     return None
 
