@@ -17,6 +17,7 @@ from benchmark.blind import ScoreError, build, read_scores, write
 from benchmark.cases import TASKS, conversacion
 from benchmark.report import compare
 from benchmark.runner import load
+from companion.app.cli import force_utf8_stdio
 
 TABLE = "comparativa.md"
 SHEET = "hoja_ciega.csv"
@@ -35,6 +36,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("carpeta", type=Path)
     parser.add_argument("--notas", action="store_true", help="leer la hoja ya puntuada")
     args = parser.parse_args(argv)
+    force_utf8_stdio()
 
     carpeta: Path = args.carpeta
     runs = [load(p) for p in sorted(carpeta.glob("*.json")) if p.name != KEY]

@@ -14,6 +14,7 @@ from benchmark.cases import TASKS
 from benchmark.core import Attempt
 from benchmark.report import format_run
 from benchmark.runner import run_model, save, unload_and_wait
+from companion.app.cli import force_utf8_stdio
 from companion.app.factory import build_provider
 from companion.config.settings import PROJECT_ROOT, load_settings
 
@@ -51,6 +52,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--out", type=Path, help="por defecto, data/benchmark/<fecha>")
     args = parser.parse_args(argv)
+    force_utf8_stdio()
 
     casos = [c for tarea in (args.task or TASKS) for c in TASKS[tarea]]
     salida = args.out or PROJECT_ROOT / "data" / "benchmark" / datetime.now().strftime(
