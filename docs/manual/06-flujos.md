@@ -367,7 +367,7 @@ Tu: ¿qué sabes de lo que estoy haciendo?
 9. Si hay extractor: deja tu mensaje en la cola de pendientes (6.7)
         │
         ▼
-IA: Estás en VS Code, en ProjectKatterinne…  (3.2s, primer token 0.4s, 33 tok/s)
+IA: Estás en VS Code, en ProjectKatterinne…  (2.6s, primer token 0.1s, 105 tokens, 40.4 tok/s)
 ```
 
 Detalles que conviene entender:

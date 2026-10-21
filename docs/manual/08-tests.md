@@ -306,13 +306,18 @@ Lo que sí está en pytest es su **contabilidad**, en `tests/benchmark/`:
   que debe. Es la protección contra comprobaciones mal hechas. Al construir
   el benchmark, las comprobaciones por palabras clave suspendieron respuestas
   correctas tres veces ("no estoy segura" no contaba como admitir que no lo
-  sabe, y "no puedo ver la otra pestaña" se tomaba por afirmar que la ve).
+  sabe, y "no puedo ver la otra pestaña" se tomaba por afirmar que la ve), y
+  una cuarta al elegir modelo: "solo veo que estás en VS Code" también se
+  tomaba por afirmar que ve la pantalla, cuando es justo marcar el límite.
   Sin ese test, el benchmark castigaría a los modelos por un fallo suyo.
 - `test_runner.py`: el calentamiento no cuenta, un error del modelo es una
   nota, y tras descargar espera a que la GPU quede libre.
 - `test_informe.py`: la tabla, la hoja ciega (letras barajadas, la clave
   devuelve cada respuesta a su modelo, abre bien en Excel) y la lectura de
-  notas.
+  notas, incluso si la hoja vuelve del editor con comas, y con error si no
+  hay ninguna nota. Esas pruebas nacieron de un fallo real: los tests
+  puntuaban la hoja con el mismo separador con que se escribe, así que
+  nunca vieron que el editor lo cambiaba.
 
 Sirve para el mismo ciclo del capítulo 8.6: cuando tocas un prompt, antes de
 darlo por bueno, lo mides con el modelo de verdad varias veces.

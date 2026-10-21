@@ -62,8 +62,8 @@ def run_model(
         # justo después de una prueba a mano. Se empieza siempre sin él.
         unload_and_wait(provider)
     antes = gpu_probe() if gpu_probe else None
-    # Medir en caliente: sin esto, el primer caso pagaría la carga de 5 GB
-    # de disco (3,4 s contra 0,39 s hasta el primer token).
+    # Medir en caliente: sin esto, el primer caso pagaría cargar el modelo de
+    # disco a la GPU, segundos en vez de milisegundos hasta el primer token.
     calentamiento = provider.generate(WARMUP)
     despues = gpu_probe() if gpu_probe else None
     info = provider.model_info()

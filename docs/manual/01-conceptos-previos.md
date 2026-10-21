@@ -39,7 +39,7 @@ tokens. Importa porque:
 - La **ventana de contexto** (cuánto texto cabe en una llamada) se mide en
   tokens. En este proyecto es de 4096 (`num_ctx` en `companion.toml`).
 - La **velocidad** se mide en tokens por segundo. El modelo del proyecto
-  genera unos 33 por segundo en la GPU del equipo objetivo.
+  genera unos 40 por segundo en la GPU del equipo objetivo.
 
 ### El prompt
 

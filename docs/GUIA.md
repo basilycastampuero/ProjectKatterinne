@@ -570,14 +570,21 @@ importa en uso real. `conversacion` y `estilo` van en tareas separadas para
 que un emoji no suspenda una respuesta técnica perfecta. Lo que solo puede
 juzgar una persona (si suena natural, si ayuda) va a la **hoja ciega**: las
 respuestas de todos los modelos mezcladas, con letras barajadas en cada
-escenario y la clave en otro archivo. El CSV usa `;` y UTF-8 con BOM para
-que Excel en español lo abra bien.
+escenario y la clave en otro archivo. El CSV se escribe con `;` y UTF-8 con
+BOM para que Excel en español lo abra bien, pero `read_scores()` no da el
+separador por hecho: lo deduce de la cabecera (`;`, coma o tabulador).
 
 **Cada caso se repite** (5 veces por defecto, `--reps`): con temperatura
 0,7 un caso puede salir bien una vez y mal la siguiente, así que se comparan
 tasas. La velocidad de la tabla sale solo de `rendimiento`, que manda los
 mismos mensajes a todos los modelos. Los resultados van a
 `data/benchmark/<carpeta>/`, que git ignora.
+
+**Los dos comandos llaman a `force_utf8_stdio()`**, el mismo que la
+aplicación (`companion.app.cli`). Con la salida redirigida a un archivo,
+Windows usa un codepage heredado y `print` fallaba con el ⚠ de la tabla,
+aunque `comparativa.md` ya estuviera escrito: el comando acababa con un
+traceback.
 
 ---
 
@@ -702,7 +709,7 @@ defaults en código  →  companion.toml  →  COMPANION_*  →  flags de la CLI
 Las variables de entorno siguen el patrón `COMPANION_<SECCIÓN>_<CAMPO>`:
 
 ```powershell
-$env:COMPANION_LLM_MODEL = "llama3.1:8b"
+$env:COMPANION_LLM_MODEL = "qwen3.5:4b"
 $env:COMPANION_PRIVACY_BLOCKED_PROCESSES = "1password.exe,banco.exe"
 ```
 

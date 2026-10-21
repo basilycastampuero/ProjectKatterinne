@@ -14,7 +14,7 @@ Windows, desde la carpeta raíz del proyecto.
 | Python 3.12 o superior | El lenguaje. El proyecto usa sintaxis de 3.12 | `py -3.13 --version` |
 | Git | Control de versiones | `git --version` |
 | [Ollama](https://ollama.com) | Ejecuta el modelo de lenguaje en local | `ollama --version` |
-| Una GPU NVIDIA con ~6 GB libres | Para que el modelo quepa | `nvidia-smi` |
+| Una GPU NVIDIA con ~7 GB libres | Para que el modelo quepa (cargado ocupa 6,67 GB) | `nvidia-smi` |
 
 > Sin Ollama o sin GPU puedes trabajar igualmente en casi todo el
 > proyecto: **ningún test necesita el modelo**, y `--watch` tampoco. Solo
@@ -89,7 +89,7 @@ deciden los argumentos:
 | `--prompt "hola"` | Manda un solo mensaje, imprime la respuesta y sale | Sí |
 
 Que `--watch` no cargue el modelo es deliberado: observar cuesta unos 26
-microsegundos por segundo; cargar el modelo cuesta 5 GB de VRAM.
+microsegundos por segundo; cargar el modelo cuesta casi 7 GB de VRAM.
 
 ### Argumentos útiles
 
@@ -100,7 +100,7 @@ microsegundos por segundo; cargar el modelo cuesta 5 GB de VRAM.
 | `--no-perception` | Conversa sin mirar la ventana activa |
 | `--no-stream` | Espera la respuesta completa en vez de mostrarla palabra a palabra |
 | `--log-level DEBUG` | Muestra también el log en la consola, al nivel indicado |
-| `--model llama3.1:8b` | Usa otro modelo (tiene que estar instalado en Ollama) |
+| `--model qwen3.5:4b` | Usa otro modelo (tiene que estar instalado en Ollama) |
 | `--config otro.toml` | Usa otro archivo de configuración |
 | `--watch-interval 2` | Sondea la ventana cada 2 segundos en vez de cada 1 |
 
@@ -228,7 +228,7 @@ valores por defecto   →   companion.toml   →   variables COMPANION_*   →  
 - **Variables de entorno**: con el patrón `COMPANION_<SECCIÓN>_<CAMPO>`:
 
   ```powershell
-  $env:COMPANION_LLM_MODEL = "llama3.1:8b"
+  $env:COMPANION_LLM_MODEL = "qwen3.5:4b"
   $env:COMPANION_PRIVACY_BLOCKED_PROCESSES = "1password.exe,banco.exe"
   ```
 
@@ -322,7 +322,7 @@ privacidad y hay que arreglarlo.
 | Todas las respuestas tardan mucho, no solo la primera | El modelo no cabe entero en la GPU (un juego u otra aplicación pesada la está usando) y una parte va a la CPU | Cierra lo que use la GPU, o usa `qwen3.5:4b` en `companion.local.toml` |
 | Nunca pregunta nada | Es lo normal la mayor parte del tiempo | Mira con `--watch` el motivo del silencio |
 | El contexto dice siempre "Windows Terminal" | Falta el terminal en `ignore_processes` | Añádelo en `[perception]` |
-| Caracteres raros en la consola | Codificación de Windows | La aplicación lo corrige sola; si no, `chcp 65001` |
+| Caracteres raros en la consola | Codificación de Windows | La aplicación y el benchmark lo corrigen solos; si no, `chcp 65001` |
 
 ## 3.10 Comparar modelos: el benchmark (opcional)
 
@@ -359,7 +359,10 @@ El informe escribe en esa misma carpeta tres archivos: `comparativa.md` (la
 tabla, en Markdown), `hoja_ciega.csv` (respuestas de todos los modelos
 mezcladas, para puntuarlas del 1 al 5 en Excel sin saber de quién son) y
 `clave.json` (qué letra era qué modelo, para el recuento). Si la hoja ya
-existe no se vuelve a generar: podría tener tus notas. Todo queda en
+existe no se vuelve a generar: podría tener tus notas. Con `--notas` se lee
+esa hoja aunque tu editor la haya guardado con comas o tabuladores en vez de
+`;`; si no encuentra las columnas o ninguna nota, se para con un error, porque
+una tabla con «—» en todos los modelos parecería un resultado. Todo queda en
 `data/`, que git ignora. Cómo está hecho, en el capítulo 7.10; el plan y lo
 que falta, en [`PLAN-benchmark.md`](../PLAN-benchmark.md).
 

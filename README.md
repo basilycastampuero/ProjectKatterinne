@@ -110,7 +110,7 @@ Si dice que no hay runtime, arráncalo con `ollama serve`.
 .\.venv\Scripts\python.exe -m companion.main --prompt "hola"
 
 # otro modelo, sin tocar la configuración
-.\.venv\Scripts\python.exe -m companion.main --model llama3.1:8b
+.\.venv\Scripts\python.exe -m companion.main --model qwen3.5:4b
 
 # observar qué ventana tiene el foco (no usa el LLM)
 .\.venv\Scripts\python.exe -m companion.main --watch
@@ -502,8 +502,8 @@ Es el único sin una tarea floja, y el mejor puntuado a ciegas, que es lo
 único que mide si suena a una compañera. En caliente da el primer token en
 75 ms y unos 40 tokens/s.
 
-El precio es la memoria: con lo que ya ocupa el escritorio quedan unos
-0,5 GB libres de 8. No subas `num_ctx` sin medir, y si la GPU se queda
+El precio es la memoria: con lo que ya ocupa el escritorio quedan libres
+entre 0,8 y 1,2 GB. No subas `num_ctx` sin medir, y si la GPU se queda
 corta (por ejemplo, con un juego abierto), cambia a `qwen3.5:4b` en
 `companion.local.toml`.
 

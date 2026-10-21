@@ -2,7 +2,7 @@
 
 - **Estado:** aceptada
 - **Fecha:** 2026-10-21
-- **Fase:** benchmark de modelos (cierra el punto 1 de `PENDIENTE.md`)
+- **Fase:** benchmark de modelos (era el punto 1 de `PENDIENTE.md`; ahora ese punto es usarla con el modelo nuevo)
 
 ## Contexto
 
@@ -78,11 +78,12 @@ proyecto.
 
 ### Por qué no los demás
 
-- **`qwen3:8b`**, el que había. Gana o empata en lo automático, pero es el
-  peor de la hoja ciega junto con `granite4.1:8b`, y el peor en estilo
-  medido de las dos formas (77 % y 2,17). En contenido no queda mal
-  (3,31); lo hunde cómo lo dice: repite la pregunta de la persona al
-  empezar y rellena con preguntas vacías ("¿Cómo estás? ¿Estás en algo?").
+- **`qwen3:8b`**, el que había. Empata en preguntas y saca tres puntos más
+  en hechos, pero es el peor de la hoja ciega junto con `granite4.1:8b`, y
+  el peor en estilo medido de las dos formas (77 % y 2,17). En contenido no
+  queda mal (3,31); lo hunde cómo lo dice: repite la pregunta de la
+  persona al empezar y rellena con preguntas vacías ("¿Cómo estás? ¿Estás
+  en algo?").
   Para una compañera, eso pesa más que tres puntos en hechos.
 - **`gemma4:e4b`**. El que mejor aprende de la conversación (94 %) y el más
   rápido, pero flojo en la hoja ciega, sobre todo en estilo (2,83), y el
@@ -114,9 +115,10 @@ proyecto.
 
 ## Lo que se descartó
 
-- **Elegir solo por las tareas automáticas.** Ganaría `qwen3:8b`, y la
-  persona lo puntuó el último. Las comprobaciones por palabras clave
-  deciden lo que se puede decidir sin dudar; si suena natural no lo es.
+- **Elegir solo por lo que puntúa el validador (preguntas y hechos).**
+  Ganaría `qwen3:8b`, por esos tres puntos en hechos, y la persona lo
+  puntuó entre los últimos. Las comprobaciones por palabras clave deciden
+  lo que se puede decidir sin dudar; si suena natural no lo es.
 - **Elegir por velocidad.** Los 40 tokens/s de `qwen3.5:9b` ya son más
   rápidos que la lectura, y el primer token en caliente es de 75 ms. La
   diferencia con `gemma4:e4b` no se nota conversando.
@@ -128,10 +130,11 @@ proyecto.
 
 ## Consecuencias
 
-- **Poco margen de VRAM.** 6,67 GB del modelo más los 0,8–1,1 GB que ya
-  ocupa el escritorio dan unos 7,5–7,7 GB de 8,19. Con un juego u otra
-  aplicación pesada en la GPU a la vez, parte del modelo pasaría a la CPU y
-  la latencia se dispararía. Hoy la aplicación no avisa de eso: solo lo
+- **Poco margen de VRAM.** La tarjeta tiene 8188 MiB, que son 8,59 GB; el
+  escritorio ya ocupa entre 700 y 1100 MiB, y el modelo 6,67 GB (6361 MiB).
+  Quedan libres entre 0,8 y 1,2 GB. Con un juego u otra aplicación pesada
+  en la GPU a la vez, parte del modelo pasaría a la CPU y la latencia se
+  dispararía. Hoy la aplicación no avisa de eso: solo lo
   mira el benchmark (`MemoryUsage.fits_in_gpu`). Está en `PENDIENTE.md`.
   Por eso `num_ctx` no se sube sin medir.
 - **El arranque en frío pasa de 4,9 s a 7,6 s**: lo paga el primer mensaje
