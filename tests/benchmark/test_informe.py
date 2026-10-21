@@ -8,6 +8,7 @@ sea ciega de verdad, y que las notas puestas a mano no se pierdan.
 from __future__ import annotations
 
 import csv
+import json
 from pathlib import Path
 
 import pytest
@@ -159,6 +160,31 @@ def test_una_hoja_sin_ninguna_nota_avisa(tmp_path: Path) -> None:
 
     with pytest.raises(ScoreError):
         read_scores(hoja, clave)
+
+
+def test_el_mismo_modelo_dos_veces_se_distingue_por_la_revision(tmp_path: Path) -> None:
+    # Medir un cambio de prompt es eso: el mismo modelo con otro commit. La
+    # hoja ciega va por nombre de modelo y juntaría las dos en una.
+    for revision in ("antes12", "despues"):
+        save(_ejecucion("a:1b", revision=revision), tmp_path / revision).rename(
+            tmp_path / f"{revision}.json"
+        )
+
+    assert informe.main([str(tmp_path)]) == 0
+
+    clave = json.loads((tmp_path / informe.KEY).read_text(encoding="utf-8"))
+    modelos = {m for k, m in clave.items() if not k.startswith("_")}
+    assert modelos == {"a:1b @ antes12", "a:1b @ despues"}
+    tabla = (tmp_path / informe.TABLE).read_text(encoding="utf-8")
+    assert "a:1b @ antes12" in tabla and "a:1b @ despues" in tabla
+
+
+def test_dos_ejecuciones_indistinguibles_paran_en_vez_de_mezclarse(tmp_path: Path) -> None:
+    for nombre in ("una", "otra"):
+        save(_ejecucion("a:1b"), tmp_path / nombre).rename(tmp_path / f"{nombre}.json")
+
+    assert informe.main([str(tmp_path)]) == 1
+    assert not (tmp_path / informe.SHEET).exists()
 
 
 def test_el_informe_no_sobrescribe_una_hoja_ya_puntuada(tmp_path: Path) -> None:

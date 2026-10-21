@@ -11,12 +11,14 @@ import argparse
 import json
 import random
 import sys
+from collections import Counter
+from dataclasses import replace
 from pathlib import Path
 
 from benchmark.blind import ScoreError, build, read_scores, write
 from benchmark.cases import TASKS, conversacion
 from benchmark.report import compare
-from benchmark.runner import load
+from benchmark.runner import ModelRun, load
 from companion.app.cli import force_utf8_stdio
 
 TABLE = "comparativa.md"
@@ -31,6 +33,19 @@ def _mensajes() -> dict[str, str]:
     }
 
 
+def _distinguir(runs: list[ModelRun]) -> list[ModelRun]:
+    """El mismo modelo dos veces se distingue por la revisión con que se midió.
+
+    Es lo que pasa al medir un cambio de prompt. La hoja ciega va por nombre
+    de modelo: sin esto, juntaría las dos ejecuciones en una.
+    """
+    veces = Counter(r.model for r in runs)
+    nombres = [f"{r.model} @ {r.revision or '?'}" if veces[r.model] > 1 else r.model for r in runs]
+    if len(set(nombres)) < len(nombres):
+        raise ValueError("hay dos ejecuciones del mismo modelo con la misma revisión")
+    return [replace(r, model=n) for r, n in zip(runs, nombres, strict=True)]
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m benchmark.informe")
     parser.add_argument("carpeta", type=Path)
@@ -42,6 +57,11 @@ def main(argv: list[str] | None = None) -> int:
     runs = [load(p) for p in sorted(carpeta.glob("*.json")) if p.name != KEY]
     if not runs:
         print(f"No hay resultados en {carpeta}.")
+        return 1
+    try:
+        runs = _distinguir(runs)
+    except ValueError as exc:
+        print(f"No se pueden comparar: {exc}.")
         return 1
     tareas = [t for t in TASKS if any(i.task == t for r in runs for i in r.attempts)]
 
