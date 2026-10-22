@@ -140,9 +140,11 @@ proyecto.
   Por eso `num_ctx` no se sube sin medir.
 - **El arranque en frío pasa de 4,9 s a 7,6 s**: lo paga el primer mensaje
   tras cargar el modelo, no los siguientes.
-- **Puede que sirva también para la fase 5.** Declara visión; si al medirla
-  vale, no hará falta cargar un segundo modelo en la GPU. Lo decidirá el
-  ADR de la fase 5, con medidas, no esta declaración.
+- **Puede que sirva también para la fase 5.** Declara visión, y una
+  primera medida con capturas inventadas salió bien: 62 MiB más con una
+  imagen, 1,5–2,8 s por captura y 54 de 54 respuestas correctas, sin
+  inventar lo que no aparece (detalle en `PENDIENTE.md`). Lo decidirá el
+  ADR de la fase 5, con capturas reales.
 - **`think = false` sigue aplicando** (ADR-003): `qwen3.5:9b` declara
   `thinking`, y el benchmark ya lo midió con el ajuste desactivado.
 - **Los cambios de prompt se miden ahora con `qwen3.5:9b`.** Las

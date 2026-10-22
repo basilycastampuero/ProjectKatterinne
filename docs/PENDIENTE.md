@@ -59,11 +59,13 @@ Lo que el benchmark dejó sin arreglar:
 - **Traducciones.** *"connection refused"* resumido como *"la conexión
   falla"* no coincide con las raíces del validador. Con `qwen3.5:9b` no
   pasa (5 de 5): cita el error tal cual. Se deja.
-- **Medir la raíz nueva con el modelo.** Los verbos cortos (*juego/juega*,
-  *tengo/tiene*) ya comparten raíz (ajuste en el ADR-010), probado con
-  casos fijos. Falta pasar `--task hechos` con `qwen3.5:9b` y la GPU libre,
-  y compararlo con `data/benchmark/ajustes`: que no acepte nada que antes
-  rechazara con razón y que los silencios sigan siéndolo.
+- **Hechos que el benchmark no tiene.** Los verbos cortos (*juego/juega*,
+  *tengo/tiene*) ya comparten raíz (ajuste en el ADR-010). Con el modelo,
+  las mismas 113 propuestas de los 16 casos pasadas por la raíz vieja y
+  la nueva dan exactamente las mismas 99 aceptadas: el benchmark no tiene
+  hechos cortos con verbos cortos, así que ni gana ni pierde. Si el uso
+  real enseña otro tipo de hecho que se pierde, merece un caso nuevo en
+  `benchmark/cases/hechos.py`.
 - **Citas que juntan dos mensajes** (`gemma4:e4b` en `varios_turnos`): se
   rechazan con razón, la cita debe ser literal de un mensaje.
 
@@ -102,10 +104,46 @@ pantalla; nada de vídeo; y el ciclo es
 `evento → capturar → analizar → descartar`. OCR primero, y el VLM solo si
 el OCR no basta.
 
-Antes de buscar un VLM aparte, **medir la visión de `qwen3.5:9b`**: Ollama
-dice que acepta imágenes. Si sirve, no habrá que cargar un segundo modelo
-en 8 GB, que con este ya van justos (ADR-012). Es una capacidad declarada,
-no medida.
+### La visión de `qwen3.5:9b`, medida
+
+Antes de buscar un VLM aparte se midió la del modelo de conversación, que
+lleva el codificador de imágenes en el mismo archivo. Seis capturas
+**inventadas** (un editor con código, una terminal con un error de
+conexión, un artículo, un documento de Word con una tabla y un juego con
+su marcador), generadas como HTML y fotografiadas con Edge en modo
+headless. Tres preguntas por captura y tres repeticiones, con los ajustes
+de la aplicación (`num_ctx` 4096, `think` desactivado, temperatura 0,7):
+qué está haciendo la persona, un dato escrito en la imagen, y una trampa
+sobre algo que no aparece.
+
+| | Medido |
+|---|---|
+| Memoria extra por la imagen | **62 MiB** (de 6845 a 6907 MiB); sigue entero en la GPU |
+| Tokens de una captura de 1280×800 | ~1000 |
+| Tokens de una captura de 1920×1080 | ~2050, **la mitad** de `num_ctx` |
+| Primera imagen tras cargar el modelo | 5,7 s |
+| Una captura nueva, en caliente | 1,5 – 2,8 s |
+| Respuestas correctas, leídas una a una | 54 de 54 |
+| Trampas (*"¿quién es el autor?"*) | 15 de 15: dice que no se ve |
+
+Lee bien el texto pequeño (el nombre de la función, el puerto 5432, una
+IP de la tabla, "~4 ns") y entiende la actividad (*"intentó ejecutar
+`migrate` pero falló porque la base de datos no estaba conectada"*). Un
+fallo menor: en el juego tomó el nombre del nivel por el del juego.
+
+**Conclusión: no hace falta un segundo modelo, y quizá tampoco OCR.** El
+mismo modelo ve, cabe y lee el texto que un OCR daría. Tres cosas que
+llevar a la fase 5:
+
+- **Reducir la captura antes de enviarla.** Una de 1080p se come la mitad
+  de la ventana de contexto; a unos 1280 de ancho cabe con holgura junto al
+  prompt y la conversación.
+- **Las capturas eran limpias**: HTML con mucho contraste y poco ruido.
+  Con ventanas reales (temas claros, texto diminuto, juegos 3D) puede ir
+  peor, y eso se mide en la fase 5, no ahora.
+- **El tono no se midió.** Con un prompt mínimo, alguna respuesta acabó
+  en *"si necesitas ayuda, dime"*: el prompt de la fase 5 tendrá que
+  heredar las reglas del de conversación.
 
 ### La decisión que habrá que revisar
 
