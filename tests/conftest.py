@@ -14,6 +14,7 @@ from companion.llm.errors import GenerationError
 from companion.llm.provider import (
     GenerationResult,
     LLMProvider,
+    MemoryUsage,
     Message,
     ModelInfo,
     TokenCallback,
@@ -32,10 +33,14 @@ class FakeProvider(LLMProvider):
         replies: Sequence[str] | None = None,
         available: bool = True,
         raises: Exception | None = None,
+        memory: MemoryUsage | None = None,
     ) -> None:
         self._replies = list(replies or ["respuesta simulada"])
         self._available = available
         self._raises = raises
+        #: Lo que devuelve `memory_usage()`; se cambia a mano para simular
+        #: una recarga del modelo con otro reparto entre GPU y CPU.
+        self.memory = memory
         #: Payloads recibidos, para poder afirmar que se envio lo correcto.
         self.calls: list[list[Message]] = []
         #: Si cada llamada pidio salida JSON.
@@ -83,6 +88,9 @@ class FakeProvider(LLMProvider):
 
     def unload(self) -> None:
         self.unload_count += 1
+
+    def memory_usage(self) -> MemoryUsage | None:
+        return self.memory
 
 
 @pytest.fixture

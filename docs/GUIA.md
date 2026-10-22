@@ -444,6 +444,13 @@ dice. Como `unload()`, no es abstracto y por defecto no hace nada
 `/api/ps`. Si el modelo no cabe entero en la GPU, el runtime manda capas a
 la CPU y la latencia se dispara: un modelo así no sirve aunque conteste bien.
 
+Por eso `cli.py` lo mira **después de cada uso del modelo**, no al
+arrancar: Ollama solo lo sabe con el modelo cargado, lo descarga tras
+`keep_alive` sin uso y decide el reparto en cada carga. Una recarga con un
+juego abierto puede desbordar aunque la primera cupiera. El aviso sale al
+dejar de caber y al volver a caber, no en cada respuesta. `--check` dice
+cuánto ocupa si ya está cargado, sin cargarlo nunca.
+
 **`prompts.py` es código que se edita a mano y con cuidado.** Un ejemplo
 demasiado literal se convierte en plantilla: el modelo llegó a copiar
 palabra por palabra una frase de ejemplo, duración inventada incluida.
@@ -517,7 +524,7 @@ decisión, pregunta) y cada interfaz decide cómo enseñarlo. Un fallo arreglado
 en una copia seguía vivo en la otra; por eso una interfaz nueva debe usar
 `Presence` y no copiar el bucle.
 
-`cli.py` (unas 670 líneas) es el archivo más grande y el más "sucio": formato
+`cli.py` (unas 730 líneas) es el archivo más grande y el más "sucio": formato
 de salida, comandos, manejo del terminal. Es normal y es sano — la suciedad
 de la presentación está concentrada aquí en vez de repartida.
 
@@ -649,7 +656,7 @@ que comentas de un vídeo o de lo que te gusta es `LONG_TERM`.
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-**892 tests. Solo 7 necesitan Windows de verdad**, y están marcados para
+**902 tests. Solo 7 necesitan Windows de verdad**, y están marcados para
 saltarse en otras plataformas. El resto corre con dobles:
 
 | Se sustituye | Por | Dónde |

@@ -25,8 +25,10 @@ han salido siempre del uso real. Lo que conviene mirar durante unos días con
 `--watch --ask` y el REPL:
 
 - **La VRAM.** Con el escritorio quedan libres entre 0,8 y 1,2 GB. Si con
-  un juego o el navegador las respuestas se vuelven lentas, es que parte del
-  modelo pasó a la CPU: el plan B es `qwen3.5:4b` en `companion.local.toml`.
+  un juego o el navegador parte del modelo pasa a la CPU, la aplicación lo
+  avisa tras responder, y `--check` dice cuánto ocupa el modelo cargado.
+  Si el aviso sale a menudo, el plan B es `qwen3.5:4b` en
+  `companion.local.toml`.
 - **El tono.** Vigilar los emojis y el tono de productividad ante el
   cansancio (2 de 5 en el benchmark). La longitud no: un prompt que acortaba
   las respuestas perdió a ciegas (ver abajo).
@@ -131,7 +133,7 @@ comparar `window.pid == os.getpid()` basta y es exacto.
 La separación ya está hecha: lo que pasa en cada sondeo (mirar, decidir antes
 de guardar, redactar la pregunta, no repetir una decisión ya intentada) vive
 en `app/presence.py` (`Presence.tick()`; el archivo entero tiene 125
-líneas) y no imprime nada. En `app/cli.py` (666 líneas) queda la
+líneas) y no imprime nada. En `app/cli.py` (729 líneas) queda la
 presentación: el formato de salida, los
 comandos `/…`, el hilo lector y los bucles que enseñan lo que devuelve cada
 `Tick`. Una ventana nueva debe usar `Presence` y escribir solo cómo mostrar
@@ -153,7 +155,6 @@ Ninguna urgente. Buenas para entrar en calor.
 | ¿Avisar al guardar? | `conversation/manager.py` | Hoy aprende en silencio y lo aprendido está en `/memory`. La alternativa es una línea discreta tipo `(lo recordaré)`: más transparente, pero rompe el silencio en cada revisión |
 | Recuerdos que dejan de ser ciertos | `memory/` | *"Estoy aprendiendo Rust"* se guarda como `long_term` y no caduca. Si se acumulan, habrá que decidir cómo se actualizan. Probablemente PHASE 9 |
 | Emojis a pesar del prompt | `llm/prompts.py` | En la prueba real respondió con 😊 aunque el prompt lo prohíbe. Con `qwen3.5:9b` pasa menos (93 % en la tarea `estilo`, frente al 77 % de `qwen3:8b`), pero ante el cansancio aún falla 2 de 5: un 😴 y un sermón sobre productividad. Puede que haga falta un ejemplo en vez de solo la regla; el benchmark mide si funciona |
-| Avisar si el modelo no cabe | `app/cli.py` | `memory_usage().fits_in_gpu` ya existe, pero solo lo usa el benchmark. Con `qwen3.5:9b` el margen es de 0,8 a 1,2 GB: si una parte pasa a la CPU, todo va lento y nada lo dice. Una línea en el arranque o en `--check` bastaría |
 | Navegación privada | `context/`, `curiosity/` | Algunos navegadores marcan la ventana privada en el título. Si se confirma en una máquina real, habría que tratarla como página sensible entera. Sin verificar el formato, no se implementa |
 | Música en una aplicación propia | `context/` | Con un reproductor en primer plano el título suele ser "artista - canción". Una regla de título lo convertiría en documento y le aplicaría la curiosidad por páginas. Sin verificar el formato, se deja |
 | Preguntas repetidas entre días | `curiosity/` | El cronómetro de la página y `ALREADY_ASKED` viven en RAM. Si en el uso real repite preguntas sobre la misma página en días distintos, habrá que decidirlo, y eso sí sería guardar títulos |
@@ -164,7 +165,7 @@ Ninguna urgente. Buenas para entrar en calor.
 ## Cómo retomar esto
 
 1. Lee [`GUIA.md`](GUIA.md) si no tienes el proyecto fresco.
-2. `pytest` antes de tocar nada: 892 en verde es la línea base.
+2. `pytest` antes de tocar nada: 902 en verde es la línea base.
 3. Mira si hay un ADR sobre lo que vas a cambiar. Casi siempre la
    alternativa obvia ya se consideró y hay un motivo escrito.
 4. **Ejecuta la aplicación de verdad antes de dar algo por terminado.**

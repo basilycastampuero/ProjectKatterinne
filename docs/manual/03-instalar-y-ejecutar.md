@@ -82,7 +82,7 @@ deciden los argumentos:
 
 | Comando | Qué hace | ¿Carga el modelo? |
 |---|---|---|
-| `--check` | Diagnóstico: ¿responde Ollama?, ¿está el modelo? Y sale | No |
+| `--check` | Diagnóstico: ¿responde Ollama?, ¿está el modelo?, y si ya está cargado, ¿cabe entero en la GPU? Y sale | No |
 | `--watch` | Observa qué ventana tienes delante y lo va mostrando | **No** |
 | `--watch --ask` | Además, cuando decide hablar, redacta la pregunta. Evalúa en cada sondeo, no solo cuando cambia algo, pero solo actúa cuando la decisión cambia: así puede preguntar tras un rato en la misma página sin repetirse cada segundo | Sí |
 | *(sin argumentos)* | La conversación por terminal (el REPL). Observa y puede preguntar sola | Sí |

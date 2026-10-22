@@ -29,7 +29,7 @@ from companion.llm.errors import (
     ProviderUnavailableError,
 )
 from companion.llm.ollama import OllamaProvider
-from companion.llm.provider import LLMProvider
+from companion.llm.provider import LLMProvider, MemoryUsage
 from companion.memory.manager import MemoryManager
 from companion.perception.active_window import ActiveWindowProvider
 from companion.perception.models import EventType, WindowEvent
@@ -95,6 +95,61 @@ def preflight(provider: LLMProvider) -> bool:
     _out("Escribe /help para ver los comandos.")
     _out()
     return True
+
+
+_GB = 1_000_000_000
+
+
+def describe_memory(uso: MemoryUsage) -> str:
+    total = uso.total_bytes / _GB
+    if uso.fits_in_gpu:
+        return f"{total:.2f} GB, todo en la GPU"
+    gpu = uso.gpu_bytes / _GB
+    return f"{total:.2f} GB: {gpu:.2f} en la GPU y {total - gpu:.2f} en la CPU"
+
+
+class _VigiaDeVram:
+    """Avisa cuando el modelo deja de caber entero en la GPU, y cuando vuelve.
+
+    Se mira después de usar el modelo y no al arrancar: Ollama solo dice
+    cuánto ocupa un modelo cargado, y lo descarga tras `keep_alive` sin
+    uso. El reparto entre GPU y CPU se decide en cada carga, así que una
+    recarga con un juego abierto puede desbordar aunque la primera cupiera.
+
+    Solo habla al cambiar de estado: repetirlo en cada respuesta lo
+    convertiría en ruido que se deja de leer.
+    """
+
+    def __init__(self, provider: LLMProvider) -> None:
+        self._provider = provider
+        self._cabia: bool | None = None
+
+    def revisar(self) -> str | None:
+        uso = self._provider.memory_usage()
+        if uso is None:
+            # No se sabe o no está cargado: no es un cambio de estado.
+            return None
+        cabia, self._cabia = self._cabia, uso.fits_in_gpu
+        if not uso.fits_in_gpu and cabia is not False:
+            log.warning(
+                "el modelo no cabe entero en la GPU total_bytes=%d gpu_bytes=%d",
+                uso.total_bytes,
+                uso.gpu_bytes,
+            )
+            return (
+                f"  [aviso] el modelo no cabe entero en la GPU ({describe_memory(uso)}).\n"
+                "          Irá lento. Libera VRAM o usa un modelo más pequeño en\n"
+                "          companion.local.toml ([llm] model)."
+            )
+        if uso.fits_in_gpu and cabia is False:
+            log.info("el modelo vuelve a caber entero en la GPU")
+            return f"  [aviso] el modelo vuelve a caber entero en la GPU ({describe_memory(uso)})."
+        return None
+
+
+def _avisar_vram(vigia: _VigiaDeVram | None) -> None:
+    if vigia is not None and (aviso := vigia.revisar()) is not None:
+        _out(aviso)
 
 
 def _print_info(conversation: ConversationManager) -> None:
@@ -362,6 +417,7 @@ def run_repl(
         conversation=conversation,
     )
     ultimo_turno: float | None = None
+    vigia = _VigiaDeVram(conversation.provider)
 
     def quizas_hablar() -> bool:
         """Observa y, si hay motivo, dice algo. True si llegó a hablar."""
@@ -374,6 +430,7 @@ def run_repl(
             return False
         _out()
         _out(f"IA: {pregunta.text}")
+        _avisar_vram(vigia)
         return True
 
     pedir_linea = True
@@ -419,6 +476,7 @@ def run_repl(
                 continue
 
             _stream_answer(conversation, texto, stream=stream, context=contexto)
+            _avisar_vram(vigia)
             ultimo_turno = time.monotonic()
             pedir_linea = True
     except KeyboardInterrupt:
@@ -468,6 +526,7 @@ def run_once(
     _out(f"Tu: {prompt}")
     try:
         _stream_answer(conversation, prompt, stream=stream, context=contexto)
+        _avisar_vram(_VigiaDeVram(conversation.provider))
     finally:
         # La conversación sí se cierra: esa sí terminó. La sesión sigue.
         conversation.close()
@@ -602,15 +661,18 @@ def run_watch(
     memory: MemoryManager | None = None,
     curiosity: CuriosityEngine | None = None,
     questions: QuestionGenerator | None = None,
+    model: LLMProvider | None = None,
     sleep: Callable[[float], None] = time.sleep,
     max_iterations: int | None = None,
 ) -> int:
     """Sondea la ventana activa, muestra el contexto y lo recuerda.
 
+    `model` es el que usa `questions`, para avisar si no cabe en la GPU.
     `sleep` y `max_iterations` se inyectan para poder testear el bucle sin
     esperar segundos reales.
     """
     engine = engine or ContextEngine()
+    vigia = _VigiaDeVram(model) if model is not None else None
     _out(WATCH_BANNER)
     _print_privacy_status(provider)
     if memory is not None:
@@ -638,6 +700,7 @@ def run_watch(
                 _out(_format_curiosity(tic.decision))
             if tic.attempted:
                 _show_watch_question(tic.question)
+                _avisar_vram(vigia)
             iteraciones += 1
             if max_iterations is None or iteraciones < max_iterations:
                 sleep(interval_s)

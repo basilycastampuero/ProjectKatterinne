@@ -134,8 +134,9 @@ proyecto.
   escritorio ya ocupa entre 700 y 1100 MiB, y el modelo 6,67 GB (6361 MiB).
   Quedan libres entre 0,8 y 1,2 GB. Con un juego u otra aplicación pesada
   en la GPU a la vez, parte del modelo pasaría a la CPU y la latencia se
-  dispararía. Hoy la aplicación no avisa de eso: solo lo
-  mira el benchmark (`MemoryUsage.fits_in_gpu`). Está en `PENDIENTE.md`.
+  dispararía. Al principio solo lo miraba el benchmark
+  (`MemoryUsage.fits_in_gpu`); ahora la aplicación también lo comprueba
+  tras cada uso del modelo y avisa cuando deja de caber entero.
   Por eso `num_ctx` no se sube sin medir.
 - **El arranque en frío pasa de 4,9 s a 7,6 s**: lo paga el primer mensaje
   tras cargar el modelo, no los siguientes.

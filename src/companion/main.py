@@ -8,7 +8,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from companion import __version__
-from companion.app.cli import force_utf8_stdio, run_once, run_repl, run_watch
+from companion.app.cli import describe_memory, force_utf8_stdio, run_once, run_repl, run_watch
 from companion.app.factory import (
     build_active_window_provider,
     build_context_engine,
@@ -138,6 +138,10 @@ def run_check(settings: Settings) -> int:
 
     if provider.is_available():
         print("estado    : LISTO")
+        # Solo si ya está cargado (otra terminal con el REPL abierto):
+        # cargarlo para medirlo contradiría que el diagnóstico no lo carga.
+        uso = provider.memory_usage()
+        print(f"en memoria: {describe_memory(uso) if uso else 'no cargado'}")
         return 0
     print("estado    : el runtime responde pero el modelo configurado no esta instalado")
     return 1
@@ -174,9 +178,11 @@ def main(argv: list[str] | None = None) -> int:
         # El modelo solo se carga si de verdad se va a preguntar: observar
         # no debe costar VRAM.
         generador = None
+        modelo = None
         if args.ask:
             try:
-                generador = build_question_generator(settings, build_provider(settings))
+                modelo = build_provider(settings)
+                generador = build_question_generator(settings, modelo)
             except ValueError as exc:
                 print(f"Error: {exc}", file=sys.stderr)
                 return 2
@@ -187,6 +193,7 @@ def main(argv: list[str] | None = None) -> int:
             memory=memoria,
             curiosity=build_curiosity(settings, memory=memoria),
             questions=generador,
+            model=modelo,
         )
 
     try:
