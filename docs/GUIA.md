@@ -656,7 +656,7 @@ que comentas de un vídeo o de lo que te gusta es `LONG_TERM`.
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-**902 tests. Solo 7 necesitan Windows de verdad**, y están marcados para
+**934 tests. Solo 7 necesitan Windows de verdad**, y están marcados para
 saltarse en otras plataformas. El resto corre con dobles:
 
 | Se sustituye | Por | Dónde |
@@ -848,6 +848,12 @@ se vuelve *prefiere*. Sin reducir las palabras a su raíz, el validador
 rechazaba 4 hechos buenos de 8. Y con la raíz y el umbral bajo pasaba un
 motivo que el modelo se había inventado. El ajuste está en ADR-010, y los
 casos que lo sostienen, en `test_facts_real_cases.py`.
+
+Cortar a cinco letras tampoco bastaba con los verbos cortos: *juego* y
+*juega* se quedaban distintas, porque la terminación cabe en las cinco
+letras, y en un hecho corto eso basta para rechazarlo. Ahora se quita la
+terminación antes de cortar, y las primeras personas irregulares
+(*tengo/tiene*) se reescriben. Siete de diez hechos fieles así se perdían.
 
 ### Un fallo que tienen todos los modelos es tuyo
 

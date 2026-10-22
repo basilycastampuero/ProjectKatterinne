@@ -73,6 +73,24 @@ FIELES = [
     ),
 ]
 
+#: No salen de una medición, sino de releer la regla de la raíz: cinco letras
+#: incluyen la terminación de un verbo corto ("juego" frente a "juega"), y en
+#: un hecho corto una sola palabra distinta ya baja del umbral. Se
+#: rechazaban siete de estos diez. El benchmark no lo vio porque sus hechos
+#: eran largos y la palabra de más se diluía.
+VERBOS_CORTOS = [
+    pytest.param("juego al ajedrez los domingos", "Juega al ajedrez los domingos.", id="juego"),
+    pytest.param("puedo usar la GPU entera", "Puede usar la GPU entera.", id="puedo"),
+    pytest.param("llevo dos años con Python", "Lleva dos años con Python.", id="llevo"),
+    pytest.param("tengo un portátil con una 4070", "Tiene un portátil con una 4070.", id="tengo"),
+    pytest.param("vengo de Java, no de Python", "Viene de Java, no de Python.", id="vengo"),
+    pytest.param("hago deporte por las mañanas", "Hace deporte por las mañanas.", id="hago"),
+    pytest.param("conozco bien Django", "Conoce bien Django.", id="conozco"),
+    pytest.param("lo pongo siempre que estudio", "Lo pone siempre que estudia.", id="pongo"),
+    pytest.param("mantengo yo solo el servidor", "Mantiene él solo el servidor.", id="mantengo"),
+    pytest.param("miro series de anime por la noche", "Mira series de anime por la noche.", id="miro"),
+]
+
 INVENTADOS = [
     pytest.param(
         _PREFIERO_LARGO,
@@ -100,6 +118,20 @@ INVENTADOS = [
         "Prefiere los modelos locales y odia la nube.",
         id="opinion-inventada",
     ),
+    # Que los verbos cortos compartan raíz no puede tapar lo que se añade
+    # alrededor de ellos. Con una palabra inventada entre cuatro sí pasaría
+    # (75 %), pero eso ya pasaba antes con cualquier verbo largo: es el
+    # precio del umbral, no de la raíz.
+    pytest.param(
+        "juego al ajedrez",
+        "Juega al ajedrez en torneos.",
+        id="verbo-corto-con-detalle-inventado",
+    ),
+    pytest.param(
+        "tengo un portátil",
+        "Tiene un portátil gaming nuevo.",
+        id="irregular-con-detalle-inventado",
+    ),
 ]
 
 
@@ -112,6 +144,13 @@ def _validar(mensaje: str, contenido: str) -> str | None:
 
 @pytest.mark.parametrize(("mensaje", "contenido"), FIELES)
 def test_un_hecho_fiel_se_acepta_aunque_cambie_la_conjugacion(
+    mensaje: str, contenido: str
+) -> None:
+    assert _validar(mensaje, contenido) is None
+
+
+@pytest.mark.parametrize(("mensaje", "contenido"), VERBOS_CORTOS)
+def test_un_verbo_corto_en_tercera_persona_sigue_siendo_lo_que_dijo(
     mensaje: str, contenido: str
 ) -> None:
     assert _validar(mensaje, contenido) is None

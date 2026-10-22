@@ -23,8 +23,39 @@ MIN_WORD_LEN = 4
 #: Letras que se conservan de cada palabra. Al pasar lo que dice la persona
 #: a tercera persona cambia la conjugación ("prefiero" → "prefiere"), y sin
 #: esto cada verbo contaba como una palabra añadida. Cinco y no cuatro
-#: porque con cuatro "programa" y "progreso" serían la misma palabra.
+#: porque con cuatro "comida" y "comienzo" serían la misma palabra.
 STEM_LEN = 5
+
+#: Terminaciones de flexión que se quitan antes de cortar. Cortar no basta
+#: en las palabras cortas: las cinco letras de "juego" y "juega" incluyen la
+#: terminación, y en un hecho corto una sola palabra distinta ya lo dejaba
+#: por debajo del umbral.
+#:
+#: Van también gerundio, participio e infinitivo: si solo se quitaran las
+#: cortas, "monta" quedaría en "mont" y "montando" en "monta", y dejarían
+#: de coincidir. Las más largas primero, para que "juegan" pierda "-an" y
+#: no solo la "n".
+_ENDINGS = (
+    "iendo", "ando",
+    "adas", "ados", "idas", "idos",
+    "ada", "ado", "ida", "ido",
+    "an", "en", "as", "es", "os", "ar", "er", "ir",
+    "o", "a", "e",
+)
+
+#: Primeras personas irregulares, reescritas para caer en la misma raíz que
+#: la tercera ("tengo" y "tiene" → "tien"). Se mira el final de la palabra
+#: para cubrir los compuestos ("mantengo", "supongo"), y entera la
+#: terminación de "hago" o "digo" para no tocar "pago" ni "amigo".
+_IRREGULAR_ENDINGS = (
+    ("engo", "ien"),
+    ("ongo", "on"),
+    ("algo", "al"),
+    ("aigo", "a"),
+    ("hago", "hac"),
+    ("digo", "dic"),
+    ("zco", "c"),
+)
 
 #: Palabras largas que no aportan contenido. Lista corta a propósito:
 #: "porque" o "para" **no** están, porque un motivo o una finalidad
@@ -43,14 +74,28 @@ def normalize(text: str) -> str:
     return " ".join(re.sub(r"[^\w]+", " ", sin_tildes.lower()).split())
 
 
+def _stem(word: str) -> str:
+    for final, reemplazo in _IRREGULAR_ENDINGS:
+        if word.endswith(final):
+            word = word[: -len(final)] + reemplazo
+            break
+    for final in _ENDINGS:
+        # Sin dejar menos de tres letras: "mesa" no puede quedarse en "m".
+        if word.endswith(final) and len(word) - len(final) >= 3:
+            word = word[: -len(final)]
+            break
+    return word[:STEM_LEN]
+
+
 def meaningful_words(text: str) -> set[str]:
     """Raíces de las palabras de cuatro letras o más, normalizadas.
 
-    "Prefiero" y "prefiere" dan la misma raíz, "prefi". Es una aproximación
-    burda, pero determinista y sin dependencias.
+    "Prefiero" y "prefiere" dan la misma raíz, "prefi"; "juego" y "juega",
+    "jueg"; "tengo" y "tiene", "tien". Es una aproximación burda, pero
+    determinista y sin dependencias.
     """
     return {
-        p[:STEM_LEN]
+        _stem(p)
         for p in normalize(text).split()
         if len(p) >= MIN_WORD_LEN and p not in _STOPWORDS
     }

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from companion.memory.similarity import is_duplicate, similarity
+from companion.memory.similarity import is_duplicate, meaningful_words, similarity
 
 
 @pytest.mark.parametrize(
@@ -32,6 +32,48 @@ def test_la_forma_no_cambia_el_hecho(otro: str) -> None:
 )
 def test_cambiar_la_palabra_que_importa_es_otro_hecho(otro: str) -> None:
     assert not is_duplicate("Usa SQLite para la memoria.", otro)
+
+
+@pytest.mark.parametrize(
+    ("una", "otra"),
+    [
+        ("juego", "juega"),
+        ("juego", "juegan"),
+        # Las cortas pierden la terminación; las largas tienen que perderla
+        # también o dejan de coincidir con ellas.
+        ("monta", "montando"),
+        ("monta", "montado"),
+        ("monto", "montar"),
+        ("cansado", "cansada"),
+        ("gato", "gatos"),
+        ("tengo", "tiene"),
+        ("mantengo", "mantiene"),
+        ("pongo", "ponen"),
+        ("supongo", "supone"),
+        ("salgo", "sale"),
+        ("hago", "hace"),
+        ("digo", "dice"),
+        ("traigo", "trae"),
+        ("conozco", "conoce"),
+    ],
+)
+def test_la_conjugacion_y_el_plural_comparten_raiz(una: str, otra: str) -> None:
+    assert meaningful_words(una) == meaningful_words(otra)
+
+
+@pytest.mark.parametrize(
+    ("una", "otra"),
+    [
+        # Con cuatro letras las dos serían "comi".
+        ("comida", "comienzo"),
+        ("modelo", "modulo"),
+        # La regla de "hago" mira el final de la palabra, no cualquier "-ago".
+        ("pago", "hago"),
+        ("pago", "pace"),
+    ],
+)
+def test_palabras_distintas_siguen_siendo_distintas(una: str, otra: str) -> None:
+    assert meaningful_words(una) != meaningful_words(otra)
 
 
 def test_la_similitud_va_de_cero_a_uno() -> None:

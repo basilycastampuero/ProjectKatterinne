@@ -57,9 +57,13 @@ Lo que el benchmark dejó sin arreglar:
   actitud, con el riesgo de invertir el sentido (*"le gusta"* cuando dijo
   *"odio"*).
 - **Traducciones.** *"connection refused"* resumido como *"la conexión
-  falla"* no coincide con las raíces del validador.
-- **Verbos irregulares.** *Pongo* y *pone* no comparten raíz de cinco
-  letras.
+  falla"* no coincide con las raíces del validador. Con `qwen3.5:9b` no
+  pasa (5 de 5): cita el error tal cual. Se deja.
+- **Medir la raíz nueva con el modelo.** Los verbos cortos (*juego/juega*,
+  *tengo/tiene*) ya comparten raíz (ajuste en el ADR-010), probado con
+  casos fijos. Falta pasar `--task hechos` con `qwen3.5:9b` y la GPU libre,
+  y compararlo con `data/benchmark/ajustes`: que no acepte nada que antes
+  rechazara con razón y que los silencios sigan siéndolo.
 - **Citas que juntan dos mensajes** (`gemma4:e4b` en `varios_turnos`): se
   rechazan con razón, la cita debe ser literal de un mensaje.
 
@@ -165,7 +169,7 @@ Ninguna urgente. Buenas para entrar en calor.
 ## Cómo retomar esto
 
 1. Lee [`GUIA.md`](GUIA.md) si no tienes el proyecto fresco.
-2. `pytest` antes de tocar nada: 902 en verde es la línea base.
+2. `pytest` antes de tocar nada: 934 en verde es la línea base.
 3. Mira si hay un ADR sobre lo que vas a cambiar. Casi siempre la
    alternativa obvia ya se consideró y hay un motivo escrito.
 4. **Ejecuta la aplicación de verdad antes de dar algo por terminado.**

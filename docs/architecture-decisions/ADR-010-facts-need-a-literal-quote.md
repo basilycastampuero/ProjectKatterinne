@@ -64,7 +64,7 @@ probando 48 combinaciones contra 17 casos reales, fieles e inventados:
 
 | Regla | Valor | Por qué |
 |---|---|---|
-| Raíz | 5 primeras letras | con 4, *programa* y *progreso* serían la misma palabra |
+| Raíz | 5 primeras letras | con 4, *comida* y *comienzo* serían la misma palabra |
 | Umbral | 70 % | el fiel más bajo cubre 0,75 y la invención más alta 0,60 |
 | Palabras vacías | *persona, esta, estaba, lugar* | *porque* y *para* **no**: un motivo inventado es lo que hay que cazar |
 
@@ -190,10 +190,39 @@ en el validador. El segundo recupera recuerdos, pero con riesgo de invertir
 el sentido: *"le gusta"* cuando la persona dijo *"odio"*. Hoy se acepta la
 pérdida.
 
-Límites que se conocen y no se han tocado: un resumen en otro idioma o con
+Límite que se conoce y no se ha tocado: un resumen en otro idioma o con
 otras palabras (*"connection refused"* como *"la conexión falla"*) no
-comparte raíces con la cita, y los verbos irregulares (*pongo*, *pone*) no
-comparten cinco letras.
+comparte raíces con la cita. Con `qwen3.5:9b` no cuesta nada (5 de 5 en
+`error_en_ingles`: cita el error tal cual), y arreglarlo pediría un
+diccionario.
+
+## Ajuste — Los verbos cortos no compartían raíz
+
+Los verbos irregulares (*pongo*, *pone*) estaban apuntados como límite.
+Al revisarlos salió algo más grande: **cualquier verbo corto**. Las cinco
+letras de *juego* y *juega* incluyen la terminación, así que eran palabras
+distintas, y en un hecho corto una sola palabra distinta ya lo deja por
+debajo del umbral: *"Juega al ajedrez los domingos"* cubría un 67 % de
+*"juego al ajedrez los domingos"*. De diez hechos así, fieles e inventados
+a propósito, se rechazaban siete. El benchmark no lo vio porque sus hechos
+eran largos y la palabra de más se diluía.
+
+`similarity.py` quita ahora una terminación de flexión antes de cortar
+(*-o, -a, -es, -an*…, y también gerundio, participio e infinitivo, para que
+*monta* y *montando* sigan coincidiendo), y reescribe las primeras personas
+irregulares más comunes por su final (*tengo/tiene*, *pongo/pone*,
+*salgo*, *hago*, *digo*, *traigo*, *conozco*), lo que cubre los compuestos
+(*mantengo*, *supongo*).
+
+Los casos reales no se mueven: el fiel más bajo sigue en 0,75 y la
+invención más alta en 0,60. Los diez verbos cortos pasan de 0,67 a 1,00.
+
+El precio es que dos palabras distintas pueden caer en la misma raíz
+(*caso* y *casa*, *comida* y *comer*). Eso solo hace más permisivo el
+validador con esa palabra, y una invención tendría que coincidir justo con
+ella. Lo que no cambia: con una palabra inventada entre cuatro, el hecho
+pasa (75 %). Ya pasaba con cualquier verbo largo; es el precio del umbral,
+no de la raíz.
 
 ## Lo que se descartó
 
